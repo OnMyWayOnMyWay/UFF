@@ -720,6 +720,254 @@ async def get_player_profile(player_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/teams/{team_name}/analysis")
+async def get_team_analysis(team_name: str):
+    """Get comprehensive team analysis including franchise history and awards"""
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        
+        team_data = {
+            'name': team_name,
+            'all_time_record': {'wins': 0, 'losses': 0, 'win_pct': 0},
+            'total_games': 0,
+            'total_points_scored': 0,
+            'total_points_allowed': 0,
+            'avg_points_scored': 0,
+            'avg_points_allowed': 0,
+            'biggest_win': None,
+            'biggest_loss': None,
+            'current_streak': {'type': None, 'count': 0},
+            'head_to_head': {},
+            'roster': {},  # All players who played for team
+            'team_records': {
+                'most_points_game': None,
+                'most_yards_passing_game': None,
+                'most_yards_rushing_game': None,
+                'most_yards_receiving_game': None,
+                'most_tackles_game': None,
+                'most_sacks_game': None
+            },
+            'season_stats': {
+                'total_passing_yards': 0,
+                'total_rushing_yards': 0,
+                'total_receiving_yards': 0,
+                'total_touchdowns': 0,
+                'total_tackles': 0,
+                'total_sacks': 0,
+                'total_interceptions': 0
+            },
+            'awards': [],
+            'championships': 0,
+            'playoff_appearances': 0
+        }
+        
+        team_games = []
+        streak_type = None
+        streak_count = 0
+        
+        for game in games:
+            is_home = game['home_team'] == team_name
+            is_away = game['away_team'] == team_name
+            
+            if not (is_home or is_away):
+                continue
+            
+            team_games.append(game)
+            team_data['total_games'] += 1
+            
+            # Calculate win/loss
+            if is_home:
+                team_score = game['home_score']
+                opp_score = game['away_score']
+                opponent = game['away_team']
+                stats = game['home_stats']
+            else:
+                team_score = game['away_score']
+                opp_score = game['home_score']
+                opponent = game['home_team']
+                stats = game['away_stats']
+            
+            team_data['total_points_scored'] += team_score
+            team_data['total_points_allowed'] += opp_score
+            
+            is_win = team_score > opp_score
+            margin = abs(team_score - opp_score)
+            
+            if is_win:
+                team_data['all_time_record']['wins'] += 1
+                if not team_data['biggest_win'] or margin > team_data['biggest_win']['margin']:
+                    team_data['biggest_win'] = {
+                        'opponent': opponent,
+                        'score': f"{team_score}-{opp_score}",
+                        'margin': margin,
+                        'week': game['week'],
+                        'date': game['game_date']
+                    }
+            else:
+                team_data['all_time_record']['losses'] += 1
+                if not team_data['biggest_loss'] or margin > team_data['biggest_loss']['margin']:
+                    team_data['biggest_loss'] = {
+                        'opponent': opponent,
+                        'score': f"{team_score}-{opp_score}",
+                        'margin': margin,
+                        'week': game['week'],
+                        'date': game['game_date']
+                    }
+            
+            # Track streak
+            if streak_type is None:
+                streak_type = 'W' if is_win else 'L'
+                streak_count = 1
+            elif (streak_type == 'W' and is_win) or (streak_type == 'L' and not is_win):
+                streak_count += 1
+            else:
+                streak_type = 'W' if is_win else 'L'
+                streak_count = 1
+            
+            # Head to head
+            if opponent not in team_data['head_to_head']:
+                team_data['head_to_head'][opponent] = {'wins': 0, 'losses': 0}
+            if is_win:
+                team_data['head_to_head'][opponent]['wins'] += 1
+            else:
+                team_data['head_to_head'][opponent]['losses'] += 1
+            
+            # Process player stats
+            for category in ['passing', 'defense', 'rushing', 'receiving']:
+                if category in stats:
+                    for player in stats[category]:
+                        player_name = player['name']
+                        if player_name not in team_data['roster']:
+                            team_data['roster'][player_name] = {
+                                'games': 0,
+                                'stats': {
+                                    'passing': {'yards': 0, 'tds': 0},
+                                    'rushing': {'yards': 0, 'tds': 0},
+                                    'receiving': {'yards': 0, 'tds': 0},
+                                    'defense': {'tackles': 0, 'sacks': 0, 'ints': 0}
+                                }
+                            }
+                        
+                        team_data['roster'][player_name]['games'] += 1
+                        
+                        # Aggregate team season stats
+                        if category == 'passing':
+                            yards = player['stats'].get('yards', 0)
+                            tds = player['stats'].get('td', 0)
+                            team_data['season_stats']['total_passing_yards'] += yards
+                            team_data['season_stats']['total_touchdowns'] += tds
+                            team_data['roster'][player_name]['stats']['passing']['yards'] += yards
+                            team_data['roster'][player_name]['stats']['passing']['tds'] += tds
+                            
+                            if not team_data['team_records']['most_yards_passing_game'] or yards > team_data['team_records']['most_yards_passing_game']['yards']:
+                                team_data['team_records']['most_yards_passing_game'] = {
+                                    'player': player_name,
+                                    'yards': yards,
+                                    'opponent': opponent,
+                                    'week': game['week']
+                                }
+                        
+                        elif category == 'rushing':
+                            yards = player['stats'].get('yards', 0)
+                            tds = player['stats'].get('td', 0)
+                            team_data['season_stats']['total_rushing_yards'] += yards
+                            team_data['season_stats']['total_touchdowns'] += tds
+                            team_data['roster'][player_name]['stats']['rushing']['yards'] += yards
+                            team_data['roster'][player_name]['stats']['rushing']['tds'] += tds
+                            
+                            if not team_data['team_records']['most_yards_rushing_game'] or yards > team_data['team_records']['most_yards_rushing_game']['yards']:
+                                team_data['team_records']['most_yards_rushing_game'] = {
+                                    'player': player_name,
+                                    'yards': yards,
+                                    'opponent': opponent,
+                                    'week': game['week']
+                                }
+                        
+                        elif category == 'receiving':
+                            yards = player['stats'].get('yards', 0)
+                            tds = player['stats'].get('td', 0)
+                            team_data['season_stats']['total_receiving_yards'] += yards
+                            team_data['season_stats']['total_touchdowns'] += tds
+                            team_data['roster'][player_name]['stats']['receiving']['yards'] += yards
+                            team_data['roster'][player_name]['stats']['receiving']['tds'] += tds
+                            
+                            if not team_data['team_records']['most_yards_receiving_game'] or yards > team_data['team_records']['most_yards_receiving_game']['yards']:
+                                team_data['team_records']['most_yards_receiving_game'] = {
+                                    'player': player_name,
+                                    'yards': yards,
+                                    'opponent': opponent,
+                                    'week': game['week']
+                                }
+                        
+                        elif category == 'defense':
+                            tackles = player['stats'].get('tak', 0)
+                            sacks = player['stats'].get('sck', 0)
+                            ints = player['stats'].get('int', 0)
+                            team_data['season_stats']['total_tackles'] += tackles
+                            team_data['season_stats']['total_sacks'] += sacks
+                            team_data['season_stats']['total_interceptions'] += ints
+                            team_data['roster'][player_name]['stats']['defense']['tackles'] += tackles
+                            team_data['roster'][player_name]['stats']['defense']['sacks'] += sacks
+                            team_data['roster'][player_name]['stats']['defense']['ints'] += ints
+                            
+                            if not team_data['team_records']['most_tackles_game'] or tackles > team_data['team_records']['most_tackles_game']['tackles']:
+                                team_data['team_records']['most_tackles_game'] = {
+                                    'player': player_name,
+                                    'tackles': tackles,
+                                    'opponent': opponent,
+                                    'week': game['week']
+                                }
+                            
+                            if not team_data['team_records']['most_sacks_game'] or sacks > team_data['team_records']['most_sacks_game']['sacks']:
+                                team_data['team_records']['most_sacks_game'] = {
+                                    'player': player_name,
+                                    'sacks': sacks,
+                                    'opponent': opponent,
+                                    'week': game['week']
+                                }
+            
+            # Track highest scoring game
+            if not team_data['team_records']['most_points_game'] or team_score > team_data['team_records']['most_points_game']['points']:
+                team_data['team_records']['most_points_game'] = {
+                    'points': team_score,
+                    'opponent': opponent,
+                    'week': game['week'],
+                    'date': game['game_date']
+                }
+        
+        if team_data['total_games'] == 0:
+            raise HTTPException(status_code=404, detail="Team not found")
+        
+        # Calculate averages
+        team_data['avg_points_scored'] = round(team_data['total_points_scored'] / team_data['total_games'], 1)
+        team_data['avg_points_allowed'] = round(team_data['total_points_allowed'] / team_data['total_games'], 1)
+        
+        # Calculate win percentage
+        total_games = team_data['all_time_record']['wins'] + team_data['all_time_record']['losses']
+        team_data['all_time_record']['win_pct'] = round(team_data['all_time_record']['wins'] / total_games, 3) if total_games > 0 else 0
+        
+        # Set current streak
+        team_data['current_streak'] = {
+            'type': 'Win' if streak_type == 'W' else 'Loss',
+            'count': streak_count
+        }
+        
+        # Sort roster by games played
+        team_data['roster'] = dict(sorted(
+            team_data['roster'].items(),
+            key=lambda x: x[1]['games'],
+            reverse=True
+        ))
+        
+        return team_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting team analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.post("/admin/reset-season")
 async def reset_season(admin_key: str):
     """Reset the season by wiping all game data"""
