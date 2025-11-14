@@ -137,11 +137,11 @@ def generate_game(week, home_team, away_team, game_date, is_playoff=False):
     
     # Home team stats
     for pos, player in home_players.items():
-        home_stats[player] = generate_player_stats(pos, is_home_winner)
+        home_stats[player] = generate_player_stats(pos, is_home_winner, player)
     
     # Away team stats
     for pos, player in away_players.items():
-        away_stats[player] = generate_player_stats(pos, not is_home_winner)
+        away_stats[player] = generate_player_stats(pos, not is_home_winner, player)
     
     # Determine player of the game (usually from winning team)
     winner_team = home_team if is_home_winner else away_team
