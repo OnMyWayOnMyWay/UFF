@@ -383,6 +383,202 @@ async def get_available_weeks():
     return {"weeks": [w["_id"] for w in weeks]}
 
 
+def calculate_fantasy_points(player_stats: Dict[str, Any]) -> float:
+    """Calculate fantasy points for a player based on their stats"""
+    points = 0.0
+    
+    # Passing points
+    if 'passing' in player_stats:
+        for stat in player_stats['passing']:
+            points += stat.get('yards', 0) * 0.04  # 0.04 per passing yard
+            points += stat.get('td', 0) * 4  # 4 per passing TD
+            points -= stat.get('int', 0) * 2  # -2 per interception
+    
+    # Rushing points
+    if 'rushing' in player_stats:
+        for stat in player_stats['rushing']:
+            points += stat.get('yards', 0) * 0.1  # 0.1 per rushing yard
+            points += stat.get('td', 0) * 6  # 6 per rushing TD
+    
+    # Receiving points
+    if 'receiving' in player_stats:
+        for stat in player_stats['receiving']:
+            points += stat.get('rec', 0) * 1  # 1 per reception
+            points += stat.get('yards', 0) * 0.1  # 0.1 per receiving yard
+            points += stat.get('td', 0) * 6  # 6 per receiving TD
+    
+    # Defense points
+    if 'defense' in player_stats:
+        for stat in player_stats['defense']:
+            points += stat.get('tak', 0) * 0.5  # 0.5 per tackle
+            points += stat.get('tfl', 0) * 1  # 1 per tackle for loss
+            points += stat.get('sck', 0) * 1  # 1 per sack
+            points += stat.get('int', 0) * 2  # 2 per interception
+            points += stat.get('saf', 0) * 2  # 2 per safety
+            points += stat.get('td', 0) * 6  # 6 per defensive TD
+            points += stat.get('pbu', 0) * 0.5  # 0.5 per pass breakup
+    
+    return round(points, 2)
+
+
+@api_router.get("/stats/leaders")
+async def get_stats_leaders():
+    """Get season stats leaders with fantasy points"""
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        
+        # Aggregate stats by player
+        player_stats = {}
+        
+        for game in games:
+            # Process home team
+            for category in ['passing', 'defense', 'rushing', 'receiving']:
+                if category in game['home_stats']:
+                    for player in game['home_stats'][category]:
+                        name = player['name']
+                        if name not in player_stats:
+                            player_stats[name] = {
+                                'name': name,
+                                'passing': [],
+                                'defense': [],
+                                'rushing': [],
+                                'receiving': [],
+                                'games_played': 0
+                            }
+                        player_stats[name][category].append(player['stats'])
+                        player_stats[name]['games_played'] += 1
+            
+            # Process away team
+            for category in ['passing', 'defense', 'rushing', 'receiving']:
+                if category in game['away_stats']:
+                    for player in game['away_stats'][category]:
+                        name = player['name']
+                        if name not in player_stats:
+                            player_stats[name] = {
+                                'name': name,
+                                'passing': [],
+                                'defense': [],
+                                'rushing': [],
+                                'receiving': [],
+                                'games_played': 0
+                            }
+                        player_stats[name][category].append(player['stats'])
+        
+        # Calculate totals and fantasy points
+        leaders = {
+            'points': [],
+            'passing_yards': [],
+            'rushing_yards': [],
+            'receiving_yards': [],
+            'tackles': [],
+            'sacks': [],
+            'interceptions': []
+        }
+        
+        for name, stats in player_stats.items():
+            # Calculate fantasy points
+            fantasy_points = calculate_fantasy_points(stats)
+            
+            # Calculate totals
+            passing_yards = sum(s.get('yards', 0) for s in stats['passing'])
+            passing_tds = sum(s.get('td', 0) for s in stats['passing'])
+            
+            rushing_yards = sum(s.get('yards', 0) for s in stats['rushing'])
+            rushing_tds = sum(s.get('td', 0) for s in stats['rushing'])
+            
+            receiving_yards = sum(s.get('yards', 0) for s in stats['receiving'])
+            receiving_tds = sum(s.get('td', 0) for s in stats['receiving'])
+            receptions = sum(s.get('rec', 0) for s in stats['receiving'])
+            
+            tackles = sum(s.get('tak', 0) for s in stats['defense'])
+            sacks = sum(s.get('sck', 0) for s in stats['defense'])
+            interceptions = sum(s.get('int', 0) for s in stats['defense'])
+            
+            # Add to leaders lists
+            if fantasy_points > 0:
+                leaders['points'].append({
+                    'name': name,
+                    'value': fantasy_points,
+                    'games': stats['games_played']
+                })
+            
+            if passing_yards > 0:
+                leaders['passing_yards'].append({
+                    'name': name,
+                    'value': passing_yards,
+                    'tds': passing_tds,
+                    'games': stats['games_played']
+                })
+            
+            if rushing_yards > 0:
+                leaders['rushing_yards'].append({
+                    'name': name,
+                    'value': rushing_yards,
+                    'tds': rushing_tds,
+                    'games': stats['games_played']
+                })
+            
+            if receiving_yards > 0:
+                leaders['receiving_yards'].append({
+                    'name': name,
+                    'value': receiving_yards,
+                    'tds': receiving_tds,
+                    'receptions': receptions,
+                    'games': stats['games_played']
+                })
+            
+            if tackles > 0:
+                leaders['tackles'].append({
+                    'name': name,
+                    'value': tackles,
+                    'games': stats['games_played']
+                })
+            
+            if sacks > 0:
+                leaders['sacks'].append({
+                    'name': name,
+                    'value': sacks,
+                    'games': stats['games_played']
+                })
+            
+            if interceptions > 0:
+                leaders['interceptions'].append({
+                    'name': name,
+                    'value': interceptions,
+                    'games': stats['games_played']
+                })
+        
+        # Sort and get top 10 for each category
+        for category in leaders:
+            leaders[category] = sorted(leaders[category], key=lambda x: x['value'], reverse=True)[:10]
+        
+        return leaders
+        
+    except Exception as e:
+        logger.error(f"Error getting stats leaders: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/reset-season")
+async def reset_season(admin_key: str):
+    """Reset the season by wiping all game data"""
+    # Simple admin key check - you can change this
+    if admin_key != os.environ.get('ADMIN_KEY', 'reset_season_2025'):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        result = await db.games.delete_many({})
+        logger.info(f"Season reset - deleted {result.deleted_count} games")
+        return {
+            "success": True,
+            "message": f"Season reset complete. Deleted {result.deleted_count} games.",
+            "deleted_count": result.deleted_count
+        }
+    except Exception as e:
+        logger.error(f"Error resetting season: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
