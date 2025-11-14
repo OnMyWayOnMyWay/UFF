@@ -243,7 +243,6 @@ const WeekView = () => {
             ))}
           </div>
         )}
-      </div>
     </div>
   );
 };
