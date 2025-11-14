@@ -591,7 +591,113 @@ async def get_team_standings():
             team_records[away]['points_against'] += game['home_score']
         
         # Convert to list with calculated fields
-        standings = []\n        for team, record in team_records.items():\n            games_played = record['wins'] + record['losses']\n            win_pct = record['wins'] / games_played if games_played > 0 else 0\n            standings.append({\n                'team': team,\n                'wins': record['wins'],\n                'losses': record['losses'],\n                'win_pct': round(win_pct, 3),\n                'points_for': record['points_for'],\n                'points_against': record['points_against'],\n                'point_diff': record['points_for'] - record['points_against']\n            })\n        \n        # Sort by wins desc, then point differential\n        standings.sort(key=lambda x: (x['wins'], x['point_diff']), reverse=True)\n        \n        return standings\n        \n    except Exception as e:\n        logger.error(f\"Error getting team standings: {str(e)}\")\n        raise HTTPException(status_code=500, detail=str(e))\n\n\n@api_router.get(\"/players/{player_name}\")\nasync def get_player_profile(player_name: str):\n    \"\"\"Get detailed player profile with all stats\"\"\"\n    try:\n        games = await db.games.find({}, {\"_id\": 0}).to_list(1000)\n        \n        player_data = {\n            'name': player_name,\n            'games_played': 0,\n            'total_stats': {\n                'passing': {'yards': 0, 'tds': 0, 'ints': 0, 'comp': 0, 'att': 0},\n                'rushing': {'yards': 0, 'tds': 0, 'att': 0},\n                'receiving': {'rec': 0, 'yards': 0, 'tds': 0},\n                'defense': {'tak': 0, 'sacks': 0, 'ints': 0, 'tds': 0}\n            },\n            'game_log': [],\n            'fantasy_points': 0.0\n        }\n        \n        for game in games:\n            game_stats = {'week': game['week'], 'date': game['game_date']}\n            player_found = False\n            \n            # Check both teams\n            for team_key in ['home_stats', 'away_stats']:\n                stats = game[team_key]\n                \n                # Check each category\n                for category in ['passing', 'defense', 'rushing', 'receiving']:\n                    if category in stats:\n                        for player in stats[category]:\n                            if player['name'] == player_name:\n                                player_found = True\n                                game_stats[category] = player['stats']\n                                \n                                # Aggregate totals\n                                for stat_key, stat_value in player['stats'].items():\n                                    if stat_key in player_data['total_stats'][category]:\n                                        player_data['total_stats'][category][stat_key] += stat_value\n            \n            if player_found:\n                player_data['games_played'] += 1\n                player_data['game_log'].append(game_stats)\n        \n        if player_data['games_played'] == 0:\n            raise HTTPException(status_code=404, detail=\"Player not found\")\n        \n        # Calculate fantasy points\n        player_stats_for_points = {\n            'passing': [player_data['total_stats']['passing']],\n            'rushing': [player_data['total_stats']['rushing']],\n            'receiving': [player_data['total_stats']['receiving']],\n            'defense': [player_data['total_stats']['defense']]\n        }\n        player_data['fantasy_points'] = calculate_fantasy_points(player_stats_for_points)\n        \n        return player_data\n        \n    except HTTPException:\n        raise\n    except Exception as e:\n        logger.error(f\"Error getting player profile: {str(e)}\")\n        raise HTTPException(status_code=500, detail=str(e))\n\n\n@api_router.post(\"/admin/reset-season\")\nasync def reset_season(admin_key: str):\n    \"\"\"Reset the season by wiping all game data\"\"\"\n    # Simple admin key check - you can change this\n    if admin_key != os.environ.get('ADMIN_KEY', 'reset_season_2025'):\n        raise HTTPException(status_code=403, detail=\"Invalid admin key\")\n    \n    try:\n        result = await db.games.delete_many({})\n        logger.info(f\"Season reset - deleted {result.deleted_count} games\")\n        return {\n            \"success\": True,\n            \"message\": f\"Season reset complete. Deleted {result.deleted_count} games.\",\n            \"deleted_count\": result.deleted_count\n        }\n    except Exception as e:\n        logger.error(f\"Error resetting season: {str(e)}\")\n        raise HTTPException(status_code=500, detail=str(e))
+        standings = []
+        for team, record in team_records.items():
+            games_played = record['wins'] + record['losses']
+            win_pct = record['wins'] / games_played if games_played > 0 else 0
+            standings.append({
+                'team': team,
+                'wins': record['wins'],
+                'losses': record['losses'],
+                'win_pct': round(win_pct, 3),
+                'points_for': record['points_for'],
+                'points_against': record['points_against'],
+                'point_diff': record['points_for'] - record['points_against']
+            })
+        
+        # Sort by wins desc, then point differential
+        standings.sort(key=lambda x: (x['wins'], x['point_diff']), reverse=True)
+        
+        return standings
+        
+    except Exception as e:
+        logger.error(f"Error getting team standings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/players/{player_name}")
+async def get_player_profile(player_name: str):
+    """Get detailed player profile with all stats"""
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        
+        player_data = {
+            'name': player_name,
+            'games_played': 0,
+            'total_stats': {
+                'passing': {'yards': 0, 'tds': 0, 'ints': 0, 'comp': 0, 'att': 0},
+                'rushing': {'yards': 0, 'tds': 0, 'att': 0},
+                'receiving': {'rec': 0, 'yards': 0, 'tds': 0},
+                'defense': {'tak': 0, 'sacks': 0, 'ints': 0, 'tds': 0}
+            },
+            'game_log': [],
+            'fantasy_points': 0.0
+        }
+        
+        for game in games:
+            game_stats = {'week': game['week'], 'date': game['game_date']}
+            player_found = False
+            
+            # Check both teams
+            for team_key in ['home_stats', 'away_stats']:
+                stats = game[team_key]
+                
+                # Check each category
+                for category in ['passing', 'defense', 'rushing', 'receiving']:
+                    if category in stats:
+                        for player in stats[category]:
+                            if player['name'] == player_name:
+                                player_found = True
+                                game_stats[category] = player['stats']
+                                
+                                # Aggregate totals
+                                for stat_key, stat_value in player['stats'].items():
+                                    if stat_key in player_data['total_stats'][category]:
+                                        player_data['total_stats'][category][stat_key] += stat_value
+            
+            if player_found:
+                player_data['games_played'] += 1
+                player_data['game_log'].append(game_stats)
+        
+        if player_data['games_played'] == 0:
+            raise HTTPException(status_code=404, detail="Player not found")
+        
+        # Calculate fantasy points
+        player_stats_for_points = {
+            'passing': [player_data['total_stats']['passing']],
+            'rushing': [player_data['total_stats']['rushing']],
+            'receiving': [player_data['total_stats']['receiving']],
+            'defense': [player_data['total_stats']['defense']]
+        }
+        player_data['fantasy_points'] = calculate_fantasy_points(player_stats_for_points)
+        
+        return player_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting player profile: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/reset-season")
+async def reset_season(admin_key: str):
+    """Reset the season by wiping all game data"""
+    # Simple admin key check - you can change this
+    if admin_key != os.environ.get('ADMIN_KEY', 'reset_season_2025'):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        result = await db.games.delete_many({})
+        logger.info(f"Season reset - deleted {result.deleted_count} games")
+        return {
+            "success": True,
+            "message": f"Season reset complete. Deleted {result.deleted_count} games.",
+            "deleted_count": result.deleted_count
+        }
+    except Exception as e:
+        logger.error(f"Error resetting season: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Include the router in the main app
