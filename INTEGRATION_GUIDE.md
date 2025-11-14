@@ -47,59 +47,55 @@ Submit game statistics from Roblox.
   "player_of_game": "John Smith",
   "game_date": "2025-01-15",
   "home_stats": {
-    "passing": [
-      {
-        "name": "John Smith",
-        "stats": {
-          "comp": 15,
-          "att": 22,
-          "yards": 245,
-          "td": 3,
-          "int": 1,
-          "scked": 2
-        }
+    "John Smith": {
+      "Passing": {
+        "Comp": 15,
+        "Att": 22,
+        "Yards": 245,
+        "TD": 3,
+        "Int": 1,
+        "SCKED": 2
+      },
+      "Rushing": {
+        "Att": 3,
+        "Yards": 15,
+        "TD": 0
       }
-    ],
-    "defense": [
-      {
-        "name": "Mike Johnson",
-        "stats": {
-          "tak": 8,
-          "tfl": 2,
-          "sck": 1,
-          "saf": 0,
-          "swat": 3,
-          "int": 1,
-          "pbu": 2,
-          "td": 0
-        }
+    },
+    "Mike Johnson": {
+      "Defense": {
+        "TAK": 8,
+        "TFL": 2,
+        "SCK": 1,
+        "SAF": 0,
+        "SWAT": 3,
+        "INT": 1,
+        "PBU": 2,
+        "TD": 0
       }
-    ],
-    "rushing": [
-      {
-        "name": "Tom Davis",
-        "stats": {
-          "att": 12,
-          "yards": 85,
-          "td": 1
-        }
+    },
+    "Tom Davis": {
+      "Rushing": {
+        "Att": 12,
+        "Yards": 85,
+        "TD": 1
       }
-    ],
-    "receiving": [
-      {
-        "name": "Chris Brown",
-        "stats": {
-          "rec": 7,
-          "yards": 125,
-          "td": 2
-        }
+    },
+    "Chris Brown": {
+      "Receiving": {
+        "Rec": 7,
+        "Yards": 125,
+        "TD": 2
       }
-    ]
+    }
   },
   "away_stats": {
-    // Same structure as home_stats
+    // Same structure - organized by player name
+    // Each player can have multiple stat categories
   }
 }
+
+**Note:** Stats are organized by player name. Each player can have one or more stat categories (Passing, Defense, Rushing, Receiving). Only include categories that the player participated in.
 ```
 
 **Response:**
