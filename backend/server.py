@@ -75,6 +75,8 @@ async def send_to_discord(game: Game):
         return
     
     try:
+        import json
+        
         # Create embed
         embed = {
             "title": f"🏈 Week {game.week} Final Score",
@@ -110,8 +112,8 @@ async def send_to_discord(game: Game):
         async with aiohttp.ClientSession() as session:
             # Create form data with embed and file
             form = aiohttp.FormData()
-            form.add_field('payload_json', 
-                          value='{"embeds": [' + str(embed).replace("'", '"') + ']}')
+            payload = {"embeds": [embed]}
+            form.add_field('payload_json', json.dumps(payload))
             
             # Add CSV file
             csv_bytes = csv_content.encode('utf-8')
@@ -121,10 +123,11 @@ async def send_to_discord(game: Game):
                           content_type='text/csv')
             
             async with session.post(webhook_url, data=form) as response:
-                if response.status == 204:
+                if response.status in [200, 204]:
                     logger.info("Successfully sent to Discord")
                 else:
-                    logger.error(f"Discord webhook failed: {response.status}")
+                    response_text = await response.text()
+                    logger.error(f"Discord webhook failed: {response.status} - {response_text}")
                     
     except Exception as e:
         logger.error(f"Error sending to Discord: {str(e)}")
