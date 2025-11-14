@@ -126,7 +126,25 @@ const PlayerProfile = () => {
             <div className="flex items-center space-x-6 text-sm text-gray-400">
               <span>{player.games_played} Games Played</span>
               <span className="text-yellow-500 font-bold text-lg">{player.fantasy_points.toFixed(1)} Fantasy Points</span>
+              {player.current_team && (
+                <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full font-semibold">
+                  Current: {player.current_team}
+                </span>
+              )}
             </div>
+            {/* Team History */}
+            {player.team_history && player.team_history.length > 1 && (
+              <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <p className="text-xs text-blue-400 uppercase tracking-wide mb-2">Team History (Trades)</p>
+                <div className="flex items-center space-x-2 flex-wrap gap-2">
+                  {player.team_history.map((th, idx) => (
+                    <span key={idx} className="px-3 py-1 bg-white/5 text-white rounded-lg text-sm">
+                      {th.team} ({th.games} games)
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
