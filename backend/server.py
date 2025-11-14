@@ -283,10 +283,39 @@ async def root():
     return {"message": "Flag Football Stats API"}
 
 
+def transform_player_stats(player_stats: Dict[str, Dict[str, Dict[str, Any]]]) -> Dict[str, list]:
+    """
+    Transform player-organized stats into category-organized stats for frontend display
+    Input: {PlayerName: {Passing: {...}, Defense: {...}, Rushing: {...}, Receiving: {...}}}
+    Output: {passing: [{name: PlayerName, stats: {...}}], defense: [...], rushing: [...], receiving: [...]}
+    """
+    result = {
+        'passing': [],
+        'defense': [],
+        'rushing': [],
+        'receiving': []
+    }
+    
+    for player_name, categories in player_stats.items():
+        for category, stats in categories.items():
+            category_key = category.lower()
+            if category_key in result and stats:  # Only add if stats exist
+                result[category_key].append({
+                    'name': player_name,
+                    'stats': {k.lower(): v for k, v in stats.items()}  # Normalize keys to lowercase
+                })
+    
+    return result
+
+
 @api_router.post("/game", response_model=Game)
 async def submit_game(game_data: GameData):
     """Endpoint for Roblox to submit game stats"""
     try:
+        # Transform stats from player-organized to category-organized format
+        home_stats_transformed = transform_player_stats(game_data.home_stats)
+        away_stats_transformed = transform_player_stats(game_data.away_stats)
+        
         # Create game object
         game = Game(
             week=game_data.week,
@@ -294,8 +323,8 @@ async def submit_game(game_data: GameData):
             away_team=game_data.away_team,
             home_score=game_data.home_score,
             away_score=game_data.away_score,
-            home_stats=game_data.home_stats.model_dump(),
-            away_stats=game_data.away_stats.model_dump(),
+            home_stats=home_stats_transformed,
+            away_stats=away_stats_transformed,
             player_of_game=game_data.player_of_game,
             game_date=game_data.game_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
         )
