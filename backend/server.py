@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,9 +6,12 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
+import aiohttp
+import csv
+import io
 
 
 ROOT_DIR = Path(__file__).parent
@@ -27,44 +30,332 @@ api_router = APIRouter(prefix="/api")
 
 
 # Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+class PlayerStat(BaseModel):
+    name: str
+    stats: Dict[str, Any]  # Flexible stats dictionary
+
+class TeamStats(BaseModel):
+    passing: List[PlayerStat] = []
+    defense: List[PlayerStat] = []
+    rushing: List[PlayerStat] = []
+    receiving: List[PlayerStat] = []
+
+class GameData(BaseModel):
+    week: int
+    home_team: str
+    away_team: str
+    home_score: int
+    away_score: int
+    home_stats: TeamStats
+    away_stats: TeamStats
+    player_of_game: str
+    game_date: Optional[str] = None
+
+class Game(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
+    week: int
+    home_team: str
+    away_team: str
+    home_score: int
+    away_score: int
+    home_stats: Dict[str, Any]
+    away_stats: Dict[str, Any]
+    player_of_game: str
+    game_date: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+
+async def send_to_discord(game: Game):
+    """Send game results to Discord with embed and CSV file"""
+    webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
+    if not webhook_url:
+        logger.warning("Discord webhook URL not configured")
+        return
+    
+    try:
+        # Create embed
+        embed = {
+            "title": f"🏈 Week {game.week} Final Score",
+            "description": f"**{game.home_team}** vs **{game.away_team}**",
+            "color": 0x2ecc71 if game.home_score > game.away_score else 0xe74c3c,
+            "fields": [
+                {
+                    "name": game.home_team,
+                    "value": str(game.home_score),
+                    "inline": True
+                },
+                {
+                    "name": game.away_team,
+                    "value": str(game.away_score),
+                    "inline": True
+                },
+                {
+                    "name": "Player of the Game",
+                    "value": game.player_of_game,
+                    "inline": False
+                }
+            ],
+            "timestamp": game.timestamp.isoformat(),
+            "footer": {
+                "text": f"Game Date: {game.game_date}"
+            }
+        }
+        
+        # Create CSV file
+        csv_content = generate_csv(game)
+        
+        # Send to Discord
+        async with aiohttp.ClientSession() as session:
+            # Create form data with embed and file
+            form = aiohttp.FormData()
+            form.add_field('payload_json', 
+                          value='{"embeds": [' + str(embed).replace("'", '"') + ']}')
+            
+            # Add CSV file
+            csv_bytes = csv_content.encode('utf-8')
+            form.add_field('file',
+                          csv_bytes,
+                          filename=f'week_{game.week}_stats.csv',
+                          content_type='text/csv')
+            
+            async with session.post(webhook_url, data=form) as response:
+                if response.status == 204:
+                    logger.info("Successfully sent to Discord")
+                else:
+                    logger.error(f"Discord webhook failed: {response.status}")
+                    
+    except Exception as e:
+        logger.error(f"Error sending to Discord: {str(e)}")
+
+
+def generate_csv(game: Game) -> str:
+    """Generate CSV content from game stats"""
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Header
+    writer.writerow([f"Week {game.week} - {game.home_team} vs {game.away_team}"])
+    writer.writerow([f"Final Score: {game.home_team} {game.home_score} - {game.away_team} {game.away_score}"])
+    writer.writerow([f"Player of the Game: {game.player_of_game}"])
+    writer.writerow([])
+    
+    # HOME TEAM STATS
+    writer.writerow([f"{game.home_team.upper()} STATS"])
+    writer.writerow([])
+    
+    # Passing stats
+    if game.home_stats.get('passing'):
+        writer.writerow(["PASSING"])
+        writer.writerow(["Name", "Comp", "Att", "Yards", "TD", "Int", "SCKED"])
+        for player in game.home_stats['passing']:
+            stats = player.get('stats', {})
+            writer.writerow([
+                player.get('name', ''),
+                stats.get('comp', 0),
+                stats.get('att', 0),
+                stats.get('yards', 0),
+                stats.get('td', 0),
+                stats.get('int', 0),
+                stats.get('scked', 0)
+            ])
+        writer.writerow([])
+    
+    # Defense stats
+    if game.home_stats.get('defense'):
+        writer.writerow(["DEFENSE"])
+        writer.writerow(["Name", "TAK", "TFL", "SCK", "SAF", "SWAT", "INT", "PBU", "TD"])
+        for player in game.home_stats['defense']:
+            stats = player.get('stats', {})
+            writer.writerow([
+                player.get('name', ''),
+                stats.get('tak', 0),
+                stats.get('tfl', 0),
+                stats.get('sck', 0),
+                stats.get('saf', 0),
+                stats.get('swat', 0),
+                stats.get('int', 0),
+                stats.get('pbu', 0),
+                stats.get('td', 0)
+            ])
+        writer.writerow([])
+    
+    # Rushing stats
+    if game.home_stats.get('rushing'):
+        writer.writerow(["RUSHING"])
+        writer.writerow(["Name", "Att", "Yards", "TD"])
+        for player in game.home_stats['rushing']:
+            stats = player.get('stats', {})
+            writer.writerow([
+                player.get('name', ''),
+                stats.get('att', 0),
+                stats.get('yards', 0),
+                stats.get('td', 0)
+            ])
+        writer.writerow([])
+    
+    # Receiving stats
+    if game.home_stats.get('receiving'):
+        writer.writerow(["RECEIVING"])
+        writer.writerow(["Name", "Rec", "Yards", "TD"])
+        for player in game.home_stats['receiving']:
+            stats = player.get('stats', {})
+            writer.writerow([
+                player.get('name', ''),
+                stats.get('rec', 0),
+                stats.get('yards', 0),
+                stats.get('td', 0)
+            ])
+        writer.writerow([])
+    
+    # AWAY TEAM STATS
+    writer.writerow([f"{game.away_team.upper()} STATS"])
+    writer.writerow([])
+    
+    # Passing stats
+    if game.away_stats.get('passing'):
+        writer.writerow(["PASSING"])
+        writer.writerow(["Name", "Comp", "Att", "Yards", "TD", "Int", "SCKED"])
+        for player in game.away_stats['passing']:
+            stats = player.get('stats', {})
+            writer.writerow([
+                player.get('name', ''),
+                stats.get('comp', 0),
+                stats.get('att', 0),
+                stats.get('yards', 0),
+                stats.get('td', 0),
+                stats.get('int', 0),
+                stats.get('scked', 0)
+            ])
+        writer.writerow([])
+    
+    # Defense stats
+    if game.away_stats.get('defense'):
+        writer.writerow(["DEFENSE"])
+        writer.writerow(["Name", "TAK", "TFL", "SCK", "SAF", "SWAT", "INT", "PBU", "TD"])
+        for player in game.away_stats['defense']:
+            stats = player.get('stats', {})
+            writer.writerow([
+                player.get('name', ''),
+                stats.get('tak', 0),
+                stats.get('tfl', 0),
+                stats.get('sck', 0),
+                stats.get('saf', 0),
+                stats.get('swat', 0),
+                stats.get('int', 0),
+                stats.get('pbu', 0),
+                stats.get('td', 0)
+            ])
+        writer.writerow([])
+    
+    # Rushing stats
+    if game.away_stats.get('rushing'):
+        writer.writerow(["RUSHING"])
+        writer.writerow(["Name", "Att", "Yards", "TD"])
+        for player in game.away_stats['rushing']:
+            stats = player.get('stats', {})
+            writer.writerow([
+                player.get('name', ''),
+                stats.get('att', 0),
+                stats.get('yards', 0),
+                stats.get('td', 0)
+            ])
+        writer.writerow([])
+    
+    # Receiving stats
+    if game.away_stats.get('receiving'):
+        writer.writerow(["RECEIVING"])
+        writer.writerow(["Name", "Rec", "Yards", "TD"])
+        for player in game.away_stats['receiving']:
+            stats = player.get('stats', {})
+            writer.writerow([
+                player.get('name', ''),
+                stats.get('rec', 0),
+                stats.get('yards', 0),
+                stats.get('td', 0)
+            ])
+        writer.writerow([])
+    
+    return output.getvalue()
+
 
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Flag Football Stats API"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+@api_router.post("/game", response_model=Game)
+async def submit_game(game_data: GameData):
+    """Endpoint for Roblox to submit game stats"""
+    try:
+        # Create game object
+        game = Game(
+            week=game_data.week,
+            home_team=game_data.home_team,
+            away_team=game_data.away_team,
+            home_score=game_data.home_score,
+            away_score=game_data.away_score,
+            home_stats=game_data.home_stats.model_dump(),
+            away_stats=game_data.away_stats.model_dump(),
+            player_of_game=game_data.player_of_game,
+            game_date=game_data.game_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        )
+        
+        # Convert to dict and serialize datetime to ISO string for MongoDB
+        doc = game.model_dump()
+        doc['timestamp'] = doc['timestamp'].isoformat()
+        
+        # Save to MongoDB
+        await db.games.insert_one(doc)
+        
+        # Send to Discord
+        await send_to_discord(game)
+        
+        return game
+        
+    except Exception as e:
+        logger.error(f"Error submitting game: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/games", response_model=List[Game])
+async def get_all_games():
+    """Get all games"""
+    games = await db.games.find({}, {"_id": 0}).to_list(1000)
     
     # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
+    for game in games:
+        if isinstance(game['timestamp'], str):
+            game['timestamp'] = datetime.fromisoformat(game['timestamp'])
     
-    return status_checks
+    return games
+
+
+@api_router.get("/games/week/{week}", response_model=List[Game])
+async def get_games_by_week(week: int):
+    """Get games by week number"""
+    games = await db.games.find({"week": week}, {"_id": 0}).to_list(1000)
+    
+    # Convert ISO string timestamps back to datetime objects
+    for game in games:
+        if isinstance(game['timestamp'], str):
+            game['timestamp'] = datetime.fromisoformat(game['timestamp'])
+    
+    return games
+
+
+@api_router.get("/weeks")
+async def get_available_weeks():
+    """Get list of available weeks"""
+    pipeline = [
+        {"$group": {"_id": "$week"}},
+        {"$sort": {"_id": -1}}
+    ]
+    weeks = await db.games.aggregate(pipeline).to_list(100)
+    return {"weeks": [w["_id"] for w in weeks]}
+
 
 # Include the router in the main app
 app.include_router(api_router)
