@@ -11,6 +11,7 @@ const Dashboard = () => {
   const [games, setGames] = useState([]);
   const [weeks, setWeeks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAdmin, setShowAdmin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
