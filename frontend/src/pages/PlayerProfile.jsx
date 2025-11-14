@@ -260,6 +260,13 @@ const PlayerProfile = () => {
               {player.game_log.map((game, idx) => (
                 <tr key={idx}>
                   <td><span className="font-bold text-emerald-400">Week {game.week}</span></td>
+                  <td>
+                    {game.team && (
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-semibold">
+                        {game.team}
+                      </span>
+                    )}
+                  </td>
                   <td><span className="text-gray-400 text-sm">{game.date}</span></td>
                   <td className="text-center">
                     {game.passing && <span className="text-sm">{game.passing.yards}Y, {game.passing.td}TD</span>}
