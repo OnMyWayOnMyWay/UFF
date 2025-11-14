@@ -283,11 +283,11 @@ async def root():
     return {"message": "Flag Football Stats API"}
 
 
-def transform_player_stats(player_stats: Dict[str, Dict[str, Dict[str, Any]]]) -> Dict[str, list]:
+def transform_player_stats(player_stats: Dict[str, Dict[str, Dict[str, Any]]], team_name: str) -> Dict[str, list]:
     """
     Transform player-organized stats into category-organized stats for frontend display
     Input: {PlayerName: {Passing: {...}, Defense: {...}, Rushing: {...}, Receiving: {...}}}
-    Output: {passing: [{name: PlayerName, stats: {...}}], defense: [...], rushing: [...], receiving: [...]}
+    Output: {passing: [{name: PlayerName, team: TeamName, stats: {...}}], defense: [...], rushing: [...], receiving: [...]}
     """
     result = {
         'passing': [],
@@ -302,6 +302,7 @@ def transform_player_stats(player_stats: Dict[str, Dict[str, Dict[str, Any]]]) -
             if category_key in result and stats:  # Only add if stats exist
                 result[category_key].append({
                     'name': player_name,
+                    'team': team_name,  # Track which team player was on
                     'stats': {k.lower(): v for k, v in stats.items()}  # Normalize keys to lowercase
                 })
     
