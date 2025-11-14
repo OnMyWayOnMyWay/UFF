@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Trophy, Calendar, ChevronRight, Users } from 'lucide-react';
+import { Trophy, Calendar, ChevronRight, Users, TrendingUp, Settings } from 'lucide-react';
+import AdminPanel from '@/components/AdminPanel';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
