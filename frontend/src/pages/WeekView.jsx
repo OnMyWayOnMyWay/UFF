@@ -83,26 +83,24 @@ const WeekView = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b]">
+    <div className="min-h-screen p-4 lg:p-8">
       {/* Header */}
-      <header className="border-b border-gray-800 bg-[#0f0f10] sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <button
-              data-testid="back-button"
-              onClick={() => navigate('/')}
-              className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Back to Dashboard</span>
-            </button>
-            <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
-              Week {weekNumber}
-            </h1>
-            <div className="w-24"></div>
-          </div>
-        </div>
-      </header>
+      <button
+        data-testid="back-button"
+        onClick={() => navigate('/')}
+        className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6 transition-colors animate-fadeIn"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span>Back to Dashboard</span>
+      </button>
+
+      <div className="mb-8 animate-fadeInUp">
+        <h1 className="text-4xl lg:text-5xl font-bold gradient-text mb-2 flex items-center">
+          <Calendar className="w-10 h-10 mr-3" />
+          Week {weekNumber}
+        </h1>
+        <p className="text-gray-400">Game details and player statistics</p>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {games.length === 0 ? (
