@@ -7,6 +7,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Standings = () => {
+  const navigate = useNavigate();
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
 
