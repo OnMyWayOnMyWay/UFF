@@ -692,6 +692,16 @@ async def get_player_profile(player_name: str):
         if player_data['games_played'] == 0:
             raise HTTPException(status_code=404, detail="Player not found")
         
+        # Set current team (most recent game)
+        if player_data['game_log']:
+            player_data['current_team'] = player_data['game_log'][-1].get('team')
+        
+        # Build team history with game counts
+        player_data['team_history'] = [
+            {'team': team, 'games': player_data['stats_by_team'][team]['games']}
+            for team in teams_played_for
+        ]
+        
         # Calculate fantasy points
         player_stats_for_points = {
             'passing': [player_data['total_stats']['passing']],
