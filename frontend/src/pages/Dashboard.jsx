@@ -53,19 +53,41 @@ const Dashboard = () => {
       {/* Header */}
       <header className="border-b border-gray-800 bg-[#0f0f10]">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
-              <Trophy className="w-7 h-7 text-white" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
+                <Trophy className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                  Flag Football League
+                </h1>
+                <p className="text-gray-400 text-sm mt-0.5">Season Statistics & Scores</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
-                Flag Football League
-              </h1>
-              <p className="text-gray-400 text-sm mt-0.5">Season Statistics & Scores</p>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => navigate('/stats-leaders')}
+                data-testid="stats-leaders-button"
+                className="flex items-center space-x-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-all font-semibold"
+              >
+                <TrendingUp className="w-5 h-5" />
+                <span>Stats Leaders</span>
+              </button>
+              <button
+                onClick={() => setShowAdmin(true)}
+                data-testid="admin-button"
+                className="p-2 bg-[#1a1a1b] hover:bg-[#2a2a2b] text-gray-400 hover:text-white rounded-lg transition-all"
+              >
+                <Settings className="w-6 h-6" />
+              </button>
             </div>
           </div>
         </div>
       </header>
+
+      {/* Admin Panel Modal */}
+      <AdminPanel isOpen={showAdmin} onClose={() => setShowAdmin(false)} />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Stats Overview */}
