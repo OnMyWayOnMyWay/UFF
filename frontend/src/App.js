@@ -33,6 +33,7 @@ function App() {
               <Route path="/schedule" element={<Schedule />} />
               <Route path="/compare" element={<PlayerComparison />} />
               <Route path="/awards" element={<SeasonAwards />} />
+              <Route path="/team/:teamName" element={<TeamAnalysis />} />
               <Route path="/week/:weekNumber" element={<WeekView />} />
               <Route path="/player/:playerName" element={<PlayerProfile />} />
             </Routes>
