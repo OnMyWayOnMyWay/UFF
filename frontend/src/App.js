@@ -30,6 +30,8 @@ function App() {
               <Route path="/stats-leaders" element={<StatsLeaders />} />
               <Route path="/standings" element={<Standings />} />
               <Route path="/schedule" element={<Schedule />} />
+              <Route path="/compare" element={<PlayerComparison />} />
+              <Route path="/awards" element={<SeasonAwards />} />
               <Route path="/week/:weekNumber" element={<WeekView />} />
               <Route path="/player/:playerName" element={<PlayerProfile />} />
             </Routes>
