@@ -12,6 +12,7 @@ import WeekView from "@/pages/WeekView";
 import PlayerProfile from "@/pages/PlayerProfile";
 import PlayerComparison from "@/pages/PlayerComparison";
 import SeasonAwards from "@/pages/SeasonAwards";
+import TeamAnalysis from "@/pages/TeamAnalysis";
 
 function App() {
   const [showAdmin, setShowAdmin] = useState(false);
