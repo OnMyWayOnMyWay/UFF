@@ -43,16 +43,22 @@ team_players = {
     }
 }
 
-def generate_player_stats(position, is_winner=False):
+def generate_player_stats(position, is_winner=False, player_name=""):
     """Generate realistic stats based on position and game outcome"""
     stats = {}
     
+    # Boost stats for Baccon_o
+    is_baccon = "Baccon_o" in player_name
+    multiplier = 1.3 if is_baccon else 1.0
+    
     if position == "QB":
         comp = random.randint(8, 22)
+        if is_baccon:
+            comp = random.randint(15, 28)  # Better completion rate
         att = comp + random.randint(3, 10)
-        yards = comp * random.randint(8, 18)
-        td = random.randint(1, 4) if is_winner else random.randint(0, 2)
-        ints = random.randint(0, 2) if not is_winner else random.randint(0, 1)
+        yards = int(comp * random.randint(8, 18) * multiplier)
+        td = random.randint(2, 5) if (is_winner or is_baccon) else random.randint(0, 2)
+        ints = random.randint(0, 1) if (not is_winner or is_baccon) else random.randint(0, 2)
         
         stats = {
             "Passing": {
