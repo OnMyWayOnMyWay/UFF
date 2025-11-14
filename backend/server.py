@@ -34,20 +34,14 @@ class PlayerStat(BaseModel):
     name: str
     stats: Dict[str, Any]  # Flexible stats dictionary
 
-class TeamStats(BaseModel):
-    passing: List[PlayerStat] = []
-    defense: List[PlayerStat] = []
-    rushing: List[PlayerStat] = []
-    receiving: List[PlayerStat] = []
-
 class GameData(BaseModel):
     week: int
     home_team: str
     away_team: str
     home_score: int
     away_score: int
-    home_stats: TeamStats
-    away_stats: TeamStats
+    home_stats: Dict[str, Dict[str, Dict[str, Any]]]  # {PlayerName: {Passing: {}, Defense: {}, ...}}
+    away_stats: Dict[str, Dict[str, Dict[str, Any]]]  # Same structure
     player_of_game: str
     game_date: Optional[str] = None
 
