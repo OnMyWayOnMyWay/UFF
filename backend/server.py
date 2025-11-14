@@ -314,8 +314,9 @@ async def submit_game(game_data: GameData):
     """Endpoint for Roblox to submit game stats"""
     try:
         # Transform stats from player-organized to category-organized format
-        home_stats_transformed = transform_player_stats(game_data.home_stats)
-        away_stats_transformed = transform_player_stats(game_data.away_stats)
+        # Include team name so we can track player history
+        home_stats_transformed = transform_player_stats(game_data.home_stats, game_data.home_team)
+        away_stats_transformed = transform_player_stats(game_data.away_stats, game_data.away_team)
         
         # Create game object
         game = Game(
