@@ -12,6 +12,8 @@ const Sidebar = ({ onAdminOpen }) => {
     { icon: Trophy, label: 'Stats Leaders', path: '/stats-leaders' },
     { icon: Users, label: 'Team Standings', path: '/standings' },
     { icon: Calendar, label: 'Schedule', path: '/schedule' },
+    { icon: Users, label: 'Compare Players', path: '/compare' },
+    { icon: Trophy, label: 'Season Awards', path: '/awards' },
   ];
 
   const isActive = (path) => location.pathname === path;
