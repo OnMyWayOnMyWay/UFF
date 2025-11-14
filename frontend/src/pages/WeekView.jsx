@@ -102,16 +102,15 @@ const WeekView = () => {
         <p className="text-gray-400">Game details and player statistics</p>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {games.length === 0 ? (
-          <div className="stat-card text-center py-12">
-            <Trophy className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg">No games found for Week {weekNumber}</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {games.map((game) => (
-              <div key={game.id} className="stat-card" data-testid={`game-detail-${game.id}`}>
+      {games.length === 0 ? (
+        <div className="glass-card text-center py-12">
+          <Trophy className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+          <p className="text-gray-400 text-lg">No games found for Week {weekNumber}</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {games.map((game, idx) => (
+            <div key={game.id} className="glass-card animate-fadeInUp" style={{ animationDelay: `${idx * 0.1}s` }} data-testid={`game-detail-${game.id}`}>
                 {/* Game Header */}
                 <button
                   onClick={() => toggleGame(game.id)}
