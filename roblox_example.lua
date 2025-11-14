@@ -6,7 +6,7 @@ local HttpService = game:GetService("HttpService")
 -- Your API endpoint
 local API_URL = "https://gameday-tracker-3.preview.emergentagent.com/api/game"
 
--- Example game data
+-- Example game data - Organized by player name
 local gameData = {
     week = 1,
     home_team = "Eagles",
@@ -16,108 +16,105 @@ local gameData = {
     player_of_game = "John Smith",
     game_date = "2025-01-15",
     
+    -- Home team stats organized by player
     home_stats = {
-        passing = {
-            {
-                name = "John Smith",
-                stats = {
-                    comp = 15,
-                    att = 22,
-                    yards = 245,
-                    td = 3,
-                    int = 1,
-                    scked = 2
-                }
+        ["John Smith"] = {
+            Passing = {
+                Comp = 15,
+                Att = 22,
+                Yards = 245,
+                TD = 3,
+                Int = 1,
+                SCKED = 2
+            },
+            -- Players can have multiple categories
+            Rushing = {
+                Att = 3,
+                Yards = 15,
+                TD = 0
             }
         },
-        defense = {
-            {
-                name = "Mike Johnson",
-                stats = {
-                    tak = 8,
-                    tfl = 2,
-                    sck = 1,
-                    saf = 0,
-                    swat = 3,
-                    int = 1,
-                    pbu = 2,
-                    td = 0
-                }
+        ["Mike Johnson"] = {
+            Defense = {
+                TAK = 8,
+                TFL = 2,
+                SCK = 1,
+                SAF = 0,
+                SWAT = 3,
+                INT = 1,
+                PBU = 2,
+                TD = 0
             }
         },
-        rushing = {
-            {
-                name = "Tom Davis",
-                stats = {
-                    att = 12,
-                    yards = 85,
-                    td = 1
-                }
+        ["Tom Davis"] = {
+            Rushing = {
+                Att = 12,
+                Yards = 85,
+                TD = 1
             }
         },
-        receiving = {
-            {
-                name = "Chris Brown",
-                stats = {
-                    rec = 7,
-                    yards = 125,
-                    td = 2
-                }
+        ["Chris Brown"] = {
+            Receiving = {
+                Rec = 7,
+                Yards = 125,
+                TD = 2
+            },
+            Defense = {
+                TAK = 3,
+                TFL = 0,
+                SCK = 0,
+                SAF = 0,
+                SWAT = 0,
+                INT = 0,
+                PBU = 1,
+                TD = 0
             }
         }
     },
     
+    -- Away team stats organized by player
     away_stats = {
-        passing = {
-            {
-                name = "Alex Wilson",
-                stats = {
-                    comp = 12,
-                    att = 20,
-                    yards = 198,
-                    td = 2,
-                    int = 2,
-                    scked = 3
-                }
+        ["Alex Wilson"] = {
+            Passing = {
+                Comp = 12,
+                Att = 20,
+                Yards = 198,
+                TD = 2,
+                Int = 2,
+                SCKED = 3
             }
         },
-        defense = {
-            {
-                name = "Robert Lee",
-                stats = {
-                    tak = 10,
-                    tfl = 1,
-                    sck = 2,
-                    saf = 0,
-                    swat = 1,
-                    int = 2,
-                    pbu = 3,
-                    td = 1
-                }
+        ["Robert Lee"] = {
+            Defense = {
+                TAK = 10,
+                TFL = 1,
+                SCK = 2,
+                SAF = 0,
+                SWAT = 1,
+                INT = 2,
+                PBU = 3,
+                TD = 1
             }
         },
-        rushing = {
-            {
-                name = "David Green",
-                stats = {
-                    att = 8,
-                    yards = 62,
-                    td = 1
-                }
+        ["David Green"] = {
+            Rushing = {
+                Att = 8,
+                Yards = 62,
+                TD = 1
             }
         },
-        receiving = {
-            {
-                name = "Mark Taylor",
-                stats = {
-                    rec = 5,
-                    yards = 98,
-                    td = 1
-                }
+        ["Mark Taylor"] = {
+            Receiving = {
+                Rec = 5,
+                Yards = 98,
+                TD = 1
             }
         }
     }
 }
+
+-- Note: Players only need categories they participated in
+-- For example, if a player only played defense, only include their Defense stats
 
 -- Function to submit game stats
 local function submitGameStats()
