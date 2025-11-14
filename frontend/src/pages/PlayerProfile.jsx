@@ -247,6 +247,7 @@ const PlayerProfile = () => {
             <thead>
               <tr>
                 <th className="text-left">WEEK</th>
+                <th className="text-left">TEAM</th>
                 <th className="text-left">DATE</th>
                 <th className="text-center">PASSING</th>
                 <th className="text-center">RUSHING</th>
