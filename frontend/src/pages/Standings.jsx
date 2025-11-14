@@ -63,7 +63,12 @@ const Standings = () => {
             </thead>
             <tbody>
               {standings.map((team, idx) => (
-                <tr key={idx} className="group" data-testid={`standing-${idx}`}>
+                <tr
+                  key={idx}
+                  className="group cursor-pointer"
+                  onClick={() => navigate(`/team/${team.team}`)}
+                  data-testid={`standing-${idx}`}
+                >
                   <td>
                     <div className="flex items-center space-x-2">
                       {idx < 3 && (
@@ -77,7 +82,7 @@ const Standings = () => {
                     </div>
                   </td>
                   <td>
-                    <span className="font-bold text-white text-lg">{team.team}</span>
+                    <span className="font-bold text-white text-lg hover:text-emerald-400 transition-colors">{team.team}</span>
                   </td>
                   <td className="text-center">
                     <span className="text-emerald-400 font-bold text-lg">{team.wins}</span>
