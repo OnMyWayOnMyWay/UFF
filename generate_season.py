@@ -7,39 +7,39 @@ API_URL = "https://gameday-tracker-3.preview.emergentagent.com/api/game"
 # Team names
 teams = ["Eagles", "Hawks", "Titans", "Warriors", "Sharks", "Dragons", "Panthers", "Lightning"]
 
-# Player pools for each team
+# Player pools for each team - ROBLOX USERNAMES
 team_players = {
     "Eagles": {
-        "QB": "John Smith", "RB": "Tom Davis", "WR": "Chris Brown", 
-        "DEF1": "Mike Johnson", "DEF2": "Steve Miller"
+        "QB": "Baccon_o", "RB": "xX_Speedster_Xx", "WR": "NoobMaster69", 
+        "DEF1": "TackleMachine", "DEF2": "Iron_Defense"
     },
     "Hawks": {
-        "QB": "Alex Wilson", "RB": "David Green", "WR": "Mark Taylor",
-        "DEF1": "Robert Lee", "DEF2": "Jake Martinez"
+        "QB": "QuarterbackKing", "RB": "RushGod_420", "WR": "CatchMeIfYouCan",
+        "DEF1": "BlitzBoy", "DEF2": "Sack_Attack"
     },
     "Titans": {
-        "QB": "Sarah Parker", "RB": "Kevin Moore", "WR": "Lisa Chen",
-        "DEF1": "James Wilson", "DEF2": "Paul Stone"
+        "QB": "ProGamer_Sarah", "RB": "Lightning_Legs", "WR": "WR_Elite",
+        "DEF1": "DefenseIsKey", "DEF2": "Stone_Wall99"
     },
     "Warriors": {
-        "QB": "Brad Thompson", "RB": "Tyler Adams", "WR": "Ryan Foster",
-        "DEF1": "Marcus Hill", "DEF2": "Ben Carter"
+        "QB": "ThunderArm_Brad", "RB": "Sprint_Master", "WR": "Air_Jordan23",
+        "DEF1": "Hill_Climber", "DEF2": "BenTheGreat"
     },
     "Sharks": {
-        "QB": "Tommy Lee", "RB": "Jason Lee", "WR": "Ryan Clark",
-        "DEF1": "Steve Miller", "DEF2": "Derek Jones"
+        "QB": "Tommy_Cannon", "RB": "Dash_Destroyer", "WR": "ClutchPlayer_RC",
+        "DEF1": "MillerTime", "DEF2": "Derek_Dominator"
     },
     "Dragons": {
-        "QB": "Jack Ryan", "RB": "Mike Torres", "WR": "Sam Rodriguez",
-        "DEF1": "Paul Stone", "DEF2": "Carlos Martinez"
+        "QB": "Dragon_Slayer", "RB": "Turbo_Torres", "WR": "Rodriguez_Rocket",
+        "DEF1": "Paul_The_Wall", "DEF2": "Martinez_Mayhem"
     },
     "Panthers": {
-        "QB": "Marcus Williams", "RB": "Jason Lee", "WR": "Tyler Scott",
-        "DEF1": "Derek Jones", "DEF2": "Luis Garcia"
+        "QB": "Marcus_Magic", "RB": "JasonTheJet", "WR": "Tyler_Touchdown",
+        "DEF1": "JonesTheBeast", "DEF2": "Luis_Lockdown"
     },
     "Lightning": {
-        "QB": "Chris Evans", "RB": "Sam Rodriguez", "WR": "Ben Carter",
-        "DEF1": "Jake Martinez", "DEF2": "Tony Brooks"
+        "QB": "EvanTheElite", "RB": "Sam_Speedrun", "WR": "Carter_Clutch",
+        "DEF1": "Jake_Juggernaut", "DEF2": "Brooks_Blitz"
     }
 }
 
