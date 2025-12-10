@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Trophy, Calendar, ChevronRight, Users, TrendingUp, Settings } from 'lucide-react';
 import AdminPanel from '@/components/AdminPanel';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
 
 const Dashboard = () => {

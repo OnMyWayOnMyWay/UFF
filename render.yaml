@@ -1,0 +1,37 @@
+# Render service manifest (sample)
+#
+# This file contains example service definitions for Render. It is meant
+# to be a starting point — use the Render dashboard or `render.yaml` docs
+# to customize plans, regions, and secure environment variables.
+
+services:
+  - type: web
+    name: uff-backend
+    env: docker
+    dockerfilePath: backend/Dockerfile
+    branch: main
+    plan: starter
+    envVars:
+      - key: MONGO_URL
+        fromSecret: MONGO_URL
+      - key: ADMIN_KEY
+        value: reset_season_2025
+      - key: DISCORD_WEBHOOK_URL
+        fromSecret: DISCORD_WEBHOOK_URL
+
+  - type: web
+    name: uff-frontend
+    env: docker
+    dockerfilePath: frontend/Dockerfile
+    branch: main
+    plan: starter
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        value: https://your-backend.example.com
+
+# Notes:
+# - Render does not provide managed MongoDB as part of service manifests.
+#   Provision a MongoDB Atlas cluster (or other hosted MongoDB) and set
+#   the `MONGO_URL` secret in Render for the backend service.
+# - Replace plan/region values as needed for your account.
+# - Use the Render dashboard (or `render` CLI) to import this `render.yaml`.
