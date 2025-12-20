@@ -12,8 +12,8 @@ RUN npm run build
 
 ### Stage 2: serve with nginx
 FROM nginx:stable-alpine
-COPY nginx.conf.template /etc/nginx/conf.d/default.conf.template
-COPY start.sh /start.sh
+COPY frontend/nginx.conf.template /etc/nginx/conf.d/default.conf.template
+COPY frontend/start.sh /start.sh
 RUN chmod +x /start.sh
 COPY --from=builder /app/build /usr/share/nginx/html
 EXPOSE 80
