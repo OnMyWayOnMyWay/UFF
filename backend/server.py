@@ -1,4 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -990,6 +992,19 @@ async def reset_season(admin_key: str):
 
 # Include the router in the main app
 app.include_router(api_router)
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+
+# Catch-all route to serve React app
+@app.get("/{full_path:path}")
+async def serve_react_app(full_path: str):
+    # If the path starts with /api, let it pass through (shouldn't happen but safety check)
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API route not found")
+    
+    # Serve index.html for all other routes (SPA routing)
+    return FileResponse("static/index.html", media_type="text/html")
 
 app.add_middleware(
     CORSMiddleware,
