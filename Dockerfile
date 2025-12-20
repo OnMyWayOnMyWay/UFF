@@ -22,8 +22,10 @@ RUN python3 -m pip install --upgrade pip && \
 # Copy backend code
 COPY backend/ /app/
 
-# Copy frontend build files to static directory
-COPY --from=frontend-build /app/build /app/static
+# Copy frontend build files - copy contents of build dir to avoid nested static
+COPY --from=frontend-build /app/build/index.html /app/index.html
+COPY --from=frontend-build /app/build/static /app/static
+COPY --from=frontend-build /app/build/asset-manifest.json /app/asset-manifest.json
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

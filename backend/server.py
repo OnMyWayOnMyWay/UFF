@@ -1021,22 +1021,22 @@ async def debug_static():
 # Serve React app at root
 @app.get("/")
 async def serve_react_app():
-    index_path = Path("static/index.html")
+    index_path = Path("index.html")
     if index_path.exists():
-        return FileResponse("static/index.html", media_type="text/html")
+        return FileResponse("index.html", media_type="text/html")
     else:
-        return {"error": "Frontend not built", "static_exists": index_path.exists(), "cwd": str(Path.cwd())}
+        return {"error": "Frontend not built", "index_exists": index_path.exists(), "cwd": str(Path.cwd())}
 
 # Catch-all route to serve React app for SPA routing
 @app.get("/{full_path:path}")
 async def serve_react_app_spa(full_path: str):
     # This route should only be reached for non-API routes
     # API routes are handled by the api_router which is registered first
-    index_path = Path("static/index.html")
+    index_path = Path("index.html")
     if index_path.exists():
-        return FileResponse("static/index.html", media_type="text/html")
+        return FileResponse("index.html", media_type="text/html")
     else:
-        return {"error": "Frontend not built", "static_exists": index_path.exists(), "cwd": str(Path.cwd())}
+        return {"error": "Frontend not built", "index_exists": index_path.exists(), "cwd": str(Path.cwd())}
 
 app.add_middleware(
     CORSMiddleware,
