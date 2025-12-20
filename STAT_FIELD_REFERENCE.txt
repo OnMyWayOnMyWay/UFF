@@ -1,0 +1,137 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                   ROBLOX FLAG FOOTBALL API - STAT FIELDS                  ║
+║                           Quick Reference Table                            ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+API Endpoint: POST /api/game
+Format: JSON
+Content-Type: application/json
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          MAIN GAME FIELDS                                │
+├──────────────────┬──────────┬──────────┬────────────────────────────────┤
+│ Field Name       │ Type     │ Required │ Example                        │
+├──────────────────┼──────────┼──────────┼────────────────────────────────┤
+│ week             │ Number   │ YES      │ 1                              │
+│ home_team        │ String   │ YES      │ "Eagles"                       │
+│ away_team        │ String   │ YES      │ "Hawks"                        │
+│ home_score       │ Number   │ YES      │ 28                             │
+│ away_score       │ Number   │ YES      │ 21                             │
+│ player_of_game   │ String   │ YES      │ "Baccon_o"                     │
+│ game_date        │ String   │ NO       │ "2025-01-15"                   │
+│ home_stats       │ Object   │ YES      │ {...}                          │
+│ away_stats       │ Object   │ YES      │ {...}                          │
+└──────────────────┴──────────┴──────────┴────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         PASSING STATS (QB)                               │
+├──────────────────┬──────────┬──────────┬────────────────────────────────┤
+│ Field Name       │ Type     │ Required │ Description                    │
+├──────────────────┼──────────┼──────────┼────────────────────────────────┤
+│ Comp             │ Number   │ YES      │ Completions                    │
+│ Att              │ Number   │ YES      │ Attempts                       │
+│ Yards            │ Number   │ YES      │ Passing Yards                  │
+│ TD               │ Number   │ YES      │ Touchdowns                     │
+│ Int              │ Number   │ YES      │ Interceptions                  │
+│ SCKED            │ Number   │ YES      │ Times Sacked                   │
+└──────────────────┴──────────┴──────────┴────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        RUSHING STATS (RB)                                │
+├──────────────────┬──────────┬──────────┬────────────────────────────────┤
+│ Field Name       │ Type     │ Required │ Description                    │
+├──────────────────┼──────────┼──────────┼────────────────────────────────┤
+│ Att              │ Number   │ YES      │ Attempts                       │
+│ Yards            │ Number   │ YES      │ Rushing Yards                  │
+│ TD               │ Number   │ YES      │ Touchdowns                     │
+└──────────────────┴──────────┴──────────┴────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       RECEIVING STATS (WR)                               │
+├──────────────────┬──────────┬──────────┬────────────────────────────────┤
+│ Field Name       │ Type     │ Required │ Description                    │
+├──────────────────┼──────────┼──────────┼────────────────────────────────┤
+│ Rec              │ Number   │ YES      │ Receptions                     │
+│ Yards            │ Number   │ YES      │ Receiving Yards                │
+│ TD               │ Number   │ YES      │ Touchdowns                     │
+└──────────────────┴──────────┴──────────┴────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        DEFENSE STATS (DEF)                               │
+├──────────────────┬──────────┬──────────┬────────────────────────────────┤
+│ Field Name       │ Type     │ Required │ Description                    │
+├──────────────────┼──────────┼──────────┼────────────────────────────────┤
+│ TAK              │ Number   │ YES      │ Tackles                        │
+│ TFL              │ Number   │ YES      │ Tackles for Loss               │
+│ SCK              │ Number   │ YES      │ Sacks                          │
+│ SAF              │ Number   │ YES      │ Safeties                       │
+│ SWAT             │ Number   │ YES      │ Pass Deflections               │
+│ INT              │ Number   │ YES      │ Interceptions                  │
+│ PBU              │ Number   │ YES      │ Pass Break-Ups                 │
+│ TD               │ Number   │ YES      │ Defensive Touchdowns           │
+└──────────────────┴──────────┴──────────┴────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     PLAYER STATS STRUCTURE                               │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Format: {PlayerUsername: {CategoryName: {StatName: Value}}}
+
+Example:
+{
+    "Baccon_o": {
+        "Passing": {
+            "Comp": 15,
+            "Att": 22,
+            "Yards": 245,
+            "TD": 3,
+            "Int": 1,
+            "SCKED": 2
+        },
+        "Rushing": {
+            "Att": 3,
+            "Yards": 15,
+            "TD": 0
+        }
+    }
+}
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         IMPORTANT NOTES                                  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+✅ Field names are CASE-SENSITIVE (Yards ≠ yards)
+✅ Players can have multiple categories (QB can also Rush)
+✅ Only include categories where player participated
+✅ Set stats to 0 if player didn't perform action
+✅ Use actual Roblox usernames for player names
+✅ Trade tracking is automatic (just change team roster)
+
+❌ Don't use lowercase field names
+❌ Don't skip required fields
+❌ Don't include empty stat objects
+❌ Don't forget to enable HTTP requests in Roblox
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      FANTASY SCORING SYSTEM                              │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Passing:       0.04 pts/yard, 4 pts/TD, -2 pts/INT
+Rushing:       0.1 pts/yard, 6 pts/TD
+Receiving:     1 pt/catch, 0.1 pts/yard, 6 pts/TD
+Defense:       0.5 pts/tackle, 1 pt/sack, 2 pts/INT, 6 pts/TD
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         TESTING                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Test Endpoint: Same as production
+Dashboard:     https://uff-frontend.herokuapp.com
+Discord:       Auto-posts on submission (embed + CSV)
+
+Enable HTTP Requests:
+Game Settings → Security → Allow HTTP Requests = ON
+
+═══════════════════════════════════════════════════════════════════════════
+                    END OF STAT FIELD REFERENCE
+═══════════════════════════════════════════════════════════════════════════
