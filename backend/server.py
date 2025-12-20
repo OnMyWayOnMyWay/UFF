@@ -994,7 +994,33 @@ async def reset_season(admin_key: str):
 app.include_router(api_router)
 
 # Mount static files
-app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+static_dir = Path("static")
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+else:
+    print(f"Warning: static directory not found at {static_dir.absolute()}")
+
+# Debug endpoint to check static files
+@app.get("/debug/static")
+async def debug_static():
+    static_path = Path("static")
+    if static_path.exists():
+        files = []
+        for root, dirs, filenames in os.walk(static_path):
+            for filename in filenames:
+                files.append(os.path.relpath(os.path.join(root, filename), static_path))
+        return {
+            "static_dir_exists": True,
+            "static_dir_path": str(static_path.absolute()),
+            "files": files[:20],  # Limit to first 20 files
+            "total_files": len(files)
+        }
+    else:
+        return {
+            "static_dir_exists": False,
+            "static_dir_path": str(static_path.absolute()),
+            "cwd": str(Path.cwd())
+        }
 
 # Serve React app at root
 @app.get("/")
