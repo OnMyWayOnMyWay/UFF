@@ -995,11 +995,7 @@ app.include_router(api_router)
 
 # Mount static files
 static_dir = Path("static")
-if static_dir.exists():
-    app.mount("/static", StaticFiles(directory="static", html=True), name="static")
-else:
-    print(f"Warning: static directory not found at {static_dir.absolute()}")
-
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 # Debug endpoint to check static files
 @app.get("/debug/static")
 async def debug_static():
