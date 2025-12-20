@@ -4,10 +4,10 @@ WORKDIR /app
 ENV CI=true
 
 # Install deps
-COPY package.json package-lock.json* ./
+COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci --legacy-peer-deps --no-progress
 
-COPY . ./
+COPY frontend/ ./
 RUN npm run build
 
 ### Stage 2: serve with nginx
