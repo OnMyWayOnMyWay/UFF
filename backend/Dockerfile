@@ -6,11 +6,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/requirements.txt /app/requirements.txt
+COPY requirements.txt /app/requirements.txt
 RUN python3 -m pip install --upgrade pip && \
     python3 -m pip install --no-cache-dir -r /app/requirements.txt
 
-COPY backend/ /app/
+COPY . /app/
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

@@ -4,16 +4,16 @@ WORKDIR /app
 ENV CI=true
 
 # Install deps
-COPY frontend/package.json frontend/package-lock.json* ./
+COPY package.json package-lock.json* ./
 RUN npm ci --legacy-peer-deps --no-progress
 
-COPY frontend/ ./
+COPY . ./
 RUN npm run build
 
 ### Stage 2: serve with nginx
 FROM nginx:stable-alpine
-COPY frontend/nginx.conf.template /etc/nginx/conf.d/default.conf.template
-COPY frontend/start.sh /start.sh
+COPY nginx.conf.template /etc/nginx/conf.d/default.conf.template
+COPY start.sh /start.sh
 RUN chmod +x /start.sh
 COPY --from=builder /app/build /usr/share/nginx/html
 EXPOSE 80
