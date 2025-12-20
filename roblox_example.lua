@@ -4,7 +4,7 @@
 local HttpService = game:GetService("HttpService")
 
 -- Your API endpoint
-local API_URL = "https://gameday-tracker-3.preview.emergentagent.com/api/game"
+local API_URL = "https://uff-backend.herokuapp.com/api/game"
 
 -- Example game data - Organized by player name
 local gameData = {

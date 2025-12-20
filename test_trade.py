@@ -1,6 +1,6 @@
 import requests
 
-API_URL = "https://gameday-tracker-3.preview.emergentagent.com/api/game"
+API_URL = "https://uff-backend.herokuapp.com/api/game"
 
 # Simulate NoobMaster69 being traded from Eagles to Titans
 # Week 12 game - NoobMaster69 now plays for Titans

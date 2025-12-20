@@ -3,7 +3,7 @@
 ## 📡 API Endpoint
 
 ```
-POST https://gameday-tracker-3.preview.emergentagent.com/api/game
+POST https://uff-backend.herokuapp.com/api/game
 ```
 
 **Content-Type:** `application/json`
@@ -147,7 +147,7 @@ Defense = {
 local HttpService = game:GetService("HttpService")
 
 -- API Configuration
-local API_URL = "https://gameday-tracker-3.preview.emergentagent.com/api/game"
+local API_URL = "https://uff-backend.herokuapp.com/api/game"
 
 -- Build Game Data
 local gameData = {
@@ -397,7 +397,7 @@ away_stats = {  -- If Titans are away team
 
 ### Test with cURL:
 ```bash
-curl -X POST "https://gameday-tracker-3.preview.emergentagent.com/api/game" \
+curl -X POST "https://uff-backend.herokuapp.com/api/game" \
   -H "Content-Type: application/json" \
   -d '{
     "week": 1,
@@ -439,7 +439,7 @@ curl -X POST "https://gameday-tracker-3.preview.emergentagent.com/api/game" \
 
 ## 📞 Support
 
-- Check the live dashboard: https://gameday-tracker-3.preview.emergentagent.com
+- Check the live dashboard: https://uff-frontend.herokuapp.com
 - Verify your game appears after submission
 - Player profiles show up automatically
 - Discord webhook posts game results

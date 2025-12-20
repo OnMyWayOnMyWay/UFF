@@ -27,7 +27,7 @@ A professional ESPN-style statistics platform for Roblox flag football games. Au
 
 **API Endpoint:**
 ```
-POST https://gameday-tracker-3.preview.emergentagent.com/api/game
+POST https://uff-backend.herokuapp.com/api/game
 ```
 
 See [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md) for complete documentation.
@@ -63,8 +63,8 @@ See [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md) for complete documentation.
 
 ## 🔗 Live URLs
 
-- **Frontend**: https://gameday-tracker-3.preview.emergentagent.com
-- **API Base**: https://gameday-tracker-3.preview.emergentagent.com/api
+- **Frontend**: https://uff-frontend.herokuapp.com
+- **API Base**: https://uff-backend.herokuapp.com/api
 
 ## 📡 API Endpoints
 
@@ -99,7 +99,7 @@ Automatically posts to Discord when stats are submitted:
 
 Test the API with cURL:
 ```bash
-curl -X POST "https://gameday-tracker-3.preview.emergentagent.com/api/game" \
+curl -X POST "https://uff-backend.herokuapp.com/api/game" \
   -H "Content-Type: application/json" \
   -d @test_data.json
 ```

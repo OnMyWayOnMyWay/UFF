@@ -126,7 +126,7 @@ Defense:       0.5 pts/tackle, 1 pt/sack, 2 pts/INT, 6 pts/TD
 └─────────────────────────────────────────────────────────────────────────┘
 
 Test Endpoint: Same as production
-Dashboard:     https://gameday-tracker-3.preview.emergentagent.com
+Dashboard:     https://uff-frontend.herokuapp.com
 Discord:       Auto-posts on submission (embed + CSV)
 
 Enable HTTP Requests:

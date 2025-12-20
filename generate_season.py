@@ -2,7 +2,7 @@ import requests
 import random
 from datetime import datetime, timedelta
 
-API_URL = "https://gameday-tracker-3.preview.emergentagent.com/api/game"
+API_URL = "https://uff-backend.herokuapp.com/api/game"
 
 # Team names
 teams = ["Eagles", "Hawks", "Titans", "Warriors", "Sharks", "Dragons", "Panthers", "Lightning"]

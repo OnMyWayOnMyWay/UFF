@@ -26,7 +26,7 @@ This platform allows your Roblox flag football game to submit stats to a web-bas
 
 ### Base URL
 ```
-https://gameday-tracker-3.preview.emergentagent.com/api
+https://uff-backend.herokuapp.com/api
 ```
 
 ### Endpoints
@@ -157,7 +157,7 @@ Use the code from `/app/roblox_example.lua` as a reference.
 ### Example Roblox Code:
 ```lua
 local HttpService = game:GetService("HttpService")
-local API_URL = "https://gameday-tracker-3.preview.emergentagent.com/api/game"
+local API_URL = "https://uff-backend.herokuapp.com/api/game"
 
 -- Build your gameData object
 local gameData = {
@@ -242,7 +242,7 @@ Then restart backend: `sudo supervisorctl restart backend`
 
 ### Test with cURL:
 ```bash
-curl -X POST "https://gameday-tracker-3.preview.emergentagent.com/api/game" \\
+curl -X POST "https://uff-backend.herokuapp.com/api/game" \\
 -H "Content-Type: application/json" \\
 -d '{
   "week": 1,

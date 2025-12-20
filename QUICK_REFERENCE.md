@@ -2,7 +2,7 @@
 
 ## 📡 Endpoint
 ```
-POST https://gameday-tracker-3.preview.emergentagent.com/api/game
+POST https://uff-backend.herokuapp.com/api/game
 ```
 
 ## 📋 Minimal Example
@@ -86,7 +86,7 @@ Defense = {
 
 ```lua
 local HttpService = game:GetService("HttpService")
-local API_URL = "https://gameday-tracker-3.preview.emergentagent.com/api/game"
+local API_URL = "https://uff-backend.herokuapp.com/api/game"
 
 local gameData = {
     week = 1,                    -- Change this
@@ -142,5 +142,5 @@ print(response.Success and "✅ Sent!" or "❌ Failed")
 
 ## 📞 Need Help?
 
-View dashboard: https://gameday-tracker-3.preview.emergentagent.com
+View dashboard: https://uff-frontend.herokuapp.com
 Read full guide: `/app/ROBLOX_API_GUIDE.md`
