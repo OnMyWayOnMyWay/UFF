@@ -1,0 +1,7 @@
+build:
+  docker:
+    web: ./frontend/Dockerfile
+    api: ./backend/Dockerfile
+run:
+  web: /start.sh
+  api: uvicorn server:app --host 0.0.0.0 --port $PORT
