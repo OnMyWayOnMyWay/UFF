@@ -1006,18 +1006,19 @@ async def serve_react_app():
         return {"error": "Frontend not built", "static_exists": index_path.exists(), "cwd": str(Path.cwd())}
 
 # Catch-all route to serve React app for SPA routing
-@app.get("/{full_path:path}")
-async def serve_react_app_spa(full_path: str):
-    # Skip API routes and static files
-    if full_path.startswith("api/") or full_path.startswith("static/"):
-        raise HTTPException(status_code=404, detail="Not found")
-    
-    # Serve index.html for all other routes (SPA routing)
-    index_path = Path("static/index.html")
-    if index_path.exists():
-        return FileResponse("static/index.html", media_type="text/html")
-    else:
-        return {"error": "Frontend not built", "static_exists": index_path.exists(), "cwd": str(Path.cwd())}
+# Temporarily disabled to debug API routing
+# @app.get("/{full_path:path}")
+# async def serve_react_app_spa(full_path: str):
+#     # Skip API routes and static files
+#     if full_path.startswith("api/") or full_path.startswith("static/"):
+#         raise HTTPException(status_code=404, detail="Not found")
+#     
+#     # Serve index.html for all other routes (SPA routing)
+#     index_path = Path("static/index.html")
+#     if index_path.exists():
+#         return FileResponse("static/index.html", media_type="text/html")
+#     else:
+#         return {"error": "Frontend not built", "static_exists": index_path.exists(), "cwd": str(Path.cwd())}
 
 app.add_middleware(
     CORSMiddleware,
