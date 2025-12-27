@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { AlertTriangle, RefreshCw, X, Edit, UserPlus, Users, Search, Trash2, Plus, Minus, Database, BarChart3 } from 'lucide-react';
+import { AlertTriangle, RefreshCw, X, Edit, UserPlus, Users, Search, Trash2, Plus, Minus, Database, BarChart3, Download, ArrowRightLeft, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
@@ -63,6 +63,21 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [twoFAOperation, setTwoFAOperation] = useState(null); // { type: 'edit' | 'delete', gameId: string }
   const [generatedCode, setGeneratedCode] = useState('');
   const [gameEditData, setGameEditData] = useState({});
+  
+  // New features state
+  const [allPlayerNames, setAllPlayerNames] = useState([]);
+  const [filteredPlayers, setFilteredPlayers] = useState([]);
+  const [allTeams, setAllTeams] = useState([]);
+  const [showPlayerSuggestions, setShowPlayerSuggestions] = useState(false);
+  const [isDetectingUserIds, setIsDetectingUserIds] = useState(false);
+  const [showTradeModal, setShowTradeModal] = useState(false);
+  const [tradeData, setTradeData] = useState({
+    playerName: '',
+    fromTeam: '',
+    toTeam: '',
+    week: '',
+    notes: ''
+  });
 
   // Verify admin key
   const verifyAdmin = async () => {
@@ -107,7 +122,55 @@ const AdminPanel = ({ isOpen, onClose }) => {
     if (isVerified && activeTab === 'games') {
       loadGames();
     }
+    if (isVerified && activeTab === 'edit') {
+      loadPlayerNames();
+      loadTeams();
+    }
   }, [isVerified, activeTab]);
+  
+  // Load player names for autocomplete
+  const loadPlayerNames = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/player-names`, {
+        headers: { 'admin-key': adminKey }
+      });
+      setAllPlayerNames(response.data.players || []);
+    } catch (error) {
+      console.error('Failed to load player names:', error);
+    }
+  };
+  
+  // Load teams for dropdown
+  const loadTeams = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/teams`, {
+        headers: { 'admin-key': adminKey }
+      });
+      setAllTeams(response.data.teams || []);
+    } catch (error) {
+      console.error('Failed to load teams:', error);
+    }
+  };
+  
+  // Filter players as user types
+  const handlePlayerSearchInput = (value) => {
+    setPlayerEdit({...playerEdit, oldName: value});
+    if (value.trim().length > 0) {
+      const filtered = allPlayerNames.filter(name => 
+        name.toLowerCase().includes(value.toLowerCase())
+      ).slice(0, 10);
+      setFilteredPlayers(filtered);
+      setShowPlayerSuggestions(filtered.length > 0);
+    } else {
+      setShowPlayerSuggestions(false);
+    }
+  };
+  
+  // Select player from suggestions
+  const selectPlayer = (name) => {
+    setPlayerEdit({...playerEdit, oldName: name});
+    setShowPlayerSuggestions(false);
+  };
   
   // Load recent games
   const loadGames = async () => {
@@ -256,6 +319,85 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const cancelEditGame = () => {
     setEditingGame(null);
     setGameEditData({});
+  };
+  
+  // Detect and update user IDs
+  const handleDetectUserIds = async () => {
+    if (!window.confirm('This will scan all games and convert numeric player names to usernames. Continue?')) {
+      return;
+    }
+    
+    setIsDetectingUserIds(true);
+    try {
+      const response = await axios.post(`${API}/admin/detect-userids`, {}, {
+        headers: { 'admin-key': adminKey }
+      });
+      
+      if (response.data.mappings && Object.keys(response.data.mappings).length > 0) {
+        const mappingList = Object.entries(response.data.mappings)
+          .map(([id, name]) => `${id} → ${name}`)
+          .join(', ');
+        toast.success(`${response.data.message}\nMappings: ${mappingList}`, { duration: 5000 });
+      } else {
+        toast.info(response.data.message);
+      }
+      
+      // Reload player names
+      loadPlayerNames();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to detect user IDs');
+    } finally {
+      setIsDetectingUserIds(false);
+    }
+  };
+  
+  // Record trade
+  const handleRecordTrade = async () => {
+    if (!tradeData.playerName || !tradeData.fromTeam || !tradeData.toTeam) {
+      toast.error('Please fill in player name, from team, and to team');
+      return;
+    }
+    
+    try {
+      const payload = {
+        player_name: tradeData.playerName,
+        from_team: tradeData.fromTeam,
+        to_team: tradeData.toTeam,
+        week: tradeData.week ? parseInt(tradeData.week) : null,
+        notes: tradeData.notes || null
+      };
+      
+      const response = await axios.post(`${API}/admin/trade`, payload, {
+        headers: { 'admin-key': adminKey }
+      });
+      
+      toast.success(response.data.message);
+      setShowTradeModal(false);
+      setTradeData({
+        playerName: '',
+        fromTeam: '',
+        toTeam: '',
+        week: '',
+        notes: ''
+      });
+      loadPlayerNames();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to record trade');
+    }
+  };
+  
+  // Copy game CSV
+  const handleCopyCSV = async (gameId) => {
+    try {
+      const response = await axios.get(`${API}/admin/game/${gameId}/csv`, {
+        headers: { 'admin-key': adminKey }
+      });
+      
+      await navigator.clipboard.writeText(response.data.csv);
+      toast.success('CSV copied to clipboard!');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to copy CSV');
+    }
   };
   
   // Search players
@@ -654,6 +796,34 @@ const AdminPanel = ({ isOpen, onClose }) => {
               {/* Edit Player Tab */}
               {activeTab === 'edit' && (
                 <div className="space-y-4">
+                  {/* Utility Buttons */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                    <button
+                      onClick={handleDetectUserIds}
+                      disabled={isDetectingUserIds}
+                      className="bg-purple-500 hover:bg-purple-600 disabled:bg-purple-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center space-x-2"
+                    >
+                      {isDetectingUserIds ? (
+                        <>
+                          <RefreshCw className="w-5 h-5 animate-spin" />
+                          <span>Detecting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="w-5 h-5" />
+                          <span>Auto-Convert User IDs to Usernames</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setShowTradeModal(true)}
+                      className="bg-cyan-500 hover:bg-cyan-600 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center space-x-2"
+                    >
+                      <ArrowRightLeft className="w-5 h-5" />
+                      <span>Record Trade</span>
+                    </button>
+                  </div>
+                  
                   {/* Player Search Helper */}
                   <div className="border border-blue-500/20 rounded-lg p-4 bg-blue-500/5">
                     <h3 className="text-white font-semibold mb-3 flex items-center">
@@ -681,7 +851,10 @@ const AdminPanel = ({ isOpen, onClose }) => {
                         {playerSearchResults.map((player, idx) => (
                           <div 
                             key={idx}
-                            onClick={() => setPlayerEdit({ ...playerEdit, oldName: player.name })}
+                            onClick={() => {
+                              setPlayerEdit({ ...playerEdit, oldName: player.name });
+                              setShowPlayerSuggestions(false);
+                            }}
                             className="bg-[#1a1a1b] rounded-lg px-4 py-2 cursor-pointer hover:bg-gray-800 transition-colors"
                           >
                             <p className="text-white font-medium">{player.name}</p>
@@ -692,17 +865,31 @@ const AdminPanel = ({ isOpen, onClose }) => {
                     )}
                   </div>
                   
-                  <div>
+                  <div className="relative">
                     <label className="block text-gray-400 text-sm font-medium mb-2">
                       Player Name (Current)
                     </label>
                     <input
                       type="text"
                       value={playerEdit.oldName}
-                      onChange={(e) => setPlayerEdit({ ...playerEdit, oldName: e.target.value })}
-                      placeholder="Enter current player name"
+                      onChange={(e) => handlePlayerSearchInput(e.target.value)}
+                      onFocus={() => playerEdit.oldName && setShowPlayerSuggestions(filteredPlayers.length > 0)}
+                      placeholder="Start typing player name..."
                       className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
                     />
+                    {showPlayerSuggestions && (
+                      <div className="absolute z-10 w-full mt-1 bg-[#1a1a1b] border border-gray-800 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {filteredPlayers.map((name, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => selectPlayer(name)}
+                            className="px-4 py-2 text-white hover:bg-gray-800 cursor-pointer"
+                          >
+                            {name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -711,6 +898,34 @@ const AdminPanel = ({ isOpen, onClose }) => {
                         New Name (Optional)
                       </label>
                       <input
+                        type="text"
+                        value={playerEdit.newName}
+                        onChange={(e) => setPlayerEdit({ ...playerEdit, newName: e.target.value })}
+                        placeholder="Leave blank to keep current"
+                        className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 text-sm font-medium mb-2">
+                        New Team (Optional - tracked as trade)
+                      </label>
+                      <select
+                        value={playerEdit.newTeam}
+                        onChange={(e) => setPlayerEdit({ ...playerEdit, newTeam: e.target.value })}
+                        className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                      >
+                        <option value="">Keep current team</option>
+                        {allTeams.map((team, idx) => (
+                          <option key={idx} value={team}>{team}</option>
+                        ))}
+                      </select>
+                      {playerEdit.newTeam && (
+                        <p className="text-xs text-cyan-400 mt-1">
+                          ℹ️ This will be tracked as a trade
+                        </p>
+                      )}
+                    </div>
+                  </div>
                         type="text"
                         value={playerEdit.newName}
                         onChange={(e) => setPlayerEdit({ ...playerEdit, newName: e.target.value })}
@@ -990,6 +1205,13 @@ const AdminPanel = ({ isOpen, onClose }) => {
                             </div>
                             <div className="flex items-center space-x-2 ml-4">
                               <button
+                                onClick={() => handleCopyCSV(game.id)}
+                                className="text-green-400 hover:text-green-300 transition-colors"
+                                title="Copy CSV"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
+                              <button
                                 onClick={() => startEditGame(game)}
                                 className="text-blue-400 hover:text-blue-300 transition-colors"
                                 title="Edit game"
@@ -1167,6 +1389,103 @@ const AdminPanel = ({ isOpen, onClose }) => {
                 className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-all"
               >
                 {twoFAOperation?.type === 'edit' ? 'Confirm Edit' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Trade Modal */}
+      {showTradeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onClick={() => setShowTradeModal(false)}>
+          <div className="bg-[#1a1a1b] border border-gray-800 rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold text-lg flex items-center">
+                <ArrowRightLeft className="w-5 h-5 mr-2" />
+                Record Player Trade
+              </h3>
+              <button onClick={() => setShowTradeModal(false)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Player Name</label>
+                <input
+                  type="text"
+                  value={tradeData.playerName}
+                  onChange={(e) => setTradeData({...tradeData, playerName: e.target.value})}
+                  placeholder="Enter player name"
+                  className="w-full bg-[#0d0d0e] border border-gray-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-gray-400 text-sm font-medium mb-2">From Team</label>
+                  <select
+                    value={tradeData.fromTeam}
+                    onChange={(e) => setTradeData({...tradeData, fromTeam: e.target.value})}
+                    className="w-full bg-[#0d0d0e] border border-gray-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="">Select team</option>
+                    {allTeams.map((team, idx) => (
+                      <option key={idx} value={team}>{team}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm font-medium mb-2">To Team</label>
+                  <select
+                    value={tradeData.toTeam}
+                    onChange={(e) => setTradeData({...tradeData, toTeam: e.target.value})}
+                    className="w-full bg-[#0d0d0e] border border-gray-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="">Select team</option>
+                    {allTeams.map((team, idx) => (
+                      <option key={idx} value={team}>{team}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Effective Week (Optional)</label>
+                <input
+                  type="number"
+                  value={tradeData.week}
+                  onChange={(e) => setTradeData({...tradeData, week: e.target.value})}
+                  placeholder="Leave blank for immediate effect"
+                  className="w-full bg-[#0d0d0e] border border-gray-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-cyan-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">Trade will apply to games after this week</p>
+              </div>
+              
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Notes (Optional)</label>
+                <textarea
+                  value={tradeData.notes}
+                  onChange={(e) => setTradeData({...tradeData, notes: e.target.value})}
+                  placeholder="Add any notes about this trade..."
+                  rows={3}
+                  className="w-full bg-[#0d0d0e] border border-gray-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setShowTradeModal(false)}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRecordTrade}
+                className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold py-3 rounded-lg transition-all"
+              >
+                Record Trade
               </button>
             </div>
           </div>

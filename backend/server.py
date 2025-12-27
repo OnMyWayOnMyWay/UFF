@@ -1475,6 +1475,241 @@ async def verify_admin_key(admin_key: str = Header(...)):
         "admin_info": admin_info if admin_info else {"username": "Master Admin"}
     }
 
+@api_router.get("/admin/player-names")
+async def get_player_names(admin_key: str = Header(...)):
+    """Get list of all player names for autocomplete"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        player_names = set()
+        
+        for game in games:
+            for team_key in ['home_stats', 'away_stats']:
+                stats = game[team_key]
+                for category in ['passing', 'defense', 'rushing', 'receiving']:
+                    if category in stats:
+                        for player in stats[category]:
+                            player_names.add(player['name'])
+        
+        return {"players": sorted(list(player_names))}
+    except Exception as e:
+        logger.error(f"Error getting player names: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/teams")
+async def get_all_teams(admin_key: str = Header(...)):
+    """Get list of all teams"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        teams = set()
+        
+        for game in games:
+            teams.add(game['home_team'])
+            teams.add(game['away_team'])
+        
+        return {"teams": sorted(list(teams))}
+    except Exception as e:
+        logger.error(f"Error getting teams: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/detect-userids")
+async def detect_and_update_userids(admin_key: str = Header(...)):
+    """Detect player names that are user IDs and update them to usernames"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        
+        # Find all numeric player names
+        userid_mapping = {}  # {userid: username}
+        numeric_names = set()
+        
+        for game in games:
+            for team_key in ['home_stats', 'away_stats']:
+                stats = game[team_key]
+                for category in ['passing', 'defense', 'rushing', 'receiving']:
+                    if category in stats:
+                        for player in stats[category]:
+                            name = player['name']
+                            if name.isdigit() and len(name) >= 6:  # User IDs are typically long numbers
+                                numeric_names.add(name)
+        
+        if not numeric_names:
+            return {"success": True, "message": "No user IDs found", "updated": 0}
+        
+        # Fetch usernames from Roblox
+        async with aiohttp.ClientSession() as session:
+            for user_id in numeric_names:
+                try:
+                    url = f"https://users.roblox.com/v1/users/{user_id}"
+                    async with session.get(url) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            username = data.get("name")
+                            if username:
+                                userid_mapping[user_id] = username
+                                logger.info(f"Mapped user ID {user_id} to username {username}")
+                except Exception as e:
+                    logger.error(f"Error fetching username for {user_id}: {str(e)}")
+        
+        if not userid_mapping:
+            return {"success": True, "message": "No valid usernames found for user IDs", "updated": 0}
+        
+        # Update games
+        updated_count = 0
+        for game in games:
+            game_modified = False
+            
+            for team_key in ['home_stats', 'away_stats']:
+                stats = game[team_key]
+                for category in ['passing', 'defense', 'rushing', 'receiving']:
+                    if category in stats:
+                        for i, player in enumerate(stats[category]):
+                            if player['name'] in userid_mapping:
+                                stats[category][i]['name'] = userid_mapping[player['name']]
+                                game_modified = True
+            
+            if game_modified:
+                await db.games.update_one(
+                    {"id": game['id']},
+                    {"$set": game}
+                )
+                updated_count += 1
+        
+        logger.info(f"Updated {updated_count} games, converted {len(userid_mapping)} user IDs to usernames")
+        
+        return {
+            "success": True,
+            "message": f"Updated {len(userid_mapping)} user IDs to usernames in {updated_count} games",
+            "mappings": userid_mapping,
+            "updated": updated_count
+        }
+    except Exception as e:
+        logger.error(f"Error detecting/updating user IDs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class TradeRecord(BaseModel):
+    player_name: str
+    from_team: str
+    to_team: str
+    week: Optional[int] = None
+    notes: Optional[str] = None
+
+@api_router.post("/admin/trade")
+async def record_trade(trade: TradeRecord, admin_key: str = Header(...)):
+    """Record a player trade and send to Discord"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        # Update all games to reflect the trade
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        updated_count = 0
+        
+        for game in games:
+            # Only update future games (after trade week if specified)
+            if trade.week and game['week'] <= trade.week:
+                continue
+            
+            game_modified = False
+            
+            for team_key in ['home_stats', 'away_stats']:
+                stats = game[team_key]
+                for category in ['passing', 'defense', 'rushing', 'receiving']:
+                    if category in stats:
+                        for i, player in enumerate(stats[category]):
+                            if player['name'] == trade.player_name:
+                                # Check if player is on the from_team
+                                if player.get('team') == trade.from_team:
+                                    stats[category][i]['team'] = trade.to_team
+                                    game_modified = True
+            
+            if game_modified:
+                await db.games.update_one(
+                    {"id": game['id']},
+                    {"$set": game}
+                )
+                updated_count += 1
+        
+        # Store trade record
+        trade_doc = {
+            "id": str(uuid.uuid4()),
+            "player_name": trade.player_name,
+            "from_team": trade.from_team,
+            "to_team": trade.to_team,
+            "week": trade.week,
+            "notes": trade.notes,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        await db.trades.insert_one(trade_doc)
+        
+        # Send to Discord
+        webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
+        if webhook_url:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    embed = {
+                        "title": "🔄 Trade Alert",
+                        "description": f"**{trade.player_name}** has been traded!",
+                        "color": 0x3498db,
+                        "fields": [
+                            {"name": "From", "value": trade.from_team, "inline": True},
+                            {"name": "To", "value": trade.to_team, "inline": True}
+                        ],
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    }
+                    
+                    if trade.week:
+                        embed["fields"].append({"name": "Effective Week", "value": str(trade.week + 1), "inline": False})
+                    if trade.notes:
+                        embed["fields"].append({"name": "Notes", "value": trade.notes, "inline": False})
+                    
+                    payload = {"embeds": [embed]}
+                    async with session.post(webhook_url, json=payload) as response:
+                        if response.status not in [200, 204]:
+                            logger.error(f"Discord webhook failed: {response.status}")
+            except Exception as e:
+                logger.error(f"Error sending trade to Discord: {str(e)}")
+        
+        logger.info(f"Trade recorded: {trade.player_name} from {trade.from_team} to {trade.to_team}")
+        
+        return {
+            "success": True,
+            "message": f"Trade recorded: {trade.player_name} from {trade.from_team} to {trade.to_team}",
+            "updated_games": updated_count
+        }
+    except Exception as e:
+        logger.error(f"Error recording trade: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/game/{game_id}/csv")
+async def get_game_csv(game_id: str, admin_key: str = Header(...)):
+    """Get CSV export for a specific game"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        game = await db.games.find_one({"id": game_id}, {"_id": 0})
+        if not game:
+            raise HTTPException(status_code=404, detail="Game not found")
+        
+        # Convert to Game object for CSV generation
+        game_obj = Game(**game)
+        csv_content = generate_csv(game_obj)
+        
+        return {"csv": csv_content}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating CSV: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.post("/admin/2fa/request")
 async def request_2fa(request: TwoFactorRequest, admin_key: str = Header(...)):
     """Request a 2FA code for sensitive operations"""
