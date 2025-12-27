@@ -159,7 +159,15 @@ const PlayerProfile = () => {
             </div>
             <p className="text-3xl font-bold text-white mb-1">{player.total_stats.passing.yards}</p>
             <p className="text-sm text-gray-400">{player.total_stats.passing.tds} TDs • {player.total_stats.passing.ints} INTs</p>
-            <p className="text-xs text-gray-500 mt-2">{player.total_stats.passing.comp}/{player.total_stats.passing.att} Comp</p>
+            <p className="text-xs text-gray-500 mt-2">
+              {player.total_stats.passing.comp}/{player.total_stats.passing.att} ({player.total_stats.passing.completion_pct?.toFixed(1) || 0}%)
+            </p>
+            {player.total_stats.passing.rating !== undefined && (
+              <p className="text-xs text-emerald-500 font-semibold mt-1">Rating: {player.total_stats.passing.rating.toFixed(1)}</p>
+            )}
+            {player.total_stats.passing.scked > 0 && (
+              <p className="text-xs text-red-400 mt-1">Sacked: {player.total_stats.passing.scked}</p>
+            )}
           </div>
         )}
 
@@ -170,8 +178,10 @@ const PlayerProfile = () => {
               <span className="text-xs text-gray-400 uppercase tracking-wide">Rushing</span>
             </div>
             <p className="text-3xl font-bold text-white mb-1">{player.total_stats.rushing.yards}</p>
-            <p className="text-sm text-gray-400">{player.total_stats.rushing.tds} TDs</p>
-            <p className="text-xs text-gray-500 mt-2">{player.total_stats.rushing.att} Attempts</p>
+            <p className="text-sm text-gray-400">{player.total_stats.rushing.tds} TDs • {player.total_stats.rushing.att} Att</p>
+            {player.total_stats.rushing.ypc !== undefined && (
+              <p className="text-xs text-emerald-500 font-semibold mt-2">{player.total_stats.rushing.ypc.toFixed(1)} YPC</p>
+            )}
           </div>
         )}
 
@@ -194,8 +204,14 @@ const PlayerProfile = () => {
               <span className="text-xs text-gray-400 uppercase tracking-wide">Defense</span>
             </div>
             <p className="text-3xl font-bold text-white mb-1">{player.total_stats.defense.tak}</p>
-            <p className="text-sm text-gray-400">{player.total_stats.defense.sacks} Sacks • {player.total_stats.defense.ints} INTs</p>
-            <p className="text-xs text-gray-500 mt-2">{player.total_stats.defense.tds} TDs</p>
+            <p className="text-sm text-gray-400">{player.total_stats.defense.sck} SCK • {player.total_stats.defense.int} INT</p>
+            <div className="text-xs text-gray-500 mt-2 space-y-1">
+              {player.total_stats.defense.tfl > 0 && <p>TFL: {player.total_stats.defense.tfl}</p>}
+              {player.total_stats.defense.saf > 0 && <p>SAF: {player.total_stats.defense.saf}</p>}
+              {player.total_stats.defense.swat > 0 && <p>SWAT: {player.total_stats.defense.swat}</p>}
+              {player.total_stats.defense.pbu > 0 && <p>PBU: {player.total_stats.defense.pbu}</p>}
+              {player.total_stats.defense.td > 0 && <p className="text-emerald-500 font-semibold">{player.total_stats.defense.td} TDs</p>}
+            </div>
           </div>
         )}
       </div>
@@ -269,16 +285,40 @@ const PlayerProfile = () => {
                   </td>
                   <td><span className="text-gray-400 text-sm">{game.date}</span></td>
                   <td className="text-center">
-                    {game.passing && <span className="text-sm">{game.passing.yards}Y, {game.passing.td}TD</span>}
+                    {game.passing && (
+                      <div className="text-sm">
+                        <div>{game.passing.comp}/{game.passing.att}, {game.passing.yards}Y</div>
+                        <div className="text-xs text-gray-500">{game.passing.td}TD • {game.passing.int}INT</div>
+                        {game.passing.rating !== undefined && (
+                          <div className="text-xs text-emerald-500">Rating: {game.passing.rating.toFixed(1)}</div>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="text-center">
-                    {game.rushing && <span className="text-sm">{game.rushing.yards}Y, {game.rushing.td}TD</span>}
+                    {game.rushing && (
+                      <div className="text-sm">
+                        <div>{game.rushing.yards}Y, {game.rushing.td}TD</div>
+                        {game.rushing.ypc !== undefined && (
+                          <div className="text-xs text-gray-500">{game.rushing.att} Att • {game.rushing.ypc.toFixed(1)} YPC</div>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="text-center">
                     {game.receiving && <span className="text-sm">{game.receiving.rec}R, {game.receiving.yards}Y</span>}
                   </td>
                   <td className="text-center">
-                    {game.defense && <span className="text-sm">{game.defense.tak}T, {game.defense.sck}S</span>}
+                    {game.defense && (
+                      <div className="text-sm">
+                        <div>{game.defense.tak}T • {game.defense.sck}SCK</div>
+                        <div className="text-xs text-gray-500">
+                          {game.defense.tfl > 0 && `${game.defense.tfl}TFL `}
+                          {game.defense.int > 0 && `${game.defense.int}INT `}
+                          {game.defense.pbu > 0 && `${game.defense.pbu}PBU`}
+                        </div>
+                      </div>
+                    )}
                   </td>
                   <td className="text-center">
                     <span className="font-bold text-yellow-500">{calculateGamePoints(game)}</span>

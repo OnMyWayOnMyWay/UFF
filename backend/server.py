@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv
@@ -61,6 +61,22 @@ class Game(BaseModel):
     player_of_game: str
     game_date: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class AdminUser(BaseModel):
+    admin_key: str
+    username: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class PlayerEdit(BaseModel):
+    old_name: str
+    new_name: Optional[str] = None
+    new_team: Optional[str] = None
+    stats_to_add: Optional[Dict[str, Dict[str, Any]]] = None  # {category: {stat_key: value}}
+    stats_to_remove: Optional[Dict[str, List[str]]] = None  # {category: [stat_keys]}
+
+class AddAdminRequest(BaseModel):
+    new_admin_key: str
+    username: str
 
 
 async def send_to_discord(game: Game):
@@ -387,6 +403,41 @@ async def get_available_weeks():
     return {"weeks": [w["_id"] for w in weeks]}
 
 
+def calculate_passer_rating(completions: int, attempts: int, yards: int, touchdowns: int, interceptions: int) -> float:
+    """Calculate NFL passer rating"""
+    if attempts == 0:
+        return 0.0
+    
+    A = max(0, min(2.375, ((completions / attempts) - 0.3) * 5))
+    B = max(0, min(2.375, ((yards / attempts) - 3) * 0.25))
+    C = max(0, min(2.375, (touchdowns / attempts) * 20))
+    D = max(0, min(2.375, 2.375 - ((interceptions / attempts) * 25)))
+    
+    rating = ((A + B + C + D) / 6) * 100
+    return round(rating, 1)
+
+
+def calculate_completion_percentage(completions: int, attempts: int) -> float:
+    """Calculate completion percentage"""
+    if attempts == 0:
+        return 0.0
+    return round((completions / attempts) * 100, 2)
+
+
+def calculate_yards_per_attempt(yards: int, attempts: int) -> float:
+    """Calculate yards per attempt (average)"""
+    if attempts == 0:
+        return 0.0
+    return round(yards / attempts, 1)
+
+
+def calculate_yards_per_carry(yards: int, attempts: int) -> float:
+    """Calculate yards per carry"""
+    if attempts == 0:
+        return 0.0
+    return round(yards / attempts, 2)
+
+
 def calculate_fantasy_points(player_stats: Dict[str, Any]) -> float:
     """Calculate fantasy points for a player based on their stats"""
     points = 0.0
@@ -472,9 +523,12 @@ async def get_stats_leaders():
         leaders = {
             'points': [],
             'passing_yards': [],
+            'passer_rating': [],
             'rushing_yards': [],
+            'yards_per_carry': [],
             'receiving_yards': [],
             'tackles': [],
+            'tackles_for_loss': [],
             'sacks': [],
             'interceptions': []
         }
@@ -486,15 +540,34 @@ async def get_stats_leaders():
             # Calculate totals
             passing_yards = sum(s.get('yards', 0) for s in stats['passing'])
             passing_tds = sum(s.get('td', 0) for s in stats['passing'])
+            passing_comp = sum(s.get('comp', 0) for s in stats['passing'])
+            passing_att = sum(s.get('att', 0) for s in stats['passing'])
+            passing_ints = sum(s.get('int', 0) for s in stats['passing'])
+            
+            # Calculate passer rating if QB has attempts
+            passer_rating = 0.0
+            completion_pct = 0.0
+            if passing_att > 0:
+                passer_rating = calculate_passer_rating(
+                    passing_comp, passing_att, passing_yards, passing_tds, passing_ints
+                )
+                completion_pct = calculate_completion_percentage(passing_comp, passing_att)
             
             rushing_yards = sum(s.get('yards', 0) for s in stats['rushing'])
             rushing_tds = sum(s.get('td', 0) for s in stats['rushing'])
+            rushing_att = sum(s.get('att', 0) for s in stats['rushing'])
+            
+            # Calculate yards per carry
+            ypc = 0.0
+            if rushing_att > 0:
+                ypc = calculate_yards_per_carry(rushing_yards, rushing_att)
             
             receiving_yards = sum(s.get('yards', 0) for s in stats['receiving'])
             receiving_tds = sum(s.get('td', 0) for s in stats['receiving'])
             receptions = sum(s.get('rec', 0) for s in stats['receiving'])
             
             tackles = sum(s.get('tak', 0) for s in stats['defense'])
+            tackles_for_loss = sum(s.get('tfl', 0) for s in stats['defense'])
             sacks = sum(s.get('sck', 0) for s in stats['defense'])
             interceptions = sum(s.get('int', 0) for s in stats['defense'])
             
@@ -511,6 +584,23 @@ async def get_stats_leaders():
                     'name': name,
                     'value': passing_yards,
                     'tds': passing_tds,
+                    'comp': passing_comp,
+                    'att': passing_att,
+                    'ints': passing_ints,
+                    'rating': passer_rating,
+                    'completion_pct': completion_pct,
+                    'games': stats['games_played']
+                })
+            
+            # Passer rating leaderboard (min 50 attempts)
+            if passing_att >= 50 and passer_rating > 0:
+                leaders['passer_rating'].append({
+                    'name': name,
+                    'value': passer_rating,
+                    'att': passing_att,
+                    'comp': passing_comp,
+                    'completion_pct': completion_pct,
+                    'tds': passing_tds,
                     'games': stats['games_played']
                 })
             
@@ -519,6 +609,19 @@ async def get_stats_leaders():
                     'name': name,
                     'value': rushing_yards,
                     'tds': rushing_tds,
+                    'att': rushing_att,
+                    'ypc': ypc,
+                    'games': stats['games_played']
+                })
+            
+            # YPC leaderboard (min 20 attempts)
+            if rushing_att >= 20 and ypc > 0:
+                leaders['yards_per_carry'].append({
+                    'name': name,
+                    'value': ypc,
+                    'yards': rushing_yards,
+                    'att': rushing_att,
+                    'attempts': rushing_att,
                     'games': stats['games_played']
                 })
             
@@ -535,6 +638,13 @@ async def get_stats_leaders():
                 leaders['tackles'].append({
                     'name': name,
                     'value': tackles,
+                    'games': stats['games_played']
+                })
+            
+            if tackles_for_loss > 0:
+                leaders['tackles_for_loss'].append({
+                    'name': name,
+                    'value': tackles_for_loss,
                     'games': stats['games_played']
                 })
             
@@ -703,6 +813,41 @@ async def get_player_profile(player_name: str):
             {'team': team, 'games': player_data['stats_by_team'][team]['games']}
             for team in teams_played_for
         ]
+        
+        # Add calculated stats for passing
+        passing_stats = player_data['total_stats']['passing']
+        if passing_stats['att'] > 0:
+            # Recalculate even if Rating was submitted, to ensure accuracy
+            passing_stats['rating'] = calculate_passer_rating(
+                passing_stats['comp'],
+                passing_stats['att'],
+                passing_stats['yards'],
+                passing_stats['tds'],
+                passing_stats['ints']
+            )
+            passing_stats['completion_pct'] = calculate_completion_percentage(
+                passing_stats['comp'],
+                passing_stats['att']
+            )
+            passing_stats['avg'] = calculate_yards_per_attempt(
+                passing_stats['yards'],
+                passing_stats['att']
+            )
+        else:
+            passing_stats['rating'] = 0.0
+            passing_stats['completion_pct'] = 0.0
+            passing_stats['avg'] = 0.0
+        
+        # Add calculated stats for rushing
+        rushing_stats = player_data['total_stats']['rushing']
+        if rushing_stats['att'] > 0:
+            # Recalculate even if YPC was submitted
+            rushing_stats['ypc'] = calculate_yards_per_carry(
+                rushing_stats['yards'],
+                rushing_stats['att']
+            )
+        else:
+            rushing_stats['ypc'] = 0.0
         
         # Calculate fantasy points
         player_stats_for_points = {
@@ -970,11 +1115,21 @@ async def get_team_analysis(team_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Admin authentication helper
+async def verify_admin(admin_key: str) -> bool:
+    """Verify if the admin key is valid"""
+    # Check if it's the master admin key
+    if admin_key == os.environ.get('ADMIN_KEY', 'reset_season_2025'):
+        return True
+    
+    # Check if it's a registered admin user
+    admin_user = await db.admins.find_one({"admin_key": admin_key})
+    return admin_user is not None
+
 @api_router.post("/admin/reset-season")
 async def reset_season(admin_key: str):
     """Reset the season by wiping all game data"""
-    # Simple admin key check - you can change this
-    if admin_key != os.environ.get('ADMIN_KEY', 'reset_season_2025'):
+    if not await verify_admin(admin_key):
         raise HTTPException(status_code=403, detail="Invalid admin key")
     
     try:
@@ -988,6 +1143,260 @@ async def reset_season(admin_key: str):
     except Exception as e:
         logger.error(f"Error resetting season: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/add-admin")
+async def add_admin(request: AddAdminRequest, admin_key: str = Header(...)):
+    """Add a new admin user (requires master admin key)"""
+    # Only master admin can add new admins
+    if admin_key != os.environ.get('ADMIN_KEY', 'reset_season_2025'):
+        raise HTTPException(status_code=403, detail="Only master admin can add new admins")
+    
+    try:
+        # Check if admin already exists
+        existing = await db.admins.find_one({"admin_key": request.new_admin_key})
+        if existing:
+            raise HTTPException(status_code=400, detail="Admin key already exists")
+        
+        admin_user = AdminUser(
+            admin_key=request.new_admin_key,
+            username=request.username
+        )
+        
+        doc = admin_user.model_dump()
+        doc['created_at'] = doc['created_at'].isoformat()
+        
+        await db.admins.insert_one(doc)
+        logger.info(f"New admin added: {request.username}")
+        
+        return {
+            "success": True,
+            "message": f"Admin user '{request.username}' added successfully",
+            "username": request.username
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding admin: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/admin/remove-admin/{admin_key_to_remove}")
+async def remove_admin(admin_key_to_remove: str, admin_key: str = Header(...)):
+    """Remove an admin user (requires master admin key)"""
+    # Only master admin can remove admins
+    if admin_key != os.environ.get('ADMIN_KEY', 'reset_season_2025'):
+        raise HTTPException(status_code=403, detail="Only master admin can remove admins")
+    
+    try:
+        result = await db.admins.delete_one({"admin_key": admin_key_to_remove})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Admin not found")
+        
+        logger.info(f"Admin removed: {admin_key_to_remove}")
+        
+        return {
+            "success": True,
+            "message": "Admin removed successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing admin: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/list")
+async def list_admins(admin_key: str = Header(...)):
+    """List all admin users (requires master admin key)"""
+    # Only master admin can list admins
+    if admin_key != os.environ.get('ADMIN_KEY', 'reset_season_2025'):
+        raise HTTPException(status_code=403, detail="Only master admin can list admins")
+    
+    try:
+        admins = await db.admins.find({}, {"_id": 0, "admin_key": 0}).to_list(100)
+        return {"admins": admins}
+    except Exception as e:
+        logger.error(f"Error listing admins: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/roblox/username/{user_id}")
+async def get_roblox_username(user_id: str):
+    """Get Roblox username from user ID"""
+    try:
+        # Check if it's already a username (not numeric)
+        if not user_id.isdigit():
+            return {"username": user_id, "user_id": None}
+        
+        # Fetch from Roblox API
+        async with aiohttp.ClientSession() as session:
+            url = f"https://users.roblox.com/v1/users/{user_id}"
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return {
+                        "username": data.get("name"),
+                        "display_name": data.get("displayName"),
+                        "user_id": user_id
+                    }
+                elif response.status == 404:
+                    raise HTTPException(status_code=404, detail="Roblox user not found")
+                else:
+                    raise HTTPException(status_code=response.status, detail="Error fetching from Roblox API")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching Roblox username: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/admin/player/edit")
+async def edit_player(player_edit: PlayerEdit, admin_key: str = Header(...)):
+    """Edit player data across all games - change name, team, add/remove stats"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        # Find all games with this player
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        
+        updated_count = 0
+        games_updated = []
+        
+        for game in games:
+            game_modified = False
+            
+            # Check both home and away stats
+            for team_key in ['home_stats', 'away_stats']:
+                stats = game[team_key]
+                
+                # Check each category (passing, defense, rushing, receiving)
+                for category in ['passing', 'defense', 'rushing', 'receiving']:
+                    if category in stats:
+                        for i, player in enumerate(stats[category]):
+                            if player['name'] == player_edit.old_name:
+                                game_modified = True
+                                
+                                # Update player name
+                                if player_edit.new_name:
+                                    stats[category][i]['name'] = player_edit.new_name
+                                
+                                # Update team
+                                if player_edit.new_team:
+                                    stats[category][i]['team'] = player_edit.new_team
+                                
+                                # Add stats
+                                if player_edit.stats_to_add and category in player_edit.stats_to_add:
+                                    for stat_key, stat_value in player_edit.stats_to_add[category].items():
+                                        stats[category][i]['stats'][stat_key] = stat_value
+                                
+                                # Remove stats
+                                if player_edit.stats_to_remove and category in player_edit.stats_to_remove:
+                                    for stat_key in player_edit.stats_to_remove[category]:
+                                        if stat_key in stats[category][i]['stats']:
+                                            del stats[category][i]['stats'][stat_key]
+            
+            # Update the game in database if modified
+            if game_modified:
+                await db.games.update_one(
+                    {"id": game['id']},
+                    {"$set": game}
+                )
+                updated_count += 1
+                games_updated.append({"week": game['week'], "id": game['id']})
+        
+        if updated_count == 0:
+            raise HTTPException(status_code=404, detail=f"Player '{player_edit.old_name}' not found in any games")
+        
+        logger.info(f"Player '{player_edit.old_name}' updated in {updated_count} games")
+        
+        return {
+            "success": True,
+            "message": f"Player updated in {updated_count} games",
+            "games_updated": games_updated,
+            "changes": {
+                "name_changed": player_edit.new_name is not None,
+                "team_changed": player_edit.new_team is not None,
+                "stats_added": player_edit.stats_to_add is not None,
+                "stats_removed": player_edit.stats_to_remove is not None
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error editing player: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/admin/player/{player_name}")
+async def delete_player(player_name: str, admin_key: str = Header(...)):
+    """Remove a player from all games"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        
+        updated_count = 0
+        
+        for game in games:
+            game_modified = False
+            
+            # Check both home and away stats
+            for team_key in ['home_stats', 'away_stats']:
+                stats = game[team_key]
+                
+                # Check each category
+                for category in ['passing', 'defense', 'rushing', 'receiving']:
+                    if category in stats:
+                        # Filter out the player
+                        original_length = len(stats[category])
+                        stats[category] = [p for p in stats[category] if p['name'] != player_name]
+                        
+                        if len(stats[category]) < original_length:
+                            game_modified = True
+            
+            # Update the game in database if modified
+            if game_modified:
+                await db.games.update_one(
+                    {"id": game['id']},
+                    {"$set": game}
+                )
+                updated_count += 1
+        
+        if updated_count == 0:
+            raise HTTPException(status_code=404, detail=f"Player '{player_name}' not found in any games")
+        
+        logger.info(f"Player '{player_name}' deleted from {updated_count} games")
+        
+        return {
+            "success": True,
+            "message": f"Player '{player_name}' removed from {updated_count} games",
+            "games_updated": updated_count
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting player: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/verify")
+async def verify_admin_key(admin_key: str = Header(...)):
+    """Verify if an admin key is valid"""
+    is_valid = await verify_admin(admin_key)
+    is_master = admin_key == os.environ.get('ADMIN_KEY', 'reset_season_2025')
+    
+    if not is_valid:
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    # Get admin info if it's not master
+    admin_info = None
+    if not is_master:
+        admin = await db.admins.find_one({"admin_key": admin_key}, {"_id": 0, "admin_key": 0})
+        if admin:
+            admin_info = admin
+    
+    return {
+        "valid": True,
+        "is_master": is_master,
+        "admin_info": admin_info if admin_info else {"username": "Master Admin"}
+    }
 
 
 # Include the router in the main app

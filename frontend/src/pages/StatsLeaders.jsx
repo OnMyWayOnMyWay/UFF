@@ -30,11 +30,14 @@ const StatsLeaders = () => {
   const tabs = [
     { id: 'points', label: 'Fantasy Points', icon: Trophy, color: 'from-yellow-500 to-orange-500' },
     { id: 'passing_yards', label: 'Passing Yards', icon: Target, color: 'from-blue-500 to-cyan-500' },
+    { id: 'passer_rating', label: 'Passer Rating', icon: Target, color: 'from-blue-400 to-indigo-500' },
     { id: 'rushing_yards', label: 'Rushing Yards', icon: Zap, color: 'from-orange-500 to-red-500' },
+    { id: 'yards_per_carry', label: 'Yards Per Carry', icon: Zap, color: 'from-orange-400 to-red-400' },
     { id: 'receiving_yards', label: 'Receiving Yards', icon: TrendingUp, color: 'from-purple-500 to-pink-500' },
     { id: 'tackles', label: 'Tackles', icon: Shield, color: 'from-red-500 to-rose-500' },
     { id: 'sacks', label: 'Sacks', icon: Shield, color: 'from-emerald-500 to-teal-500' },
     { id: 'interceptions', label: 'Interceptions', icon: Activity, color: 'from-cyan-500 to-blue-500' },
+    { id: 'tackles_for_loss', label: 'Tackles For Loss', icon: Shield, color: 'from-red-400 to-rose-400' },
   ];
 
   const getMedalColor = (rank) => {
@@ -82,13 +85,22 @@ const StatsLeaders = () => {
                 {/* Stats */}
                 <div className="text-right">
                   <div className="text-3xl font-bold gradient-text">
-                    {activeTab === 'points' ? player.value.toFixed(1) : player.value}
+                    {activeTab === 'points' ? player.value.toFixed(1) : 
+                     activeTab === 'passer_rating' ? player.value.toFixed(1) :
+                     activeTab === 'yards_per_carry' ? player.value.toFixed(2) :
+                     player.value}
                   </div>
                   {player.tds !== undefined && (
                     <p className="text-sm text-emerald-500 font-semibold">{player.tds} TDs</p>
                   )}
                   {player.receptions !== undefined && (
                     <p className="text-sm text-blue-500 font-semibold">{player.receptions} Rec</p>
+                  )}
+                  {player.completion_pct !== undefined && (
+                    <p className="text-sm text-cyan-500 font-semibold">{player.completion_pct.toFixed(1)}% Comp</p>
+                  )}
+                  {player.attempts !== undefined && activeTab === 'yards_per_carry' && (
+                    <p className="text-sm text-orange-500 font-semibold">{player.attempts} Attempts</p>
                   )}
                 </div>
               </div>
