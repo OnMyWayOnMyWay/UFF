@@ -508,6 +508,9 @@ async def get_stats_leaders():
         player_stats = {}
         
         for game in games:
+            # Track which players we've seen in this game to avoid double-counting games
+            players_in_game = set()
+            
             # Process home team
             for category in ['passing', 'defense', 'rushing', 'receiving']:
                 if category in game['home_stats']:
@@ -523,7 +526,11 @@ async def get_stats_leaders():
                                 'games_played': 0
                             }
                         player_stats[name][category].append(player['stats'])
-                        player_stats[name]['games_played'] += 1
+                        
+                        # Only increment games_played once per game per player
+                        if name not in players_in_game:
+                            player_stats[name]['games_played'] += 1
+                            players_in_game.add(name)
             
             # Process away team
             for category in ['passing', 'defense', 'rushing', 'receiving']:
@@ -540,6 +547,11 @@ async def get_stats_leaders():
                                 'games_played': 0
                             }
                         player_stats[name][category].append(player['stats'])
+                        
+                        # Only increment games_played once per game per player
+                        if name not in players_in_game:
+                            player_stats[name]['games_played'] += 1
+                            players_in_game.add(name)
         
         # Calculate totals and fantasy points
         leaders = {
