@@ -1342,35 +1342,100 @@ async def edit_player(player_edit: PlayerEdit, admin_key: str = Header(...)):
         for game in games:
             game_modified = False
             
-            # Check both home and away stats
+            # If updating team, determine which side the player should be on
+            target_side = None
+            if player_edit.new_team:
+                if game['home_team'] == player_edit.new_team:
+                    target_side = 'home_stats'
+                elif game['away_team'] == player_edit.new_team:
+                    target_side = 'away_stats'
+            
+            # First, collect all player entries that need to be processed
+            # Store as (side, category, player_data) to avoid index issues
+            player_entries_to_move = []  # (team_key, category, index, player_data)
+            player_entries_to_update = []  # (team_key, category, index)
+            
             for team_key in ['home_stats', 'away_stats']:
                 stats = game[team_key]
-                
-                # Check each category (passing, defense, rushing, receiving)
                 for category in ['passing', 'defense', 'rushing', 'receiving']:
                     if category in stats:
-                        for i, player in enumerate(stats[category]):
+                        for i in range(len(stats[category])):
+                            player = stats[category][i]
                             if player['name'] == player_edit.old_name:
-                                game_modified = True
+                                player_copy = player.copy()
                                 
-                                # Update player name
-                                if player_edit.new_name:
-                                    stats[category][i]['name'] = player_edit.new_name
+                                # Determine if we need to move this player
+                                should_move = (player_edit.new_team and 
+                                              target_side and 
+                                              target_side != team_key)
                                 
-                                # Update team
-                                if player_edit.new_team:
-                                    stats[category][i]['team'] = player_edit.new_team
-                                
-                                # Add stats
-                                if player_edit.stats_to_add and category in player_edit.stats_to_add:
-                                    for stat_key, stat_value in player_edit.stats_to_add[category].items():
-                                        stats[category][i]['stats'][stat_key] = stat_value
-                                
-                                # Remove stats
-                                if player_edit.stats_to_remove and category in player_edit.stats_to_remove:
-                                    for stat_key in player_edit.stats_to_remove[category]:
-                                        if stat_key in stats[category][i]['stats']:
-                                            del stats[category][i]['stats'][stat_key]
+                                if should_move:
+                                    player_entries_to_move.append((team_key, category, i, player_copy))
+                                else:
+                                    player_entries_to_update.append((team_key, category, i))
+            
+            # Move players to the correct side (sort by index descending to avoid index shifting)
+            player_entries_to_move.sort(key=lambda x: x[2], reverse=True)
+            
+            for team_key, category, index, player_data in player_entries_to_move:
+                # Remove from current side
+                game[team_key][category].pop(index)
+                
+                # Add to target side
+                target_stats = game[target_side]
+                if category not in target_stats:
+                    target_stats[category] = []
+                
+                # Update player data
+                updated_player = player_data.copy()
+                if player_edit.new_name:
+                    updated_player['name'] = player_edit.new_name
+                if player_edit.new_team:
+                    updated_player['team'] = player_edit.new_team
+                
+                # Add stats
+                if player_edit.stats_to_add and category in player_edit.stats_to_add:
+                    if 'stats' not in updated_player:
+                        updated_player['stats'] = {}
+                    for stat_key, stat_value in player_edit.stats_to_add[category].items():
+                        updated_player['stats'][stat_key] = stat_value
+                
+                # Remove stats
+                if player_edit.stats_to_remove and category in player_edit.stats_to_remove:
+                    if 'stats' in updated_player:
+                        for stat_key in player_edit.stats_to_remove[category]:
+                            if stat_key in updated_player['stats']:
+                                del updated_player['stats'][stat_key]
+                
+                target_stats[category].append(updated_player)
+                game_modified = True
+            
+            # Update players in place
+            for team_key, category, index in player_entries_to_update:
+                stats = game[team_key]
+                
+                # Update player name
+                if player_edit.new_name:
+                    stats[category][index]['name'] = player_edit.new_name
+                
+                # Update team
+                if player_edit.new_team:
+                    stats[category][index]['team'] = player_edit.new_team
+                
+                # Add stats
+                if player_edit.stats_to_add and category in player_edit.stats_to_add:
+                    for stat_key, stat_value in player_edit.stats_to_add[category].items():
+                        if stat_key not in stats[category][index]['stats']:
+                            stats[category][index]['stats'][stat_key] = 0
+                        stats[category][index]['stats'][stat_key] = stat_value
+                
+                # Remove stats
+                if player_edit.stats_to_remove and category in player_edit.stats_to_remove:
+                    for stat_key in player_edit.stats_to_remove[category]:
+                        if stat_key in stats[category][index]['stats']:
+                            del stats[category][index]['stats'][stat_key]
+                
+                game_modified = True
             
             # Update the game in database if modified
             if game_modified:
