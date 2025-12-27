@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 import aiohttp
 import csv
 import io
+import secrets
+import string
 
 
 ROOT_DIR = Path(__file__).parent
@@ -77,6 +79,26 @@ class PlayerEdit(BaseModel):
 class AddAdminRequest(BaseModel):
     new_admin_key: str
     username: str
+
+class TwoFactorRequest(BaseModel):
+    operation: str  # 'edit_game' or 'delete_game'
+    game_id: Optional[str] = None
+
+class TwoFactorVerify(BaseModel):
+    code: str
+    operation: str
+    game_id: Optional[str] = None
+
+class GameEdit(BaseModel):
+    week: Optional[int] = None
+    home_team: Optional[str] = None
+    away_team: Optional[str] = None
+    home_score: Optional[int] = None
+    away_score: Optional[int] = None
+    player_of_game: Optional[str] = None
+    game_date: Optional[str] = None
+    home_stats: Optional[Dict[str, Any]] = None
+    away_stats: Optional[Dict[str, Any]] = None
 
 
 async def send_to_discord(game: Game):
@@ -1115,6 +1137,49 @@ async def get_team_analysis(team_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# 2FA Code Storage (in-memory for simplicity, expires in 5 minutes)
+twofa_codes = {}
+
+def generate_2fa_code() -> str:
+    """Generate a 6-digit 2FA code"""
+    return ''.join(secrets.choice(string.digits) for _ in range(6))
+
+async def store_2fa_code(admin_key: str, operation: str, game_id: Optional[str] = None) -> str:
+    """Store a 2FA code with expiration"""
+    code = generate_2fa_code()
+    key = f"{admin_key}:{operation}:{game_id or 'none'}"
+    twofa_codes[key] = {
+        'code': code,
+        'expires': datetime.now(timezone.utc).timestamp() + 300  # 5 minutes
+    }
+    # Clean up expired codes
+    current_time = datetime.now(timezone.utc).timestamp()
+    expired_keys = [k for k, v in twofa_codes.items() if v['expires'] < current_time]
+    for k in expired_keys:
+        del twofa_codes[k]
+    return code
+
+async def verify_2fa_code(admin_key: str, code: str, operation: str, game_id: Optional[str] = None) -> bool:
+    """Verify a 2FA code"""
+    key = f"{admin_key}:{operation}:{game_id or 'none'}"
+    if key not in twofa_codes:
+        return False
+    
+    stored = twofa_codes[key]
+    current_time = datetime.now(timezone.utc).timestamp()
+    
+    # Check if code is expired
+    if stored['expires'] < current_time:
+        del twofa_codes[key]
+        return False
+    
+    # Check if code matches
+    if stored['code'] == code:
+        del twofa_codes[key]  # Code can only be used once
+        return True
+    
+    return False
+
 # Admin authentication helper
 async def verify_admin(admin_key: str) -> bool:
     """Verify if the admin key is valid"""
@@ -1397,6 +1462,136 @@ async def verify_admin_key(admin_key: str = Header(...)):
         "is_master": is_master,
         "admin_info": admin_info if admin_info else {"username": "Master Admin"}
     }
+
+@api_router.post("/admin/2fa/request")
+async def request_2fa(request: TwoFactorRequest, admin_key: str = Header(...)):
+    """Request a 2FA code for sensitive operations"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        code = await store_2fa_code(admin_key, request.operation, request.game_id)
+        logger.info(f"2FA code generated for {request.operation}: {code}")
+        
+        return {
+            "success": True,
+            "message": f"2FA code generated. Code: {code} (expires in 5 minutes)",
+            "code": code  # In production, send via email/SMS instead
+        }
+    except Exception as e:
+        logger.error(f"Error generating 2FA code: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/2fa/verify")
+async def verify_2fa(request: TwoFactorVerify, admin_key: str = Header(...)):
+    """Verify a 2FA code"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    is_valid = await verify_2fa_code(admin_key, request.code, request.operation, request.game_id)
+    
+    if not is_valid:
+        raise HTTPException(status_code=403, detail="Invalid or expired 2FA code")
+    
+    return {"success": True, "message": "2FA code verified"}
+
+@api_router.put("/admin/game/{game_id}")
+async def edit_game(game_id: str, game_edit: GameEdit, twofa_code: str, admin_key: str = Header(...)):
+    """Edit an existing game (requires 2FA verification)"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    # Verify 2FA code
+    if not await verify_2fa_code(admin_key, twofa_code, "edit_game", game_id):
+        raise HTTPException(status_code=403, detail="Invalid or expired 2FA code")
+    
+    try:
+        # Find the game
+        game = await db.games.find_one({"id": game_id}, {"_id": 0})
+        if not game:
+            raise HTTPException(status_code=404, detail="Game not found")
+        
+        # Update only provided fields
+        update_data = {}
+        if game_edit.week is not None:
+            update_data["week"] = game_edit.week
+        if game_edit.home_team is not None:
+            update_data["home_team"] = game_edit.home_team
+        if game_edit.away_team is not None:
+            update_data["away_team"] = game_edit.away_team
+        if game_edit.home_score is not None:
+            update_data["home_score"] = game_edit.home_score
+        if game_edit.away_score is not None:
+            update_data["away_score"] = game_edit.away_score
+        if game_edit.player_of_game is not None:
+            update_data["player_of_game"] = game_edit.player_of_game
+        if game_edit.game_date is not None:
+            update_data["game_date"] = game_edit.game_date
+        if game_edit.home_stats is not None:
+            update_data["home_stats"] = game_edit.home_stats
+        if game_edit.away_stats is not None:
+            update_data["away_stats"] = game_edit.away_stats
+        
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No fields to update")
+        
+        # Update the game
+        result = await db.games.update_one(
+            {"id": game_id},
+            {"$set": update_data}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Game not found or no changes made")
+        
+        logger.info(f"Game {game_id} updated by admin")
+        
+        return {
+            "success": True,
+            "message": "Game updated successfully",
+            "game_id": game_id,
+            "updated_fields": list(update_data.keys())
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error editing game: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/admin/game/{game_id}")
+async def delete_game(game_id: str, twofa_code: str, admin_key: str = Header(...)):
+    """Delete a game (requires 2FA verification)"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    # Verify 2FA code
+    if not await verify_2fa_code(admin_key, twofa_code, "delete_game", game_id):
+        raise HTTPException(status_code=403, detail="Invalid or expired 2FA code")
+    
+    try:
+        # Find the game first to return info
+        game = await db.games.find_one({"id": game_id}, {"_id": 0})
+        if not game:
+            raise HTTPException(status_code=404, detail="Game not found")
+        
+        # Delete the game
+        result = await db.games.delete_one({"id": game_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Game not found")
+        
+        logger.info(f"Game {game_id} (Week {game.get('week')}) deleted by admin")
+        
+        return {
+            "success": True,
+            "message": f"Game deleted: Week {game.get('week')} - {game.get('home_team')} vs {game.get('away_team')}",
+            "game_id": game_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting game: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Include the router in the main app

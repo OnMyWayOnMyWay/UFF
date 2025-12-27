@@ -55,6 +55,14 @@ const AdminPanel = ({ isOpen, onClose }) => {
   // Player Search State
   const [playerSearch, setPlayerSearch] = useState('');
   const [playerSearchResults, setPlayerSearchResults] = useState([]);
+  
+  // Game Edit/Delete State
+  const [editingGame, setEditingGame] = useState(null);
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [twoFACode, setTwoFACode] = useState('');
+  const [twoFAOperation, setTwoFAOperation] = useState(null); // { type: 'edit' | 'delete', gameId: string }
+  const [generatedCode, setGeneratedCode] = useState('');
+  const [gameEditData, setGameEditData] = useState({});
 
   // Verify admin key
   const verifyAdmin = async () => {
@@ -106,38 +114,35 @@ const AdminPanel = ({ isOpen, onClose }) => {
     setGamesLoading(true);
     try {
       const response = await axios.get(`${API}/games`);
-      setGamesList(response.data.games || []);
+      const games = Array.isArray(response.data) ? response.data : (response.data.games || []);
+      setGamesList(games);
       
-      // Also fetch database stats
-      const statsResponse = await axios.get(`${API}/games`);
-      if (statsResponse.data.games) {
-        const games = statsResponse.data.games;
-        const allPlayers = new Set();
-        const allTeams = new Set();
+      // Calculate database stats
+      const allPlayers = new Set();
+      const allTeams = new Set();
+      
+      games.forEach(game => {
+        allTeams.add(game.home_team);
+        allTeams.add(game.away_team);
         
-        games.forEach(game => {
-          allTeams.add(game.home_team);
-          allTeams.add(game.away_team);
-          
-          ['home_stats', 'away_stats'].forEach(statsKey => {
-            const stats = game[statsKey];
-            if (stats) {
-              Object.keys(stats).forEach(category => {
-                if (Array.isArray(stats[category])) {
-                  stats[category].forEach(p => allPlayers.add(p.name));
-                }
-              });
-            }
-          });
+        ['home_stats', 'away_stats'].forEach(statsKey => {
+          const stats = game[statsKey];
+          if (stats) {
+            Object.keys(stats).forEach(category => {
+              if (Array.isArray(stats[category])) {
+                stats[category].forEach(p => allPlayers.add(p.name));
+              }
+            });
+          }
         });
-        
-        setDbStats({
-          total_games: games.length,
-          total_players: allPlayers.size,
-          total_teams: allTeams.size,
-          latest_week: games.length > 0 ? Math.max(...games.map(g => g.week)) : 0
-        });
-      }
+      });
+      
+      setDbStats({
+        total_games: games.length,
+        total_players: allPlayers.size,
+        total_teams: allTeams.size,
+        latest_week: games.length > 0 ? Math.max(...games.map(g => g.week)) : 0
+      });
     } catch (error) {
       toast.error('Failed to load games');
     } finally {
@@ -147,19 +152,110 @@ const AdminPanel = ({ isOpen, onClose }) => {
   
   // Delete specific game
   const handleDeleteGame = async (gameId) => {
-    if (!window.confirm('Are you sure you want to delete this game?')) {
+    if (!window.confirm('Are you sure you want to delete this game? This will require 2FA.')) {
       return;
     }
     
     try {
-      await axios.delete(`${API}/games/${gameId}`, {
+      // Request 2FA code
+      const response = await axios.post(`${API}/admin/2fa/request`, {
+        operation: 'delete_game',
+        game_id: gameId
+      }, {
+        headers: { 'admin-key': adminKey }
+      });
+      
+      setGeneratedCode(response.data.code);
+      setTwoFAOperation({ type: 'delete', gameId });
+      setShow2FAModal(true);
+      toast.success('2FA code generated. Please check the console/modal.');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to request 2FA code');
+    }
+  };
+  
+  // Execute delete with 2FA
+  const executeDeleteGame = async () => {
+    if (!twoFAOperation || twoFAOperation.type !== 'delete') return;
+    
+    try {
+      await axios.delete(`${API}/admin/game/${twoFAOperation.gameId}`, {
+        params: { twofa_code: twoFACode },
         headers: { 'admin-key': adminKey }
       });
       toast.success('Game deleted!');
+      setShow2FAModal(false);
+      setTwoFACode('');
+      setGeneratedCode('');
+      setTwoFAOperation(null);
       loadGames();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to delete game');
     }
+  };
+  
+  // Start editing a game
+  const startEditGame = async (game) => {
+    setEditingGame(game);
+    setGameEditData({
+      week: game.week,
+      home_team: game.home_team,
+      away_team: game.away_team,
+      home_score: game.home_score,
+      away_score: game.away_score,
+      player_of_game: game.player_of_game,
+      game_date: game.game_date
+    });
+  };
+  
+  // Request 2FA for game edit
+  const requestEditGame = async () => {
+    if (!editingGame) return;
+    
+    try {
+      // Request 2FA code
+      const response = await axios.post(`${API}/admin/2fa/request`, {
+        operation: 'edit_game',
+        game_id: editingGame.id
+      }, {
+        headers: { 'admin-key': adminKey }
+      });
+      
+      setGeneratedCode(response.data.code);
+      setTwoFAOperation({ type: 'edit', gameId: editingGame.id });
+      setShow2FAModal(true);
+      toast.success('2FA code generated. Please check the console/modal.');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to request 2FA code');
+    }
+  };
+  
+  // Execute edit with 2FA
+  const executeEditGame = async () => {
+    if (!twoFAOperation || twoFAOperation.type !== 'edit') return;
+    
+    try {
+      await axios.put(`${API}/admin/game/${twoFAOperation.gameId}`, gameEditData, {
+        params: { twofa_code: twoFACode },
+        headers: { 'admin-key': adminKey }
+      });
+      toast.success('Game updated!');
+      setShow2FAModal(false);
+      setTwoFACode('');
+      setGeneratedCode('');
+      setTwoFAOperation(null);
+      setEditingGame(null);
+      setGameEditData({});
+      loadGames();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update game');
+    }
+  };
+  
+  // Cancel editing
+  const cancelEditGame = () => {
+    setEditingGame(null);
+    setGameEditData({});
   };
   
   // Search players
@@ -171,7 +267,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
     
     try {
       const response = await axios.get(`${API}/games`);
-      const games = response.data.games || [];
+      const games = Array.isArray(response.data) ? response.data : (response.data.games || []);
       const playerData = {};
       
       games.forEach(game => {
@@ -780,6 +876,92 @@ const AdminPanel = ({ isOpen, onClose }) => {
                     </div>
                   )}
                   
+                  {/* Game Edit Modal */}
+                  {editingGame && (
+                    <div className="border border-blue-500/20 rounded-lg p-4 bg-blue-500/5 mb-4">
+                      <h3 className="text-white font-semibold mb-3 flex items-center justify-between">
+                        <span className="flex items-center">
+                          <Edit className="w-4 h-4 mr-2" />
+                          Editing Game: Week {editingGame.week}
+                        </span>
+                        <button onClick={cancelEditGame} className="text-gray-400 hover:text-white">
+                          <X className="w-5 h-5" />
+                        </button>
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-gray-400 text-sm mb-1">Week</label>
+                          <input
+                            type="number"
+                            value={gameEditData.week || ''}
+                            onChange={(e) => setGameEditData({...gameEditData, week: parseInt(e.target.value)})}
+                            className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-gray-400 text-sm mb-1">Game Date</label>
+                          <input
+                            type="date"
+                            value={gameEditData.game_date || ''}
+                            onChange={(e) => setGameEditData({...gameEditData, game_date: e.target.value})}
+                            className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-gray-400 text-sm mb-1">Home Team</label>
+                          <input
+                            type="text"
+                            value={gameEditData.home_team || ''}
+                            onChange={(e) => setGameEditData({...gameEditData, home_team: e.target.value})}
+                            className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-gray-400 text-sm mb-1">Home Score</label>
+                          <input
+                            type="number"
+                            value={gameEditData.home_score || ''}
+                            onChange={(e) => setGameEditData({...gameEditData, home_score: parseInt(e.target.value)})}
+                            className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-gray-400 text-sm mb-1">Away Team</label>
+                          <input
+                            type="text"
+                            value={gameEditData.away_team || ''}
+                            onChange={(e) => setGameEditData({...gameEditData, away_team: e.target.value})}
+                            className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-gray-400 text-sm mb-1">Away Score</label>
+                          <input
+                            type="number"
+                            value={gameEditData.away_score || ''}
+                            onChange={(e) => setGameEditData({...gameEditData, away_score: parseInt(e.target.value)})}
+                            className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-gray-400 text-sm mb-1">Player of Game</label>
+                          <input
+                            type="text"
+                            value={gameEditData.player_of_game || ''}
+                            onChange={(e) => setGameEditData({...gameEditData, player_of_game: e.target.value})}
+                            className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={requestEditGame}
+                        className="w-full mt-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition-all"
+                      >
+                        Save Changes (Requires 2FA)
+                      </button>
+                    </div>
+                  )}
+                  
                   <div className="border border-gray-800 rounded-lg p-4">
                     <h3 className="text-white font-semibold mb-3">Recent Games</h3>
                     {gamesLoading ? (
@@ -806,13 +988,22 @@ const AdminPanel = ({ isOpen, onClose }) => {
                                 {game.game_date} • POG: {game.player_of_game}
                               </div>
                             </div>
-                            <button
-                              onClick={() => handleDeleteGame(game._id)}
-                              className="text-red-400 hover:text-red-300 transition-colors ml-4"
-                              title="Delete game"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center space-x-2 ml-4">
+                              <button
+                                onClick={() => startEditGame(game)}
+                                className="text-blue-400 hover:text-blue-300 transition-colors"
+                                title="Edit game"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteGame(game.id)}
+                                className="text-red-400 hover:text-red-300 transition-colors"
+                                title="Delete game"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -920,6 +1111,67 @@ const AdminPanel = ({ isOpen, onClose }) => {
           </>
         )}
       </div>
+      
+      {/* 2FA Modal */}
+      {show2FAModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onClick={() => setShow2FAModal(false)}>
+          <div className="bg-[#1a1a1b] border border-gray-800 rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold text-lg">Two-Factor Authentication</h3>
+              <button onClick={() => setShow2FAModal(false)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-4">
+                <p className="text-yellow-400 text-sm mb-2 font-semibold">Generated 2FA Code:</p>
+                <p className="text-white text-2xl font-mono font-bold text-center tracking-wider">{generatedCode}</p>
+                <p className="text-gray-400 text-xs mt-2 text-center">Code expires in 5 minutes</p>
+              </div>
+              
+              <label className="block text-gray-400 text-sm font-medium mb-2">
+                Enter 2FA Code to Confirm
+              </label>
+              <input
+                type="text"
+                value={twoFACode}
+                onChange={(e) => setTwoFACode(e.target.value)}
+                placeholder="Enter 6-digit code"
+                maxLength={6}
+                className="w-full bg-[#0d0d0e] border border-gray-800 rounded-lg px-4 py-3 text-white text-center text-xl font-mono tracking-wider focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShow2FAModal(false);
+                  setTwoFACode('');
+                  setGeneratedCode('');
+                  setTwoFAOperation(null);
+                }}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (twoFAOperation?.type === 'edit') {
+                    executeEditGame();
+                  } else if (twoFAOperation?.type === 'delete') {
+                    executeDeleteGame();
+                  }
+                }}
+                disabled={twoFACode.length !== 6}
+                className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-all"
+              >
+                {twoFAOperation?.type === 'edit' ? 'Confirm Edit' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
