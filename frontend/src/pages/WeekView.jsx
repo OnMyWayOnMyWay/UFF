@@ -35,7 +35,7 @@ const WeekView = () => {
     setExpandedGame(expandedGame === gameId ? null : gameId);
   };
 
-  const renderStatsTable = (stats, category, columns) => {
+  const renderStatsTable = (stats, category, columns, teamName) => {
     if (!stats[category] || stats[category].length === 0) return null;
 
     return (
@@ -46,20 +46,20 @@ const WeekView = () => {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr>
-                <th>Name</th>
+              <tr className="text-gray-400 text-sm border-b border-gray-800">
+                <th className="text-left py-2 px-3">Name</th>
                 {columns.map(col => (
-                  <th key={col.key} className="text-center">{col.label}</th>
+                  <th key={col.key} className="text-center py-2 px-2">{col.label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {stats[category].map((player, idx) => (
-                <tr key={idx}>
-                  <td className="font-semibold text-white">{player.name}</td>
+                <tr key={idx} className="border-b border-gray-800/50 hover:bg-white/5 transition-colors">
+                  <td className="font-semibold text-white py-2 px-3">{player.name}</td>
                   {columns.map(col => (
-                    <td key={col.key} className="text-center">
-                      {player.stats[col.key] || 0}
+                    <td key={col.key} className="text-center text-gray-300 py-2 px-2">
+                      {player.stats[col.key] !== undefined ? player.stats[col.key] : 0}
                     </td>
                   ))}
                 </tr>
@@ -155,7 +155,7 @@ const WeekView = () => {
                 {expandedGame === game.id && (
                   <div className="border-t border-gray-800 pt-6 mt-4">
                     {/* Home Team Stats */}
-                    <div className="mb-8">
+                    <div className="mb-8 bg-emerald-500/5 rounded-lg p-6 border border-emerald-500/20">
                       <h3 className="text-2xl font-bold text-white mb-6 flex items-center" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
                         <span className="w-3 h-8 bg-emerald-500 rounded mr-3"></span>
                         {game.home_team}
@@ -169,12 +169,12 @@ const WeekView = () => {
                             { key: 'td', label: 'TD' },
                             { key: 'int', label: 'INT' },
                             { key: 'scked', label: 'SCKED' }
-                          ])}
+                          ], game.home_team)}
                           {renderStatsTable(game.home_stats, 'rushing', [
                             { key: 'att', label: 'ATT' },
                             { key: 'yards', label: 'YDS' },
                             { key: 'td', label: 'TD' }
-                          ])}
+                          ], game.home_team)}
                         </div>
                         <div>
                           {renderStatsTable(game.home_stats, 'defense', [
@@ -186,18 +186,18 @@ const WeekView = () => {
                             { key: 'int', label: 'INT' },
                             { key: 'pbu', label: 'PBU' },
                             { key: 'td', label: 'TD' }
-                          ])}
+                          ], game.home_team)}
                           {renderStatsTable(game.home_stats, 'receiving', [
                             { key: 'rec', label: 'REC' },
                             { key: 'yards', label: 'YDS' },
                             { key: 'td', label: 'TD' }
-                          ])}
+                          ], game.home_team)}
                         </div>
                       </div>
                     </div>
 
                     {/* Away Team Stats */}
-                    <div>
+                    <div className="bg-blue-500/5 rounded-lg p-6 border border-blue-500/20">
                       <h3 className="text-2xl font-bold text-white mb-6 flex items-center" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
                         <span className="w-3 h-8 bg-blue-500 rounded mr-3"></span>
                         {game.away_team}
@@ -211,12 +211,12 @@ const WeekView = () => {
                             { key: 'td', label: 'TD' },
                             { key: 'int', label: 'INT' },
                             { key: 'scked', label: 'SCKED' }
-                          ])}
+                          ], game.away_team)}
                           {renderStatsTable(game.away_stats, 'rushing', [
                             { key: 'att', label: 'ATT' },
                             { key: 'yards', label: 'YDS' },
                             { key: 'td', label: 'TD' }
-                          ])}
+                          ], game.away_team)}
                         </div>
                         <div>
                           {renderStatsTable(game.away_stats, 'defense', [
@@ -228,12 +228,12 @@ const WeekView = () => {
                             { key: 'int', label: 'INT' },
                             { key: 'pbu', label: 'PBU' },
                             { key: 'td', label: 'TD' }
-                          ])}
+                          ], game.away_team)}
                           {renderStatsTable(game.away_stats, 'receiving', [
                             { key: 'rec', label: 'REC' },
                             { key: 'yards', label: 'YDS' },
                             { key: 'td', label: 'TD' }
-                          ])}
+                          ], game.away_team)}
                         </div>
                       </div>
                     </div>
