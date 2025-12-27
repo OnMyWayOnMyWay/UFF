@@ -1710,7 +1710,7 @@ async def get_raw_game_data(game_id: str, admin_key: str = Header(...)):
 
 @api_router.post("/admin/fix-team-assignments")
 async def fix_team_assignments(admin_key: str = Header(...)):
-    """Fix team assignments based on which stats section players are in (home_stats = home_team, away_stats = away_team)"""
+    """Fix team assignments ONLY for players with missing/empty team field - preserves manual admin changes"""
     if not await verify_admin(admin_key):
         raise HTTPException(status_code=403, detail="Invalid admin key")
     
@@ -1722,13 +1722,13 @@ async def fix_team_assignments(admin_key: str = Header(...)):
         for game in games:
             game_modified = False
             
-            # Fix home team assignments - team should match home_team if in home_stats
+            # Fix home team assignments - only if team is missing or empty
             for category in ['passing', 'defense', 'rushing', 'receiving']:
                 if category in game['home_stats']:
                     for i, player in enumerate(game['home_stats'][category]):
                         current_team = player.get('team', '')
-                        # Fix if team doesn't match home_team
-                        if current_team != game['home_team']:
+                        # Only fix if team is missing or empty (don't override manual changes)
+                        if not current_team:
                             game['home_stats'][category][i]['team'] = game['home_team']
                             game_modified = True
                             fixes_made.append({
@@ -1736,18 +1736,18 @@ async def fix_team_assignments(admin_key: str = Header(...)):
                                 'week': game['week'],
                                 'player': player['name'],
                                 'category': category,
-                                'old_team': current_team if current_team else 'None',
+                                'old_team': 'None',
                                 'new_team': game['home_team'],
                                 'section': 'home_stats'
                             })
             
-            # Fix away team assignments - team should match away_team if in away_stats
+            # Fix away team assignments - only if team is missing or empty
             for category in ['passing', 'defense', 'rushing', 'receiving']:
                 if category in game['away_stats']:
                     for i, player in enumerate(game['away_stats'][category]):
                         current_team = player.get('team', '')
-                        # Fix if team doesn't match away_team
-                        if current_team != game['away_team']:
+                        # Only fix if team is missing or empty (don't override manual changes)
+                        if not current_team:
                             game['away_stats'][category][i]['team'] = game['away_team']
                             game_modified = True
                             fixes_made.append({
@@ -1755,7 +1755,7 @@ async def fix_team_assignments(admin_key: str = Header(...)):
                                 'week': game['week'],
                                 'player': player['name'],
                                 'category': category,
-                                'old_team': current_team if current_team else 'None',
+                                'old_team': 'None',
                                 'new_team': game['away_team'],
                                 'section': 'away_stats'
                             })
