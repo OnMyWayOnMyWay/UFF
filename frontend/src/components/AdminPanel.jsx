@@ -926,27 +926,6 @@ const AdminPanel = ({ isOpen, onClose }) => {
                       )}
                     </div>
                   </div>
-                        type="text"
-                        value={playerEdit.newName}
-                        onChange={(e) => setPlayerEdit({ ...playerEdit, newName: e.target.value })}
-                        placeholder="Leave empty to keep name"
-                        className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-gray-400 text-sm font-medium mb-2">
-                        New Team (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={playerEdit.newTeam}
-                        onChange={(e) => setPlayerEdit({ ...playerEdit, newTeam: e.target.value })}
-                        placeholder="Leave empty to keep team"
-                        className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
 
                   {/* Add Stats */}
                   <div className="border border-gray-800 rounded-lg p-4">
