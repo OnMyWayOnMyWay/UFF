@@ -38,6 +38,11 @@ const WeekView = () => {
   const renderStatsTable = (stats, category, columns, teamName) => {
     if (!stats[category] || stats[category].length === 0) return null;
 
+    // Filter players to only show those on this team
+    const teamPlayers = stats[category].filter(player => player.team === teamName);
+    
+    if (teamPlayers.length === 0) return null;
+
     return (
       <div className="mb-6">
         <h4 className="text-lg font-semibold text-emerald-500 mb-3 uppercase tracking-wide">
@@ -54,7 +59,7 @@ const WeekView = () => {
               </tr>
             </thead>
             <tbody>
-              {stats[category].map((player, idx) => (
+              {teamPlayers.map((player, idx) => (
                 <tr key={idx} className="border-b border-gray-800/50 hover:bg-white/5 transition-colors">
                   <td className="font-semibold text-white py-2 px-3">{player.name}</td>
                   {columns.map(col => (
