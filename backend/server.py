@@ -599,6 +599,7 @@ async def get_stats_leaders():
             receiving_yards = sum(s.get('yards', 0) for s in stats['receiving'])
             receiving_tds = sum(s.get('td', 0) for s in stats['receiving'])
             receptions = sum(s.get('rec', 0) for s in stats['receiving'])
+            drops = sum(s.get('drops', 0) for s in stats['receiving'])
             
             tackles = sum(s.get('tak', 0) for s in stats['defense'])
             tackles_for_loss = sum(s.get('tfl', 0) for s in stats['defense'])
@@ -665,6 +666,7 @@ async def get_stats_leaders():
                     'value': receiving_yards,
                     'tds': receiving_tds,
                     'receptions': receptions,
+                    'drops': drops,
                     'games': stats['games_played']
                 })
             
@@ -775,10 +777,10 @@ async def get_player_profile(player_name: str):
             'current_team': None,
             'team_history': [],
             'total_stats': {
-                'passing': {'yards': 0, 'tds': 0, 'ints': 0, 'comp': 0, 'att': 0},
+                'passing': {'yards': 0, 'tds': 0, 'ints': 0, 'comp': 0, 'att': 0, 'scked': 0},
                 'rushing': {'yards': 0, 'tds': 0, 'att': 0},
-                'receiving': {'rec': 0, 'yards': 0, 'tds': 0},
-                'defense': {'tak': 0, 'sacks': 0, 'ints': 0, 'tds': 0}
+                'receiving': {'rec': 0, 'yards': 0, 'tds': 0, 'drops': 0},
+                'defense': {'tak': 0, 'sacks': 0, 'ints': 0, 'tds': 0, 'tfl': 0, 'saf': 0, 'swat': 0, 'pbu': 0}
             },
             'stats_by_team': {},
             'game_log': [],
@@ -816,10 +818,10 @@ async def get_player_profile(player_name: str):
                                     player_data['stats_by_team'][player_team] = {
                                         'games': 0,
                                         'stats': {
-                                            'passing': {'yards': 0, 'tds': 0, 'ints': 0, 'comp': 0, 'att': 0},
+                                            'passing': {'yards': 0, 'tds': 0, 'ints': 0, 'comp': 0, 'att': 0, 'scked': 0},
                                             'rushing': {'yards': 0, 'tds': 0, 'att': 0},
-                                            'receiving': {'rec': 0, 'yards': 0, 'tds': 0},
-                                            'defense': {'tak': 0, 'sacks': 0, 'ints': 0, 'tds': 0}
+                                            'receiving': {'rec': 0, 'yards': 0, 'tds': 0, 'drops': 0},
+                                            'defense': {'tak': 0, 'sacks': 0, 'ints': 0, 'tds': 0, 'tfl': 0, 'saf': 0, 'swat': 0, 'pbu': 0}
                                         }
                                     }
                                 
@@ -1708,7 +1710,7 @@ async def get_raw_game_data(game_id: str, admin_key: str = Header(...)):
 
 @api_router.post("/admin/fix-team-assignments")
 async def fix_team_assignments(admin_key: str = Header(...)):
-    """Fix team assignments for all players in all games based on which stats section they're in"""
+    """Fix team assignments ONLY for players with missing team field - does not overwrite manual team changes"""
     if not await verify_admin(admin_key):
         raise HTTPException(status_code=403, detail="Invalid admin key")
     
@@ -1720,13 +1722,13 @@ async def fix_team_assignments(admin_key: str = Header(...)):
         for game in games:
             game_modified = False
             
-            # Fix home team assignments
+            # Fix home team assignments - only if team field is missing or empty
             for category in ['passing', 'defense', 'rushing', 'receiving']:
                 if category in game['home_stats']:
                     for i, player in enumerate(game['home_stats'][category]):
-                        # If team is missing or wrong, set it to home team
-                        if player.get('team') != game['home_team']:
-                            old_team = player.get('team', 'None')
+                        # Only fix if team is missing or empty string
+                        current_team = player.get('team', '')
+                        if not current_team or current_team == '':
                             game['home_stats'][category][i]['team'] = game['home_team']
                             game_modified = True
                             fixes_made.append({
@@ -1734,18 +1736,18 @@ async def fix_team_assignments(admin_key: str = Header(...)):
                                 'week': game['week'],
                                 'player': player['name'],
                                 'category': category,
-                                'old_team': old_team,
+                                'old_team': 'None',
                                 'new_team': game['home_team'],
                                 'section': 'home_stats'
                             })
             
-            # Fix away team assignments
+            # Fix away team assignments - only if team field is missing or empty
             for category in ['passing', 'defense', 'rushing', 'receiving']:
                 if category in game['away_stats']:
                     for i, player in enumerate(game['away_stats'][category]):
-                        # If team is missing or wrong, set it to away team
-                        if player.get('team') != game['away_team']:
-                            old_team = player.get('team', 'None')
+                        # Only fix if team is missing or empty string
+                        current_team = player.get('team', '')
+                        if not current_team or current_team == '':
                             game['away_stats'][category][i]['team'] = game['away_team']
                             game_modified = True
                             fixes_made.append({
@@ -1753,7 +1755,7 @@ async def fix_team_assignments(admin_key: str = Header(...)):
                                 'week': game['week'],
                                 'player': player['name'],
                                 'category': category,
-                                'old_team': old_team,
+                                'old_team': 'None',
                                 'new_team': game['away_team'],
                                 'section': 'away_stats'
                             })

@@ -194,6 +194,9 @@ const PlayerProfile = () => {
             <p className="text-3xl font-bold text-white mb-1">{player.total_stats.receiving.yards}</p>
             <p className="text-sm text-gray-400">{player.total_stats.receiving.tds} TDs</p>
             <p className="text-xs text-gray-500 mt-2">{player.total_stats.receiving.rec} Receptions</p>
+            {player.total_stats.receiving.drops > 0 && (
+              <p className="text-xs text-red-400 mt-1">Drops: {player.total_stats.receiving.drops}</p>
+            )}
           </div>
         )}
 

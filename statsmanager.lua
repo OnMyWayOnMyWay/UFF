@@ -41,7 +41,7 @@ local STAT_DEFINITIONS = {
 local SUBMISSION_STATS = {
 	passing = {"Completions", "Attempts", "Yards", "Touchdowns", "Interceptions", "Rating"},
 	rushing = {"Attempts", "Yards", "Touchdowns", "Yards Per Carry"},
-	receiving = {"Receptions", "Yards", "Touchdowns"},
+	receiving = {"Receptions", "Yards", "Touchdowns", "Drops"},
 	defense = {"Tackles", "Tackles For Loss", "Sacks", "Safeties", "swat", "Interceptions", "Pass Deflections", "td"}
 }
 
@@ -54,7 +54,6 @@ local API_FIELD_MAPPING = {
 		["Touchdowns"] = "TD",
 		["Interceptions"] = "Int",
 		["Rating"] = "Rating",
-		["SCKED"] = "SCKED"  -- Times Sacked (if tracked separately)
 	},
 	rushing = {
 		["Attempts"] = "Att",
@@ -65,7 +64,8 @@ local API_FIELD_MAPPING = {
 	receiving = {
 		["Receptions"] = "Rec",
 		["Yards"] = "Yards",
-		["Touchdowns"] = "TD"
+		["Touchdowns"] = "TD",
+		["Drops"] = "Drops"
 	},
 	defense = {
 		["Tackles"] = "TAK",

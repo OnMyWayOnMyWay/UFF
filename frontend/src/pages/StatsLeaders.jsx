@@ -96,11 +96,20 @@ const StatsLeaders = () => {
                   {player.receptions !== undefined && (
                     <p className="text-sm text-blue-500 font-semibold">{player.receptions} Rec</p>
                   )}
+                  {player.drops !== undefined && player.drops > 0 && (
+                    <p className="text-sm text-red-400 font-semibold">{player.drops} Drops</p>
+                  )}
                   {player.completion_pct !== undefined && (
                     <p className="text-sm text-cyan-500 font-semibold">{player.completion_pct.toFixed(1)}% Comp</p>
                   )}
+                  {player.ypc !== undefined && activeTab === 'rushing_yards' && (
+                    <p className="text-sm text-orange-500 font-semibold">{player.ypc.toFixed(1)} YPC</p>
+                  )}
+                  {player.yards !== undefined && activeTab === 'yards_per_carry' && (
+                    <p className="text-sm text-orange-500 font-semibold">{player.yards} Yards</p>
+                  )}
                   {player.attempts !== undefined && activeTab === 'yards_per_carry' && (
-                    <p className="text-sm text-orange-500 font-semibold">{player.attempts} Attempts</p>
+                    <p className="text-sm text-gray-400 font-semibold">{player.attempts} Attempts</p>
                   )}
                 </div>
               </div>
