@@ -78,6 +78,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
     week: '',
     notes: ''
   });
+  const [isFixingTeams, setIsFixingTeams] = useState(false);
 
   // Verify admin key
   const verifyAdmin = async () => {
@@ -397,6 +398,33 @@ const AdminPanel = ({ isOpen, onClose }) => {
       toast.success('CSV copied to clipboard!');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to copy CSV');
+    }
+  };
+  
+  // Fix team assignments
+  const handleFixTeamAssignments = async () => {
+    if (!window.confirm('This will scan all games and fix team assignments for players. Players will be assigned to the correct team based on which section (home_stats or away_stats) they appear in. Continue?')) {
+      return;
+    }
+    
+    setIsFixingTeams(true);
+    try {
+      const response = await axios.post(`${API}/admin/fix-team-assignments`, {}, {
+        headers: { 'admin-key': adminKey }
+      });
+      
+      toast.success(`${response.data.message}\nTotal fixes: ${response.data.total_fixes}`, { duration: 5000 });
+      
+      if (response.data.fixes_made && response.data.fixes_made.length > 0) {
+        console.log('Fixes made:', response.data.fixes_made);
+      }
+      
+      // Reload games
+      loadGames();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to fix team assignments');
+    } finally {
+      setIsFixingTeams(false);
     }
   };
   
@@ -1048,6 +1076,25 @@ const AdminPanel = ({ isOpen, onClose }) => {
               {/* Manage Games Tab */}
               {activeTab === 'games' && (
                 <div className="space-y-4">
+                  {/* Fix Team Assignments Button */}
+                  <button
+                    onClick={handleFixTeamAssignments}
+                    disabled={isFixingTeams}
+                    className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center space-x-2 mb-4"
+                  >
+                    {isFixingTeams ? (
+                      <>
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                        <span>Fixing Team Assignments...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-5 h-5" />
+                        <span>Fix All Team Assignments</span>
+                      </>
+                    )}
+                  </button>
+                  
                   {/* Database Stats */}
                   {dbStats && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">

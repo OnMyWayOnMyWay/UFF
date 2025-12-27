@@ -1688,6 +1688,96 @@ async def record_trade(trade: TradeRecord, admin_key: str = Header(...)):
         logger.error(f"Error recording trade: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/admin/game/{game_id}/raw")
+async def get_raw_game_data(game_id: str, admin_key: str = Header(...)):
+    """Get raw game data for debugging team assignments"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        game = await db.games.find_one({"id": game_id}, {"_id": 0})
+        if not game:
+            raise HTTPException(status_code=404, detail="Game not found")
+        
+        return game
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting raw game data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/fix-team-assignments")
+async def fix_team_assignments(admin_key: str = Header(...)):
+    """Fix team assignments for all players in all games based on which stats section they're in"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        updated_count = 0
+        fixes_made = []
+        
+        for game in games:
+            game_modified = False
+            
+            # Fix home team assignments
+            for category in ['passing', 'defense', 'rushing', 'receiving']:
+                if category in game['home_stats']:
+                    for i, player in enumerate(game['home_stats'][category]):
+                        # If team is missing or wrong, set it to home team
+                        if player.get('team') != game['home_team']:
+                            old_team = player.get('team', 'None')
+                            game['home_stats'][category][i]['team'] = game['home_team']
+                            game_modified = True
+                            fixes_made.append({
+                                'game_id': game['id'],
+                                'week': game['week'],
+                                'player': player['name'],
+                                'category': category,
+                                'old_team': old_team,
+                                'new_team': game['home_team'],
+                                'section': 'home_stats'
+                            })
+            
+            # Fix away team assignments
+            for category in ['passing', 'defense', 'rushing', 'receiving']:
+                if category in game['away_stats']:
+                    for i, player in enumerate(game['away_stats'][category]):
+                        # If team is missing or wrong, set it to away team
+                        if player.get('team') != game['away_team']:
+                            old_team = player.get('team', 'None')
+                            game['away_stats'][category][i]['team'] = game['away_team']
+                            game_modified = True
+                            fixes_made.append({
+                                'game_id': game['id'],
+                                'week': game['week'],
+                                'player': player['name'],
+                                'category': category,
+                                'old_team': old_team,
+                                'new_team': game['away_team'],
+                                'section': 'away_stats'
+                            })
+            
+            if game_modified:
+                await db.games.update_one(
+                    {"id": game['id']},
+                    {"$set": game}
+                )
+                updated_count += 1
+        
+        logger.info(f"Fixed team assignments in {updated_count} games, made {len(fixes_made)} fixes")
+        
+        return {
+            "success": True,
+            "message": f"Fixed team assignments in {updated_count} games",
+            "fixes_made": fixes_made[:50],  # Return first 50 fixes
+            "total_fixes": len(fixes_made),
+            "games_updated": updated_count
+        }
+    except Exception as e:
+        logger.error(f"Error fixing team assignments: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/admin/game/{game_id}/csv")
 async def get_game_csv(game_id: str, admin_key: str = Header(...)):
     """Get CSV export for a specific game"""
