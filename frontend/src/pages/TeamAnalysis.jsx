@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Trophy, TrendingUp, TrendingDown, Award, Users, Target, Shield, Zap } from 'lucide-react';
+import { ArrowLeft, Trophy, TrendingUp, TrendingDown, Award, Users, Target, Shield, Zap, MapPinned } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
@@ -13,6 +13,7 @@ const TeamAnalysis = () => {
   const [teamData, setTeamData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [assignment, setAssignment] = useState(null);
 
   useEffect(() => {
     fetchTeamData();
@@ -20,8 +21,19 @@ const TeamAnalysis = () => {
 
   const fetchTeamData = async () => {
     try {
-      const response = await axios.get(`${API}/teams/${teamName}/analysis`);
-      setTeamData(response.data);
+      const [teamRes, assignRes] = await Promise.all([
+        axios.get(`${API}/teams/${teamName}/analysis`),
+        axios.get(`${API}/league/assignments`),
+      ]);
+      setTeamData(teamRes.data);
+      const teamsMap = assignRes.data?.teams || {};
+      if (teamsMap && teamsMap[teamName]) {
+        setAssignment(teamsMap[teamName]);
+      } else {
+        // Try to find by case-insensitive match if direct key not found
+        const found = Object.entries(teamsMap).find(([k]) => k.toLowerCase() === String(teamName).toLowerCase());
+        if (found) setAssignment(found[1]);
+      }
     } catch (error) {
       setError(error.response?.data?.detail || 'Team not found');
     } finally {
@@ -96,6 +108,18 @@ const TeamAnalysis = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold gradient-text mb-1 sm:mb-2">{teamData.name}</h1>
+              <div className="flex items-center flex-wrap gap-2 mb-1">
+                <MapPinned className="w-4 h-4 text-emerald-400" />
+                {assignment ? (
+                  <>
+                    <span className="text-xs sm:text-sm text-gray-300 font-semibold">{assignment.conference} Conference</span>
+                    <span className="text-gray-600">•</span>
+                    <span className="text-xs sm:text-sm text-gray-300 font-semibold">{assignment.division} Division</span>
+                  </>
+                ) : (
+                  <span className="text-xs sm:text-sm text-gray-500">Assignment not available</span>
+                )}
+              </div>
               <p className="text-gray-400 text-sm sm:text-base md:text-lg">Franchise Analysis & Legacy</p>
             </div>
             <div className="text-right">

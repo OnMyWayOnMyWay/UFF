@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Trophy, TrendingUp, TrendingDown, Crown, Medal, Star } from 'lucide-react';
+import { Trophy, TrendingUp, TrendingDown, Crown, Medal, Star, LayoutGrid } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -10,6 +10,7 @@ const Standings = () => {
   const navigate = useNavigate();
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [structure, setStructure] = useState({ Grand Central: { North: [], South: [] }, Ridge: { North: [], South: [] } });
 
   useEffect(() => {
     fetchStandings();
@@ -17,11 +18,18 @@ const Standings = () => {
 
   const fetchStandings = async () => {
     try {
-      const response = await axios.get(`${API}/teams/standings`);
-      const standingsData = response.data || [];
+      const [standingsRes, structureRes] = await Promise.all([
+        axios.get(`${API}/teams/standings`),
+        axios.get(`${API}/league/structure`),
+      ]);
+      const standingsData = standingsRes.data || [];
       setStandings(Array.isArray(standingsData) ? standingsData : []);
+      const s = structureRes.data?.structure;
+      if (s && typeof s === 'object') {
+        setStructure(s);
+      }
     } catch (error) {
-      console.error('Error fetching standings:', error);
+      console.error('Error fetching standings/structure:', error);
       setStandings([]);
     } finally {
       setLoading(false);
@@ -111,6 +119,44 @@ const Standings = () => {
               </span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* League Structure: Conferences & Divisions */}
+      <div className="glass-card mb-6 animate-fadeInUp" style={{ animationDelay: '0.15s' }}>
+        <div className="flex items-center mb-4">
+          <LayoutGrid className="w-5 h-5 text-emerald-400 mr-2" />
+          <h3 className="text-base sm:text-lg font-bold text-white">League Structure</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Object.entries(structure).map(([confName, divisions]) => (
+            <div key={confName} className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <h4 className="text-lg font-bold text-white mb-3">{confName} Conference</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {Object.entries(divisions).map(([divName, teams]) => (
+                  <div key={divName} className="rounded-lg bg-white/5 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-gray-300">{divName} Division</span>
+                      <span className="text-xs text-gray-400">{teams.length} teams</span>
+                    </div>
+                    {teams.length === 0 ? (
+                      <p className="text-gray-500 text-sm">No teams assigned</p>
+                    ) : (
+                      <ul className="space-y-1 text-sm">
+                        {teams.map((t) => (
+                          <li key={t} className="flex justify-between">
+                            <span className="text-white/90 hover:text-emerald-400 transition-colors cursor-pointer" onClick={() => navigate(`/team/${t}`)}>
+                              {t}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
