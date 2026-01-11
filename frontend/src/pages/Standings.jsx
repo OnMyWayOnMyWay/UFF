@@ -51,9 +51,9 @@ const Standings = () => {
 
   // Determine playoff status based on rank
   const getPlayoffStatus = (rank) => {
-    if (rank === 0) return { indicator: 'x', label: 'Clinched Playoffs - 1st Seed', color: 'text-yellow-400', icon: Crown };
-    if (rank === 1) return { indicator: 'y', label: 'Clinched Playoffs - 2nd Seed', color: 'text-emerald-400', icon: Star };
-    if (rank >= 2 && rank <= 9) return { indicator: 'z', label: `Clinched Playoffs - ${rank + 1}${['th', 'st', 'nd', 'rd'][rank + 1] || 'th'} Seed`, color: 'text-blue-400', icon: Medal };
+    if (rank === 0) return { indicator: 'x', label: 'Clinched Playoffs - Conference #1 Seed', color: 'text-yellow-400', icon: Crown };
+    if (rank === 1) return { indicator: 'y', label: 'Clinched Playoffs - Conference #2 Seed', color: 'text-emerald-400', icon: Star };
+    if (rank >= 2 && rank <= 4) return { indicator: 'z', label: `Clinched Playoffs - Conference #${rank + 1} Seed`, color: 'text-blue-400', icon: Medal };
     return null;
   };
 
@@ -88,7 +88,7 @@ const Standings = () => {
           <tbody>
             {standings.map((team, idx) => {
               const playoffStatus = getPlayoffStatus(idx);
-              const isPlayoffTeam = idx < 10 && !compact;
+              const isPlayoffTeam = idx < 5 && !compact;
               const StatusIcon = playoffStatus?.icon;
               
               return (
@@ -110,7 +110,7 @@ const Standings = () => {
                         }`} />
                       )}
                       <span className="font-bold text-gray-400">{idx + 1}</span>
-                      {idx === 9 && !compact && (
+                      {idx === 4 && !compact && (
                         <div className="w-1 h-6 bg-emerald-500/50 ml-2"></div>
                       )}
                     </div>
@@ -198,28 +198,47 @@ const Standings = () => {
         <div className="lg:col-span-2 glass-card p-3 sm:p-4 border-2 border-emerald-500/30">
           <h3 className="text-base sm:text-lg font-bold text-white mb-3 flex items-center">
             <Crown className="w-4 sm:w-5 h-4 sm:h-5 mr-2 text-yellow-400" />
-            Playoff Seeding (Top 10)
+            Playoff Picture (Top 5 per Conference)
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {standings.slice(0, 10).map((team, idx) => {
-              const status = getPlayoffStatus(idx);
-              const StatusIcon = status?.icon;
-              return (
-                <div key={idx} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer text-sm" onClick={() => navigate(`/team/${team.team}`)}>
-                  <div className="flex items-center space-x-2 sm:space-x-3">
-                    <span className="text-gray-400 font-bold w-6">#{idx + 1}</span>
-                    {StatusIcon && <StatusIcon className={`w-3 sm:w-4 h-3 sm:h-4 ${status.color}`} />}
-                    <span className="font-bold text-white">{team.team}</span>
-                    {status && (
-                      <span className={`text-xs font-bold ${status.color}`}>
-                        {status.indicator}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-emerald-400 font-semibold text-sm">{team.wins}-{team.losses}</span>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-emerald-400 font-semibold mb-2">Grand Central</p>
+              <div className="space-y-1">
+                {standings.slice(0, 5).map((team, idx) => {
+                  const status = getPlayoffStatus(idx);
+                  const StatusIcon = status?.icon;
+                  return (
+                    <div key={idx} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer text-xs" onClick={() => navigate(`/team/${team.team}`)}>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-400 font-bold w-5">#{idx + 1}</span>
+                        {StatusIcon && <StatusIcon className={`w-3 h-3 ${status.color}`} />}
+                        <span className="font-bold text-white truncate">{team.team}</span>
+                      </div>
+                      <span className="text-emerald-400 font-semibold">{team.wins}-{team.losses}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-blue-400 font-semibold mb-2">Ridge</p>
+              <div className="space-y-1">
+                {standings.slice(0, 5).map((team, idx) => {
+                  const status = getPlayoffStatus(idx);
+                  const StatusIcon = status?.icon;
+                  return (
+                    <div key={idx} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer text-xs" onClick={() => navigate(`/team/${team.team}`)}>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-400 font-bold w-5">#{idx + 1}</span>
+                        {StatusIcon && <StatusIcon className={`w-3 h-3 ${status.color}`} />}
+                        <span className="font-bold text-white truncate">{team.team}</span>
+                      </div>
+                      <span className="text-emerald-400 font-semibold">{team.wins}-{team.losses}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -232,11 +251,11 @@ const Standings = () => {
             </div>
             <div className="flex justify-between p-2 rounded bg-white/5">
               <span className="text-gray-400">Playoff Teams:</span>
-              <span className="text-emerald-400 font-semibold">10</span>
+              <span className="text-emerald-400 font-semibold">10 (5 per conference)</span>
             </div>
             <div className="flex justify-between p-2 rounded bg-white/5">
-              <span className="text-gray-400">Regular Season:</span>
-              <span className="text-blue-400 font-semibold">8 Weeks</span>
+              <span className="text-gray-400">Conferences:</span>
+              <span className="text-blue-400 font-semibold">2</span>
             </div>
             <div className="flex justify-between p-2 rounded bg-white/5">
               <span className="text-gray-400">Leading Team:</span>
@@ -422,32 +441,31 @@ const Standings = () => {
           </div>
           
           <div className="space-y-2">
-            <h4 className="text-yellow-400 font-semibold mb-2">Playoff Indicators</h4>
+            <h4 className="text-yellow-400 font-semibold mb-2">Conference Playoff Indicators</h4>
             <div className="flex items-center">
               <Crown className="w-4 h-4 text-yellow-400 mr-2" />
               <span className="text-yellow-400 font-bold mr-2">x -</span>
-              <span className="text-white">Clinched Playoffs (1st Seed)</span>
+              <span className="text-white">Conference #1 Seed (Bye)</span>
             </div>
             <div className="flex items-center">
               <Star className="w-4 h-4 text-emerald-400 mr-2" />
               <span className="text-emerald-400 font-bold mr-2">y -</span>
-              <span className="text-white">Clinched Playoffs (2nd Seed)</span>
+              <span className="text-white">Conference #2 Seed</span>
             </div>
             <div className="flex items-center">
               <Medal className="w-4 h-4 text-blue-400 mr-2" />
               <span className="text-blue-400 font-bold mr-2">z -</span>
-              <span className="text-white">Clinched Playoffs (3rd-10th Seed)</span>
+              <span className="text-white">Conference Wildcard (3-5)</span>
             </div>
           </div>
           
           <div className="space-y-2">
             <h4 className="text-purple-400 font-semibold mb-2">Playoff Format</h4>
             <div className="text-gray-300 space-y-1">
-              <p>• Top 10 teams make playoffs</p>
-              <p>• Seeds 1-4: Division Leaders</p>
-              <p>• CC Winners → Seeds 1-2</p>
-              <p>• CC Losers → Seeds 3-4</p>
-              <p>• Seeds 5-10: League Standings</p>
+              <p>• Conference-based playoff system</p>
+              <p>• Top 5 teams per conference qualify</p>
+              <p>• Seed 1 in each conference gets bye</p>
+              <p>• Conference champions meet in final</p>
             </div>
           </div>
         </div>

@@ -355,18 +355,32 @@ const Playoffs = () => {
 
   // Get playoff seeded teams
   const getPlayoffTeams = () => {
-    if (!playoffSeeds || !playoffSeeds.seeds) return [];
-    return playoffSeeds.seeds.map(s => {
-      const teamData = standings.find(st => st.team === s.team);
-      return {
-        ...s,
-        wins: teamData?.wins || 0,
-        losses: teamData?.losses || 0
-      };
-    });
+    if (!playoffSeeds || !playoffSeeds.conferences) return { grandCentral: [], ridge: [] };
+    
+    const gcSeeds = playoffSeeds.conferences["Grand Central"]?.seeds || [];
+    const ridgeSeeds = playoffSeeds.conferences["Ridge"]?.seeds || [];
+    
+    return {
+      grandCentral: gcSeeds.map(s => {
+        const teamData = standings.find(st => st.team === s.team);
+        return {
+          ...s,
+          wins: teamData?.wins || 0,
+          losses: teamData?.losses || 0
+        };
+      }),
+      ridge: ridgeSeeds.map(s => {
+        const teamData = standings.find(st => st.team === s.team);
+        return {
+          ...s,
+          wins: teamData?.wins || 0,
+          losses: teamData?.losses || 0
+        };
+      })
+    };
   };
 
-  const playoffTeams = getPlayoffTeams();
+  const conferenceTeams = getPlayoffTeams();
   const getTeamRecord = (team) => {
     const t = standings.find(s => s.team === team);
     return t ? `${t.wins}-${t.losses}` : '';
@@ -394,41 +408,48 @@ const Playoffs = () => {
         <div className="glass-card p-6 rounded-xl border border-white/10">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
             <Crown className="w-5 h-5 text-yellow-400" />
-            Playoff Seeds (Division Leaders + Top Records)
+            Conference Playoff Seeds
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-            <div className="col-span-1 md:col-span-2 lg:col-span-2">
-              <p className="text-sm text-gray-400 mb-3 font-semibold">Seeds 1-4: Division Leaders (CC Determined)</p>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Grand Central Conference */}
+            <div>
+              <h4 className="text-md font-bold text-emerald-400 mb-3">Grand Central Conference</h4>
               <div className="space-y-2">
-                {playoffTeams.filter(t => t.seed <= 4).map((team, idx) => (
+                {conferenceTeams.grandCentral.map((team, idx) => (
                   <SeedCard 
                     key={idx}
                     seed={team.seed}
                     team={team.team}
                     record={`${team.wins}-${team.losses}`}
-                    isBye={team.seed <= 2}
+                    isBye={team.seed === 1}
                   />
                 ))}
               </div>
             </div>
-            <div className="col-span-1 md:col-span-2 lg:col-span-3">
-              <p className="text-sm text-gray-400 mb-3 font-semibold">Seeds 5-10: League Standings</p>
+
+            {/* Ridge Conference */}
+            <div>
+              <h4 className="text-md font-bold text-blue-400 mb-3">Ridge Conference</h4>
               <div className="space-y-2">
-                {playoffTeams.filter(t => t.seed > 4).map((team, idx) => (
+                {conferenceTeams.ridge.map((team, idx) => (
                   <SeedCard 
                     key={idx}
                     seed={team.seed}
                     team={team.team}
                     record={`${team.wins}-${team.losses}`}
+                    isBye={team.seed === 1}
                   />
                 ))}
               </div>
             </div>
           </div>
-          <div className="text-xs text-gray-500 border-t border-gray-700 pt-3">
-            <p>• <span className="font-semibold">Seeds 1-2:</span> Conference Champions (get bye)</p>
-            <p>• <span className="font-semibold">Seeds 3-4:</span> Division Leaders who lost Championship</p>
-            <p>• <span className="font-semibold">Seeds 5-10:</span> Best remaining records by league standings</p>
+          
+          <div className="text-xs text-gray-500 border-t border-gray-700 pt-3 mt-4">
+            <p>• <span className="font-semibold">Seed 1:</span> Division leader with best record (gets bye)</p>
+            <p>• <span className="font-semibold">Seed 2:</span> Other division leader</p>
+            <p>• <span className="font-semibold">Seeds 3-5:</span> Best remaining records in conference</p>
+            <p>• <span className="font-semibold">Championship:</span> Conference winners face off</p>
           </div>
         </div>
       </div>
