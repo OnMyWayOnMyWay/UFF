@@ -10,7 +10,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [adminKey, setAdminKey] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [activeTab, setActiveTab] = useState('reset'); // reset, edit, games, roblox, admins, merge, weekstats, gamestats, creategame, tools, analytics
+  const [activeTab, setActiveTab] = useState('reset'); // reset, edit, games, roblox, admins, merge, weekstats, gamestats, creategame, tools, audit, analytics
   const [isVerified, setIsVerified] = useState(false);
   const [adminInfo, setAdminInfo] = useState(null);
   
@@ -104,6 +104,20 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
+  // League setup state
+  const [leagueAssignments, setLeagueAssignments] = useState({});
+  const [teamAssignment, setTeamAssignment] = useState({
+    team: '',
+    conference: 'Grand Central',
+    division: 'North'
+  });
+
+  // Admin Audit Log State
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditActionFilter, setAuditActionFilter] = useState('');
+  const [auditLimit, setAuditLimit] = useState(100);
+
   // Game Stats Edit State
   const [gameStatsEdit, setGameStatsEdit] = useState({
     week: '',
@@ -188,6 +202,10 @@ const AdminPanel = ({ isOpen, onClose }) => {
       loadPlayerNames();
       loadTeams();
     }
+    if (isVerified && activeTab === 'league') {
+      loadTeams();
+      loadLeagueAssignments();
+    }
     if (isVerified && activeTab === 'gamestats') {
       loadWeeksWithGames();
       loadPlayerNames();
@@ -222,6 +240,33 @@ const AdminPanel = ({ isOpen, onClose }) => {
       setAllTeams(response.data.teams || []);
     } catch (error) {
       console.error('Failed to load teams:', error);
+    }
+  };
+
+  // Load league assignments
+  const loadLeagueAssignments = async () => {
+    try {
+      const response = await axios.get(`${API}/league/assignments`);
+      setLeagueAssignments(response.data.teams || {});
+    } catch (error) {
+      console.error('Failed to load league assignments:', error);
+      toast.error('Failed to load league setup');
+    }
+  };
+
+  const saveTeamAssignment = async () => {
+    if (!teamAssignment.team) {
+      toast.error('Select a team to assign');
+      return;
+    }
+    try {
+      await axios.put(`${API}/admin/league/assign`, teamAssignment, {
+        headers: { 'admin-key': adminKey }
+      });
+      toast.success('Team assignment saved');
+      loadLeagueAssignments();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save assignment');
     }
   };
   
@@ -1128,10 +1173,37 @@ const AdminPanel = ({ isOpen, onClose }) => {
     }
   };
 
+  const loadAuditLogs = async (opts = {}) => {
+    if (!isVerified) return;
+
+    const limit = typeof opts.limit === 'number' ? opts.limit : auditLimit;
+    const action = typeof opts.action === 'string' ? opts.action : auditActionFilter;
+
+    setAuditLoading(true);
+    try {
+      const response = await axios.get(`${API}/admin/audit`, {
+        headers: { 'admin-key': adminKey },
+        params: {
+          limit,
+          action: action || undefined
+        }
+      });
+      setAuditLogs(Array.isArray(response.data?.logs) ? response.data.logs : []);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to load audit log');
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
   // Load analytics when tab is opened
   useEffect(() => {
     if (activeTab === 'analytics' && isVerified && !analytics) {
       loadAnalytics();
+    }
+
+    if (activeTab === 'audit' && isVerified && auditLogs.length === 0 && !auditLoading) {
+      loadAuditLogs();
     }
   }, [activeTab, isVerified]);
 
@@ -1252,6 +1324,17 @@ const AdminPanel = ({ isOpen, onClose }) => {
                 </button>
               )}
               <button
+                onClick={() => setActiveTab('league')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  activeTab === 'league' 
+                    ? 'bg-sky-500 text-white' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <Copy className="w-4 h-4 inline mr-2" />
+                League Setup
+              </button>
+              <button
                 onClick={() => setActiveTab('merge')}
                 className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
                   activeTab === 'merge' 
@@ -1307,6 +1390,17 @@ const AdminPanel = ({ isOpen, onClose }) => {
                 Advanced Tools
               </button>
               <button
+                onClick={() => setActiveTab('audit')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  activeTab === 'audit' 
+                    ? 'bg-slate-500 text-white' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <FileText className="w-4 h-4 inline mr-2" />
+                Audit Log
+              </button>
+              <button
                 onClick={() => setActiveTab('analytics')}
                 className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
                   activeTab === 'analytics' 
@@ -1321,6 +1415,77 @@ const AdminPanel = ({ isOpen, onClose }) => {
 
             {/* Tab Content */}
             <div className="space-y-4">
+              {/* League Setup Tab */}
+              {activeTab === 'league' && (
+                <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                  <h3 className="text-white font-semibold mb-3">Assign Teams to Conferences & Divisions</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-gray-400 text-sm block mb-1">Team</label>
+                      <select
+                        value={teamAssignment.team}
+                        onChange={(e) => setTeamAssignment({ ...teamAssignment, team: e.target.value })}
+                        className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-2 text-white"
+                      >
+                        <option value="">Select team</option>
+                        {allTeams.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-sm block mb-1">Conference</label>
+                      <select
+                        value={teamAssignment.conference}
+                        onChange={(e) => setTeamAssignment({ ...teamAssignment, conference: e.target.value })}
+                        className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-2 text-white"
+                      >
+                        <option value="Grand Central">Grand Central</option>
+                        <option value="Ridge">The Ridge</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-sm block mb-1">Division</label>
+                      <select
+                        value={teamAssignment.division}
+                        onChange={(e) => setTeamAssignment({ ...teamAssignment, division: e.target.value })}
+                        className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-2 text-white"
+                      >
+                        <option value="North">North</option>
+                        <option value="South">South</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <button onClick={saveTeamAssignment} className="bg-sky-500 hover:bg-sky-600 text-white font-semibold px-6 py-2 rounded-lg">Save Assignment</button>
+                  </div>
+
+                  <div className="mt-6">
+                    <h4 className="text-white font-semibold mb-2">Current Setup</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {['Grand Central','Ridge'].map(conf => (
+                        <div key={conf} className="bg-[#101011] border border-gray-800 rounded-lg p-3">
+                          <p className="text-gray-300 font-medium mb-2">{conf} Conference</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            {['North','South'].map(div => (
+                              <div key={div}>
+                                <p className="text-gray-400 text-sm mb-1">{div} Division</p>
+                                <ul className="text-white text-sm space-y-1">
+                                  {Object.entries(leagueAssignments)
+                                    .filter(([team, info]) => info.conference === conf && info.division === div)
+                                    .map(([team]) => (
+                                      <li key={`${conf}-${div}-${team}`}>• {team}</li>
+                                    ))}
+                                </ul>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Reset Season Tab */}
               {activeTab === 'reset' && (
                 <div>
@@ -2741,6 +2906,99 @@ const AdminPanel = ({ isOpen, onClose }) => {
                             ))}
                           </div>
                         )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Audit Log Tab */}
+              {activeTab === 'audit' && (
+                <div className="space-y-4">
+                  <div className="bg-slate-500/10 border border-slate-500/20 rounded-lg p-4 mb-4">
+                    <p className="text-slate-300 text-sm">
+                      <strong>Audit Log:</strong> Tracks admin actions like edits, deletes, trades, and bulk operations.
+                    </p>
+                  </div>
+
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                      <div className="flex-1">
+                        <label className="block text-gray-400 text-sm mb-1">Filter by Action (optional)</label>
+                        <input
+                          type="text"
+                          value={auditActionFilter}
+                          onChange={(e) => setAuditActionFilter(e.target.value)}
+                          placeholder="e.g. delete_game, record_trade"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-slate-500"
+                        />
+                      </div>
+
+                      <div className="w-full md:w-40">
+                        <label className="block text-gray-400 text-sm mb-1">Limit</label>
+                        <select
+                          value={auditLimit}
+                          onChange={(e) => setAuditLimit(parseInt(e.target.value))}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-slate-500"
+                        >
+                          {[25, 50, 100, 200].map((n) => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <button
+                        onClick={() => loadAuditLogs({ limit: auditLimit, action: auditActionFilter })}
+                        disabled={auditLoading}
+                        className="w-full md:w-auto bg-slate-500 hover:bg-slate-600 disabled:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center space-x-2"
+                      >
+                        {auditLoading ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>Loading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4" />
+                            <span>Refresh</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-semibold mb-3 flex items-center">
+                      <FileText className="w-4 h-4 mr-2 text-slate-300" />
+                      Recent Entries
+                    </h3>
+
+                    {auditLoading ? (
+                      <div className="text-center py-10">
+                        <RefreshCw className="w-8 h-8 animate-spin text-gray-500 mx-auto mb-2" />
+                        <p className="text-gray-400">Loading audit log...</p>
+                      </div>
+                    ) : auditLogs.length === 0 ? (
+                      <p className="text-gray-400 text-sm">No audit entries found.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[420px] overflow-y-auto">
+                        {auditLogs.map((log, idx) => (
+                          <div key={log.id || idx} className="bg-[#1a1a1b] border border-gray-800 rounded-lg p-3">
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-semibold">{log.action}</span>
+                                <span className="text-xs text-gray-400">by {log.admin_username || 'Unknown'}</span>
+                              </div>
+                              <span className="text-xs text-gray-500">{(log.timestamp || '').replace('T', ' ').replace('Z', '')}</span>
+                            </div>
+
+                            {log.details && Object.keys(log.details).length > 0 && (
+                              <pre className="mt-2 text-xs text-gray-300 bg-black/30 border border-gray-800 rounded p-2 overflow-x-auto max-h-40">
+{JSON.stringify(log.details, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

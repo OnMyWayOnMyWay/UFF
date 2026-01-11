@@ -48,18 +48,18 @@ const Standings = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
+    <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-8 animate-fadeInUp">
-        <h1 className="text-4xl lg:text-5xl font-bold gradient-text mb-2">Team Standings</h1>
-        <p className="text-gray-400">Current season rankings and records</p>
+      <div className="mb-6 sm:mb-8 animate-fadeInUp">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold gradient-text mb-1 sm:mb-2">Team Standings</h1>
+        <p className="text-gray-400 text-sm sm:text-base">Current season rankings and records</p>
       </div>
 
       {/* Playoff Picture */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6 animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
-        <div className="lg:col-span-2 glass-card p-4 border-2 border-emerald-500/30">
-          <h3 className="text-lg font-bold text-white mb-3 flex items-center">
-            <Crown className="w-5 h-5 mr-2 text-yellow-400" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6 animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
+        <div className="lg:col-span-2 glass-card p-3 sm:p-4 border-2 border-emerald-500/30">
+          <h3 className="text-base sm:text-lg font-bold text-white mb-3 flex items-center">
+            <Crown className="w-4 sm:w-5 h-4 sm:h-5 mr-2 text-yellow-400" />
             Playoff Seeding (Top 10)
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -67,10 +67,10 @@ const Standings = () => {
               const status = getPlayoffStatus(idx);
               const StatusIcon = status?.icon;
               return (
-                <div key={idx} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer" onClick={() => navigate(`/team/${team.team}`)}>
-                  <div className="flex items-center space-x-3">
+                <div key={idx} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer text-sm" onClick={() => navigate(`/team/${team.team}`)}>
+                  <div className="flex items-center space-x-2 sm:space-x-3">
                     <span className="text-gray-400 font-bold w-6">#{idx + 1}</span>
-                    {StatusIcon && <StatusIcon className={`w-4 h-4 ${status.color}`} />}
+                    {StatusIcon && <StatusIcon className={`w-3 sm:w-4 h-3 sm:h-4 ${status.color}`} />}
                     <span className="font-bold text-white">{team.team}</span>
                     {status && (
                       <span className={`text-xs font-bold ${status.color}`}>
@@ -78,16 +78,16 @@ const Standings = () => {
                       </span>
                     )}
                   </div>
-                  <span className="text-emerald-400 font-semibold">{team.wins}-{team.losses}</span>
+                  <span className="text-emerald-400 font-semibold text-sm">{team.wins}-{team.losses}</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="glass-card p-4">
-          <h3 className="text-lg font-bold text-white mb-3">Quick Stats</h3>
-          <div className="space-y-2 text-sm">
+        <div className="glass-card p-3 sm:p-4">
+          <h3 className="text-base sm:text-lg font-bold text-white mb-3">Quick Stats</h3>
+          <div className="space-y-2 text-xs sm:text-sm">
             <div className="flex justify-between p-2 rounded bg-white/5">
               <span className="text-gray-400">Total Teams:</span>
               <span className="text-white font-semibold">{standings.length}</span>

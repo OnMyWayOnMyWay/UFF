@@ -136,7 +136,7 @@ const StatsLeaders = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
+    <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-8 animate-fadeInUp">
         <h1 className="text-4xl lg:text-5xl font-bold gradient-text mb-2">Stats Leaders</h1>

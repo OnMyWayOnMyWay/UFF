@@ -355,7 +355,7 @@ const Playoffs = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-8 text-center">
         <div className="inline-flex items-center justify-center gap-3 mb-4">

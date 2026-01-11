@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Trophy, BarChart3, Users, Calendar, Settings, X, Menu, Crown } from 'lucide-react';
+import { Trophy, BarChart3, Users, Calendar, Settings, X, Menu, Crown, Search } from 'lucide-react';
 
 const Sidebar = ({ onAdminOpen }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,6 +9,7 @@ const Sidebar = ({ onAdminOpen }) => {
 
   const menuItems = [
     { icon: BarChart3, label: 'Dashboard', path: '/' },
+    { icon: Search, label: 'Player Stats', path: '/player-stats' },
     { icon: Trophy, label: 'Stats Leaders', path: '/stats-leaders' },
     { icon: Users, label: 'Team Standings', path: '/standings' },
     { icon: Calendar, label: 'Schedule', path: '/schedule' },
