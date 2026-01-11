@@ -127,13 +127,6 @@ const TeamAnalysis = () => {
         }}
       />
 
-      {/* Large Background Logo */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 opacity-5 pointer-events-none">
-        <div className="text-[500px] font-bold text-white">
-          {teamName?.charAt(0) || 'T'}
-        </div>
-      </div>
-
       {/* Logo and Team Badge in Middle */}
       <div className="fixed top-24 left-1/2 -translate-x-1/2 z-10 text-center">
         <div
