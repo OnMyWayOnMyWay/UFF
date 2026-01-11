@@ -2757,8 +2757,12 @@ async def get_playoff_seeds():
         # Sort wildcards by wins and tiebreakers
         wildcard_teams.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
         
-        # Add up to 6 wildcards to get 10 total seeds (2 champs + 2 finalists + 6 wildcards)
-        for wildcard in wildcard_teams[:6]:
+        # Add wildcards to reach 10 total seeds
+        # If we have fewer than 10 seeds so far, add wildcards to reach 10
+        remaining_seeds_needed = 10 - len(all_seeds)
+        wildcards_to_add = min(remaining_seeds_needed, len(wildcard_teams))
+        
+        for wildcard in wildcard_teams[:wildcards_to_add]:
             all_seeds.append({
                 "seed": seed_num,
                 "team": wildcard["team"],
