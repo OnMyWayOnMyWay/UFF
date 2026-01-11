@@ -751,6 +751,7 @@ const Playoffs = () => {
             </div>
           </div>
         </div>
+      </div>
     </div>
   );
 };
