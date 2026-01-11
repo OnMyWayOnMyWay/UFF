@@ -104,6 +104,14 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
+  // League setup state
+  const [leagueAssignments, setLeagueAssignments] = useState({});
+  const [teamAssignment, setTeamAssignment] = useState({
+    team: '',
+    conference: 'Grand Central',
+    division: 'North'
+  });
+
   // Admin Audit Log State
   const [auditLogs, setAuditLogs] = useState([]);
   const [auditLoading, setAuditLoading] = useState(false);
@@ -194,6 +202,10 @@ const AdminPanel = ({ isOpen, onClose }) => {
       loadPlayerNames();
       loadTeams();
     }
+    if (isVerified && activeTab === 'league') {
+      loadTeams();
+      loadLeagueAssignments();
+    }
     if (isVerified && activeTab === 'gamestats') {
       loadWeeksWithGames();
       loadPlayerNames();
@@ -228,6 +240,33 @@ const AdminPanel = ({ isOpen, onClose }) => {
       setAllTeams(response.data.teams || []);
     } catch (error) {
       console.error('Failed to load teams:', error);
+    }
+  };
+
+  // Load league assignments
+  const loadLeagueAssignments = async () => {
+    try {
+      const response = await axios.get(`${API}/league/assignments`);
+      setLeagueAssignments(response.data.teams || {});
+    } catch (error) {
+      console.error('Failed to load league assignments:', error);
+      toast.error('Failed to load league setup');
+    }
+  };
+
+  const saveTeamAssignment = async () => {
+    if (!teamAssignment.team) {
+      toast.error('Select a team to assign');
+      return;
+    }
+    try {
+      await axios.put(`${API}/admin/league/assign`, teamAssignment, {
+        headers: { 'admin-key': adminKey }
+      });
+      toast.success('Team assignment saved');
+      loadLeagueAssignments();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save assignment');
     }
   };
   
@@ -1285,6 +1324,17 @@ const AdminPanel = ({ isOpen, onClose }) => {
                 </button>
               )}
               <button
+                onClick={() => setActiveTab('league')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  activeTab === 'league' 
+                    ? 'bg-sky-500 text-white' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <Copy className="w-4 h-4 inline mr-2" />
+                League Setup
+              </button>
+              <button
                 onClick={() => setActiveTab('merge')}
                 className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
                   activeTab === 'merge' 
@@ -1365,6 +1415,77 @@ const AdminPanel = ({ isOpen, onClose }) => {
 
             {/* Tab Content */}
             <div className="space-y-4">
+              {/* League Setup Tab */}
+              {activeTab === 'league' && (
+                <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                  <h3 className="text-white font-semibold mb-3">Assign Teams to Conferences & Divisions</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-gray-400 text-sm block mb-1">Team</label>
+                      <select
+                        value={teamAssignment.team}
+                        onChange={(e) => setTeamAssignment({ ...teamAssignment, team: e.target.value })}
+                        className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-2 text-white"
+                      >
+                        <option value="">Select team</option>
+                        {allTeams.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-sm block mb-1">Conference</label>
+                      <select
+                        value={teamAssignment.conference}
+                        onChange={(e) => setTeamAssignment({ ...teamAssignment, conference: e.target.value })}
+                        className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-2 text-white"
+                      >
+                        <option value="Grand Central">Grand Central</option>
+                        <option value="Ridge">The Ridge</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-sm block mb-1">Division</label>
+                      <select
+                        value={teamAssignment.division}
+                        onChange={(e) => setTeamAssignment({ ...teamAssignment, division: e.target.value })}
+                        className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-2 text-white"
+                      >
+                        <option value="North">North</option>
+                        <option value="South">South</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <button onClick={saveTeamAssignment} className="bg-sky-500 hover:bg-sky-600 text-white font-semibold px-6 py-2 rounded-lg">Save Assignment</button>
+                  </div>
+
+                  <div className="mt-6">
+                    <h4 className="text-white font-semibold mb-2">Current Setup</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {['Grand Central','Ridge'].map(conf => (
+                        <div key={conf} className="bg-[#101011] border border-gray-800 rounded-lg p-3">
+                          <p className="text-gray-300 font-medium mb-2">{conf} Conference</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            {['North','South'].map(div => (
+                              <div key={div}>
+                                <p className="text-gray-400 text-sm mb-1">{div} Division</p>
+                                <ul className="text-white text-sm space-y-1">
+                                  {Object.entries(leagueAssignments)
+                                    .filter(([team, info]) => info.conference === conf && info.division === div)
+                                    .map(([team]) => (
+                                      <li key={`${conf}-${div}-${team}`}>• {team}</li>
+                                    ))}
+                                </ul>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Reset Season Tab */}
               {activeTab === 'reset' && (
                 <div>

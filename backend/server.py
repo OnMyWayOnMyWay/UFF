@@ -16,6 +16,7 @@ import csv
 import io
 import secrets
 import string
+from collections import defaultdict
 
 
 ROOT_DIR = Path(__file__).parent
@@ -117,6 +118,15 @@ class WeekStatEdit(BaseModel):
     team_side: str  # 'home' or 'away'
     category: str  # 'passing', 'rushing', 'receiving', 'defense'
     stats: Dict[str, Any]  # New stats to set for this player in this specific week
+
+# League models
+class TeamAssignment(BaseModel):
+    team: str
+    conference: str  # e.g., 'Grand Central' or 'Ridge'
+    division: str    # 'North' or 'South'
+
+class BulkTeamAssignments(BaseModel):
+    assignments: Dict[str, Dict[str, str]]  # {team: {conference: str, division: str}}
 
 class BulkDeleteRequest(BaseModel):
     week_start: int
@@ -2114,6 +2124,238 @@ async def get_all_teams(admin_key: str = Header(...)):
         return {"teams": sorted(list(teams))}
     except Exception as e:
         logger.error(f"Error getting teams: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ---- League assignments & playoffs ----
+
+DEFAULT_ASSIGNMENTS = {
+    # Grand Central Conference
+    "Columbus Colts": {"conference": "Grand Central", "division": "North"},
+    "Saskatoon Stampede": {"conference": "Grand Central", "division": "North"},
+    "Valor City Spartans": {"conference": "Grand Central", "division": "North"},
+    "Laredo Longhorns": {"conference": "Grand Central", "division": "North"},
+    "Evergreen Stags": {"conference": "Grand Central", "division": "South"},
+    "Seattle Skyclaws": {"conference": "Grand Central", "division": "South"},
+    "San Diego Devils": {"conference": "Grand Central", "division": "South"},
+    "North Dakota Colonels": {"conference": "Grand Central", "division": "South"},
+    # Ridge Conference
+    "Vicksburg Vortex": {"conference": "Ridge", "division": "North"},
+    "Nashville Nightmares": {"conference": "Ridge", "division": "North"},
+    "Giddings Buffaloes": {"conference": "Ridge", "division": "North"},
+    "Eastvale Enclave": {"conference": "Ridge", "division": "North"},
+    "New York Guardians": {"conference": "Ridge", "division": "South"},
+    "Portland Steel": {"conference": "Ridge", "division": "South"},
+    "Richmond Rebellion": {"conference": "Ridge", "division": "South"},
+    "Egypt Pharaohs": {"conference": "Ridge", "division": "South"},
+}
+
+async def _load_assignments() -> Dict[str, Dict[str, str]]:
+    doc = await db.league.find_one({"_id": "team_assignments"})
+    if doc and "teams" in doc:
+        return doc["teams"]
+    # Initialize defaults if none
+    await db.league.update_one(
+        {"_id": "team_assignments"},
+        {"$set": {"type": "team_assignments", "teams": DEFAULT_ASSIGNMENTS}},
+        upsert=True,
+    )
+    return DEFAULT_ASSIGNMENTS
+
+async def _save_assignment(team: str, conference: str, division: str):
+    assignments = await _load_assignments()
+    assignments[team] = {"conference": conference, "division": division}
+    await db.league.update_one(
+        {"_id": "team_assignments"},
+        {"$set": {"teams": assignments}},
+        upsert=True,
+    )
+
+def _calculate_standings_from_games(games: List[Dict[str, Any]]):
+    team_records: Dict[str, Dict[str, Any]] = defaultdict(lambda: {
+        "wins": 0, "losses": 0, "points_for": 0, "points_against": 0
+    })
+    for game in games:
+        home = game["home_team"]
+        away = game["away_team"]
+        if game["home_score"] > game["away_score"]:
+            team_records[home]["wins"] += 1
+            team_records[away]["losses"] += 1
+        else:
+            team_records[away]["wins"] += 1
+            team_records[home]["losses"] += 1
+        team_records[home]["points_for"] += game["home_score"]
+        team_records[home]["points_against"] += game["away_score"]
+        team_records[away]["points_for"] += game["away_score"]
+        team_records[away]["points_against"] += game["home_score"]
+    standings: List[Dict[str, Any]] = []
+    for team, record in team_records.items():
+        gp = record["wins"] + record["losses"]
+        win_pct = record["wins"] / gp if gp > 0 else 0
+        standings.append({
+            "team": team,
+            "wins": record["wins"],
+            "losses": record["losses"],
+            "win_pct": round(win_pct, 3),
+            "points_for": record["points_for"],
+            "points_against": record["points_against"],
+            "point_diff": record["points_for"] - record["points_against"],
+        })
+    standings.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
+    return standings
+
+def _h2h_record(games: List[Dict[str, Any]], a: str, b: str) -> Dict[str, int]:
+    res = {a: 0, b: 0}
+    for g in games:
+        pair = {g["home_team"], g["away_team"]}
+        if a in pair and b in pair:
+            winner = g["home_team"] if g["home_score"] > g["away_score"] else g["away_team"]
+            res[winner] += 1
+    return res
+
+def _choose_between(games: List[Dict[str, Any]], a_info: Dict[str, Any], b_info: Dict[str, Any]):
+    # Choose winner by wins, then H2H, then point diff
+    if a_info["wins"] != b_info["wins"]:
+        return a_info if a_info["wins"] > b_info["wins"] else b_info
+    h2h = _h2h_record(games, a_info["team"], b_info["team"])
+    if h2h[a_info["team"]] != h2h[b_info["team"]]:
+        return a_info if h2h[a_info["team"]] > h2h[b_info["team"]] else b_info
+    if a_info["point_diff"] != b_info["point_diff"]:
+        return a_info if a_info["point_diff"] > b_info["point_diff"] else b_info
+    # Last resort: alphabetical
+    return a_info if a_info["team"] < b_info["team"] else b_info
+
+@api_router.get("/league/assignments")
+async def get_league_assignments():
+    """Public: get team -> conference/division mapping"""
+    try:
+        teams = await _load_assignments()
+        return {"teams": teams}
+    except Exception as e:
+        logger.error(f"Error getting league assignments: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/league/structure")
+async def get_league_structure():
+    """Group teams by conference/division"""
+    try:
+        teams = await _load_assignments()
+        structure: Dict[str, Dict[str, List[str]]] = {
+            "Grand Central": {"North": [], "South": []},
+            "Ridge": {"North": [], "South": []},
+        }
+        for team, info in teams.items():
+            conf = info.get("conference")
+            div = info.get("division")
+            if conf in structure and div in structure[conf]:
+                structure[conf][div].append(team)
+        # Sort for consistency
+        for conf in structure:
+            for div in structure[conf]:
+                structure[conf][div].sort()
+        return {"structure": structure}
+    except Exception as e:
+        logger.error(f"Error building league structure: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/admin/league/assign")
+async def assign_team_division(request: TeamAssignment, admin_key: str = Header(...)):
+    """Admin: assign a single team to conference/division"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    try:
+        await _save_assignment(request.team, request.conference, request.division)
+        await log_admin_action(
+            admin_key,
+            "assign_team_division",
+            {"team": request.team, "conference": request.conference, "division": request.division},
+        )
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Error assigning team: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/admin/league/assignments")
+async def bulk_assign_teams(request: BulkTeamAssignments, admin_key: str = Header(...)):
+    """Admin: bulk replace team assignments"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    try:
+        await db.league.update_one(
+            {"_id": "team_assignments"},
+            {"$set": {"type": "team_assignments", "teams": request.assignments}},
+            upsert=True,
+        )
+        await log_admin_action(admin_key, "bulk_assignments", {"teams": list(request.assignments.keys())})
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Error bulk assigning teams: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/playoffs/seeds")
+async def get_playoff_seeds():
+    """Compute playoff seeds: 1-4 from division leaders (CC winners -> 1-2, losers -> 3-4); rest by league standings."""
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        assignments = await _load_assignments()
+        standings = _calculate_standings_from_games(games)
+        standings_by_team = {s["team"]: s for s in standings}
+
+        # Group teams by conference/division
+        conf_div: Dict[str, Dict[str, List[str]]] = defaultdict(lambda: defaultdict(list))
+        for team, info in assignments.items():
+            conf_div[info["conference"]][info["division"]].append(team)
+
+        # Find division leaders (by best standings)
+        division_leaders: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        for conf in conf_div:
+            division_leaders[conf] = {}
+            for div, teams in conf_div[conf].items():
+                candidates = [standings_by_team[t] for t in teams if t in standings_by_team]
+                if not candidates:
+                    continue
+                leader = max(candidates, key=lambda x: (x["wins"], x["point_diff"]))
+                division_leaders[conf][div] = leader
+
+        # For each conference, choose CC winner between its two division leaders
+        top_four: List[Dict[str, Any]] = []
+        cc_winners: List[Dict[str, Any]] = []
+        cc_losers: List[Dict[str, Any]] = []
+        for conf in division_leaders:
+            north = division_leaders[conf].get("North")
+            south = division_leaders[conf].get("South")
+            if not north or not south:
+                continue
+            winner = _choose_between(games, north, south)
+            loser = south if winner["team"] == north["team"] else north
+            cc_winners.append(winner)
+            cc_losers.append(loser)
+
+        # Order winners 1-2, losers 3-4
+        cc_winners.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
+        cc_losers.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
+        top_four = cc_winners + cc_losers
+
+        # Remaining seeds by league standings
+        top_four_teams = {t["team"] for t in top_four}
+        remaining = [s for s in standings if s["team"] not in top_four_teams]
+
+        # Build final seed list
+        seeds = []
+        seed_no = 1
+        for s in top_four:
+            seeds.append({"seed": seed_no, "team": s["team"], "source": "CC winner" if seed_no <= 2 else "CC loser"})
+            seed_no += 1
+        for s in remaining:
+            seeds.append({"seed": seed_no, "team": s["team"], "source": "league"})
+            seed_no += 1
+
+        return {
+            "seeds": seeds,
+            "division_leaders": division_leaders,
+            "standings": standings,
+        }
+    except Exception as e:
+        logger.error(f"Error computing playoff seeds: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/admin/detect-userids")
