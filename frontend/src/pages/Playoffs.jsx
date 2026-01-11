@@ -206,6 +206,122 @@ const Playoffs = () => {
     );
   };
 
+  const BracketMatchCard = ({
+    title,
+    game,
+    seedTop,
+    seedBottom,
+    teamTop,
+    teamBottom,
+    recordTop,
+    recordBottom,
+    variant = 'default', // default | final
+    compact = false,
+    accentClass = 'bg-slate-300'
+  }) => {
+    const isTbd = !game && !teamTop && !teamBottom;
+
+    const rows = (() => {
+      if (game) {
+        const topTeam = game.home_team;
+        const bottomTeam = game.away_team;
+        const topScore = game.home_score;
+        const bottomScore = game.away_score;
+        const topWin = topScore > bottomScore;
+        const bottomWin = bottomScore > topScore;
+        return {
+          top: { name: topTeam, score: topScore, win: topWin },
+          bottom: { name: bottomTeam, score: bottomScore, win: bottomWin },
+          status: game.game_date ? new Date(game.game_date).toLocaleDateString() : null
+        };
+      }
+
+      return {
+        top: { name: teamTop || 'TBD', score: null, win: false },
+        bottom: { name: teamBottom || 'TBD', score: null, win: false },
+        status: null
+      };
+    })();
+
+    const seedChip = (seed) => {
+      if (!seed) return null;
+      return (
+        <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-bold">
+          {seed}
+        </div>
+      );
+    };
+
+    return (
+      <div
+        className={
+          variant === 'final'
+            ? 'relative rounded-2xl overflow-hidden shadow-lg border border-slate-200 bg-white'
+            : 'relative rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-white'
+        }
+      >
+        {variant !== 'final' && (
+          <div className={`absolute left-0 top-0 h-full w-[5px] ${accentClass}`} />
+        )}
+        {title && (
+          <div className="px-4 py-2 text-[11px] font-semibold tracking-widest text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+            {title}
+          </div>
+        )}
+
+        {variant === 'final' && (
+          <div className="px-4 py-3 bg-gradient-to-br from-fuchsia-500 via-pink-500 to-amber-400 text-white">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold tracking-widest uppercase opacity-90">Final</div>
+              <Trophy className="w-4 h-4" />
+            </div>
+          </div>
+        )}
+
+        <div className={compact ? 'p-3' : 'p-4'}>
+          {isTbd ? (
+            <div className="h-16 flex items-center justify-center text-slate-400 text-sm font-medium">TBD</div>
+          ) : (
+            <div className="space-y-2">
+              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${rows.top.win ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200'}`}>
+                <div className="flex items-center gap-2 min-w-0">
+                  {seedChip(seedTop)}
+                  <div className="min-w-0">
+                    <div className={`text-sm font-semibold truncate ${rows.top.win ? 'text-emerald-700' : 'text-slate-800'}`}>{rows.top.name}</div>
+                    {recordTop && !game && <div className="text-[11px] text-slate-500">{recordTop}</div>}
+                  </div>
+                </div>
+                {rows.top.score !== null && (
+                  <div className={`text-sm font-bold ${rows.top.win ? 'text-emerald-700' : 'text-slate-600'}`}>{rows.top.score}</div>
+                )}
+              </div>
+
+              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${rows.bottom.win ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200'}`}>
+                <div className="flex items-center gap-2 min-w-0">
+                  {seedChip(seedBottom)}
+                  <div className="min-w-0">
+                    <div className={`text-sm font-semibold truncate ${rows.bottom.win ? 'text-emerald-700' : 'text-slate-800'}`}>{rows.bottom.name}</div>
+                    {recordBottom && !game && <div className="text-[11px] text-slate-500">{recordBottom}</div>}
+                  </div>
+                </div>
+                {rows.bottom.score !== null && (
+                  <div className={`text-sm font-bold ${rows.bottom.win ? 'text-emerald-700' : 'text-slate-600'}`}>{rows.bottom.score}</div>
+                )}
+              </div>
+
+              {rows.status && (
+                <div className="pt-1 text-[11px] text-slate-500 flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  {rows.status}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
@@ -264,120 +380,132 @@ const Playoffs = () => {
 
       {/* Bracket Container */}
       <div className="max-w-7xl mx-auto">
-        {/* Desktop View - NFL Style */}
+        {/* Desktop View - NFL-inspired (original) */}
         <div className="hidden lg:block">
-          <div className="grid grid-cols-9 gap-3 items-center">
-            {/* Wildcard Round - Week 9 (Left Side) */}
-            <div className="col-span-2 space-y-3">
-              <h3 className="text-center text-emerald-400 font-bold mb-4 uppercase tracking-wider text-xs">
-                Wildcard • Week 9
-              </h3>
-              <div className="space-y-8">
-                <GameCard 
-                  game={playoffGames.wildcard[0]}
-                  seed1={3} seed2={10}
-                  team1={playoffTeams[2]?.team}
-                  team2={playoffTeams[9]?.team}
-                  record1={getTeamRecord(playoffTeams[2]?.team)}
-                  record2={getTeamRecord(playoffTeams[9]?.team)}
-                />
-                <GameCard 
-                  game={playoffGames.wildcard[1]}
-                  seed1={4} seed2={9}
-                  team1={playoffTeams[3]?.team}
-                  team2={playoffTeams[8]?.team}
-                  record1={getTeamRecord(playoffTeams[3]?.team)}
-                  record2={getTeamRecord(playoffTeams[8]?.team)}
-                />
-                <GameCard 
-                  game={playoffGames.wildcard[2]}
-                  seed1={5} seed2={8}
-                  team1={playoffTeams[4]?.team}
-                  team2={playoffTeams[7]?.team}
-                  record1={getTeamRecord(playoffTeams[4]?.team)}
-                  record2={getTeamRecord(playoffTeams[7]?.team)}
-                />
-                <GameCard 
-                  game={playoffGames.wildcard[3]}
-                  seed1={6} seed2={7}
-                  team1={playoffTeams[5]?.team}
-                  team2={playoffTeams[6]?.team}
-                  record1={getTeamRecord(playoffTeams[5]?.team)}
-                  record2={getTeamRecord(playoffTeams[6]?.team)}
-                />
+          <div className="rounded-3xl bg-gradient-to-b from-slate-50 to-slate-100 border border-slate-200 shadow-sm p-6 overflow-x-auto">
+            {/* Stage Header */}
+            <div className="min-w-[1100px]">
+              <div className="bg-white/80 border border-slate-200 rounded-2xl px-6 py-3 flex items-center justify-between mb-6">
+                <div className="text-xs font-bold tracking-widest text-slate-700">WILD CARD</div>
+                <div className="text-xs font-bold tracking-widest text-slate-700">DIVISIONAL</div>
+                <div className="text-xs font-bold tracking-widest text-slate-700">CONFERENCE</div>
+                <div className="text-xs font-bold tracking-widest text-slate-700">FINAL</div>
+                <div className="text-xs font-bold tracking-widest text-slate-700">CONFERENCE</div>
+                <div className="text-xs font-bold tracking-widest text-slate-700">DIVISIONAL</div>
+                <div className="text-xs font-bold tracking-widest text-slate-700">WILD CARD</div>
               </div>
-            </div>
 
-            {/* Connector */}
-            <div className="flex flex-col items-center justify-around h-full">
-              {[0, 1, 2, 3].map(idx => (
-                <ChevronRight key={idx} className="w-5 h-5 text-blue-400 opacity-50" />
-              ))}
-            </div>
-
-            {/* Divisional Round - Week 10 (Left Side) */}
-            <div className="col-span-2 space-y-3">
-              <h3 className="text-center text-blue-400 font-bold mb-4 uppercase tracking-wider text-xs">
-                Divisional • Week 10
-              </h3>
-              <div className="space-y-16">
-                <GameCard 
-                  game={playoffGames.divisional[0]}
-                  seed1={1}
-                  team1={playoffTeams[0]?.team}
-                  record1={getTeamRecord(playoffTeams[0]?.team)}
-                />
-                <GameCard 
-                  game={playoffGames.divisional[1]}
-                  seed1={2}
-                  team1={playoffTeams[1]?.team}
-                  record1={getTeamRecord(playoffTeams[1]?.team)}
-                />
-              </div>
-            </div>
-
-            {/* Connector */}
-            <div className="flex flex-col items-center justify-around h-full py-16">
-              {[0, 1].map(idx => (
-                <ChevronRight key={idx} className="w-5 h-5 text-purple-400 opacity-50" />
-              ))}
-            </div>
-
-            {/* Conference Championships - Week 11 */}
-            <div className="col-span-2 space-y-3">
-              <h3 className="text-center text-purple-400 font-bold mb-4 uppercase tracking-wider text-xs">
-                Semifinals • Week 11
-              </h3>
-              <div className="space-y-32">
-                {[0, 1].map(idx => (
-                  <GameCard 
-                    key={idx}
-                    game={playoffGames.semifinals[idx]}
+              {/* Bracket Grid */}
+              <div className="grid grid-cols-7 gap-6 items-center">
+                {/* Left Wild Card (use wildcard[0], wildcard[1]) */}
+                <div className="space-y-6">
+                  <BracketMatchCard
+                    title="Wild Card"
+                    game={playoffGames.wildcard[0]}
+                    seedTop={3}
+                    seedBottom={10}
+                    teamTop={playoffTeams[2]?.team}
+                    teamBottom={playoffTeams[9]?.team}
+                    recordTop={getTeamRecord(playoffTeams[2]?.team)}
+                    recordBottom={getTeamRecord(playoffTeams[9]?.team)}
+                    accentClass="bg-orange-500"
                   />
-                ))}
-              </div>
-            </div>
+                  <BracketMatchCard
+                    title="Wild Card"
+                    game={playoffGames.wildcard[1]}
+                    seedTop={4}
+                    seedBottom={9}
+                    teamTop={playoffTeams[3]?.team}
+                    teamBottom={playoffTeams[8]?.team}
+                    recordTop={getTeamRecord(playoffTeams[3]?.team)}
+                    recordBottom={getTeamRecord(playoffTeams[8]?.team)}
+                    accentClass="bg-orange-500"
+                  />
+                </div>
 
-            {/* Connector to Championship */}
-            <div className="flex items-center justify-center">
-              <ChevronRight className="w-6 h-6 text-yellow-400" />
-            </div>
+                {/* Left Divisional (use divisional[0]) */}
+                <div className="space-y-10">
+                  <BracketMatchCard
+                    title="Divisional"
+                    game={playoffGames.divisional[0]}
+                    seedTop={1}
+                    teamTop={playoffTeams[0]?.team}
+                    recordTop={getTeamRecord(playoffTeams[0]?.team)}
+                    compact
+                    accentClass="bg-indigo-500"
+                  />
+                  <BracketMatchCard
+                    title="Divisional"
+                    game={null}
+                    compact
+                    accentClass="bg-indigo-500"
+                  />
+                </div>
 
-            {/* Championship - Week 12 */}
-            <div className="col-span-1">
-              <div className="relative">
-                <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 w-24 h-24">
-                  <div className="w-full h-full bg-gradient-to-br from-yellow-400 via-orange-500 to-pink-500 rounded-full flex items-center justify-center animate-pulse">
-                    <Trophy className="w-12 h-12 text-white" />
+                {/* Left Conference (use semifinals[0]) */}
+                <div className="space-y-10">
+                  <BracketMatchCard title="Conference" game={playoffGames.semifinals[0]} accentClass="bg-violet-500" />
+                </div>
+
+                {/* Final (center) */}
+                <div className="flex items-center justify-center">
+                  <div className="w-full max-w-sm">
+                    <BracketMatchCard
+                      game={playoffGames.championship}
+                      variant="final"
+                    />
                   </div>
                 </div>
-                <h3 className="text-center text-yellow-400 font-bold mb-4 uppercase tracking-wider text-xs mt-12">
-                  Championship
-                </h3>
-                <GameCard 
-                  game={playoffGames.championship}
-                  isFinal={true}
-                />
+
+                {/* Right Conference (use semifinals[1]) */}
+                <div className="space-y-10">
+                  <BracketMatchCard title="Conference" game={playoffGames.semifinals[1]} accentClass="bg-violet-500" />
+                </div>
+
+                {/* Right Divisional (use wildcard[2], wildcard[3] -> divisional placeholders) */}
+                <div className="space-y-10">
+                  <BracketMatchCard
+                    title="Divisional"
+                    game={playoffGames.divisional[1]}
+                    seedTop={2}
+                    teamTop={playoffTeams[1]?.team}
+                    recordTop={getTeamRecord(playoffTeams[1]?.team)}
+                    compact
+                    accentClass="bg-indigo-500"
+                  />
+                  <BracketMatchCard
+                    title="Divisional"
+                    game={null}
+                    compact
+                    accentClass="bg-indigo-500"
+                  />
+                </div>
+
+                {/* Right Wild Card (use wildcard[2], wildcard[3]) */}
+                <div className="space-y-6">
+                  <BracketMatchCard
+                    title="Wild Card"
+                    game={playoffGames.wildcard[2]}
+                    seedTop={5}
+                    seedBottom={8}
+                    teamTop={playoffTeams[4]?.team}
+                    teamBottom={playoffTeams[7]?.team}
+                    recordTop={getTeamRecord(playoffTeams[4]?.team)}
+                    recordBottom={getTeamRecord(playoffTeams[7]?.team)}
+                    accentClass="bg-orange-500"
+                  />
+                  <BracketMatchCard
+                    title="Wild Card"
+                    game={playoffGames.wildcard[3]}
+                    seedTop={6}
+                    seedBottom={7}
+                    teamTop={playoffTeams[5]?.team}
+                    teamBottom={playoffTeams[6]?.team}
+                    recordTop={getTeamRecord(playoffTeams[5]?.team)}
+                    recordBottom={getTeamRecord(playoffTeams[6]?.team)}
+                    accentClass="bg-orange-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
