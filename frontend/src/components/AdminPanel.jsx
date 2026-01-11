@@ -131,6 +131,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
     homeStats: {},
     awayStats: {}
   });
+  const [gameMode, setGameMode] = useState('simple'); // 'simple' or 'full'
   const [currentPlayer, setCurrentPlayer] = useState({
     name: '',
     team: 'home',
@@ -962,23 +963,34 @@ const AdminPanel = ({ isOpen, onClose }) => {
       return;
     }
     
-    if (!createGame.playerOfGame) {
+    // Only validate player of game in full mode
+    if (gameMode === 'full' && !createGame.playerOfGame) {
       toast.error('Please enter player of the game');
       return;
     }
     
     try {
-      const response = await axios.post(`${API}/games`, {
+      const gameData = {
         week: parseInt(createGame.week),
         home_team: createGame.homeTeam,
         away_team: createGame.awayTeam,
         home_score: parseInt(createGame.homeScore) || 0,
         away_score: parseInt(createGame.awayScore) || 0,
-        home_stats: createGame.homeStats,
-        away_stats: createGame.awayStats,
-        player_of_game: createGame.playerOfGame,
         game_date: createGame.gameDate
-      }, {
+      };
+      
+      // Only include stats and player of game in full mode
+      if (gameMode === 'full') {
+        gameData.home_stats = createGame.homeStats;
+        gameData.away_stats = createGame.awayStats;
+        gameData.player_of_game = createGame.playerOfGame;
+      } else {
+        gameData.home_stats = {};
+        gameData.away_stats = {};
+        gameData.player_of_game = '';
+      }
+      
+      const response = await axios.post(`${API}/games`, gameData, {
         headers: { 'admin-key': adminKey }
       });
       
@@ -996,6 +1008,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
         homeStats: {},
         awayStats: {}
       });
+      setGameMode('simple');
       setCurrentPlayer({ name: '', team: 'home', category: 'passing' });
       setCurrentPlayerStats({});
       
@@ -2247,8 +2260,39 @@ const AdminPanel = ({ isOpen, onClose }) => {
                 <div className="space-y-4">
                   <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 mb-4">
                     <p className="text-green-400 text-sm">
-                      <strong>Create Game:</strong> Build a new game from scratch with custom stats for each player.
+                      <strong>Create Game:</strong> Build a new game from scratch with or without player stats.
                     </p>
+                  </div>
+
+                  {/* Game Mode Selector */}
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-semibold mb-3">Game Creation Mode</h3>
+                    <div className="flex gap-4">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="gameMode"
+                          value="simple"
+                          checked={gameMode === 'simple'}
+                          onChange={(e) => setGameMode(e.target.value)}
+                          className="w-4 h-4 text-green-500 focus:ring-green-500"
+                        />
+                        <span className="text-white">Simple Mode</span>
+                        <span className="text-gray-400 text-sm">(Scores only)</span>
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="gameMode"
+                          value="full"
+                          checked={gameMode === 'full'}
+                          onChange={(e) => setGameMode(e.target.value)}
+                          className="w-4 h-4 text-green-500 focus:ring-green-500"
+                        />
+                        <span className="text-white">Full Mode</span>
+                        <span className="text-gray-400 text-sm">(With player stats & POG)</span>
+                      </label>
+                    </div>
                   </div>
 
                   {/* Game Info */}
@@ -2335,22 +2379,25 @@ const AdminPanel = ({ isOpen, onClose }) => {
                       </div>
                     </div>
                     
-                    <div>
-                      <label className="block text-gray-400 text-sm mb-1">Player of the Game *</label>
-                      <select
-                        value={createGame.playerOfGame}
-                        onChange={(e) => setCreateGame({...createGame, playerOfGame: e.target.value})}
-                        className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
-                      >
-                        <option value="">Select player...</option>
-                        {allPlayerNames.map((name, idx) => (
-                          <option key={idx} value={name}>{name}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {gameMode === 'full' && (
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Player of the Game *</label>
+                        <select
+                          value={createGame.playerOfGame}
+                          onChange={(e) => setCreateGame({...createGame, playerOfGame: e.target.value})}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
+                        >
+                          <option value="">Select player...</option>
+                          {allPlayerNames.map((name, idx) => (
+                            <option key={idx} value={name}>{name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Add Players */}
+                  {/* Add Players - Only show in full mode */}
+                  {gameMode === 'full' && (
                   <div className="border border-gray-800 rounded-lg p-4 space-y-3">
                     <h3 className="text-white font-semibold mb-3">Add Players & Stats</h3>
                     
@@ -2532,6 +2579,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
                         </div>
                       )}
                     </div>
+                  )}
                   )}
 
                   {/* Submit Button */}
