@@ -519,7 +519,7 @@ const Playoffs = () => {
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4">
                   <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">Matchup 1: #10 vs #7</div>
                   <div className="space-y-2">
-                    {[10, 7].map(seedNum => {
+                    {playoffSeeds?.seeds && [10, 7].map(seedNum => {
                       const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
                       return seed ? (
                         <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
@@ -544,7 +544,7 @@ const Playoffs = () => {
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4">
                   <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">Matchup 2: #9 vs #8</div>
                   <div className="space-y-2">
-                    {[9, 8].map(seedNum => {
+                    {playoffSeeds?.seeds && [9, 8].map(seedNum => {
                       const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
                       return seed ? (
                         <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
@@ -580,7 +580,7 @@ const Playoffs = () => {
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4">
                   <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#1 vs Win (10/7)</div>
                   <div className="space-y-2">
-                    {[1].map(seedNum => {
+                    {playoffSeeds?.seeds && [1].map(seedNum => {
                       const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
                       return seed ? (
                         <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
@@ -609,7 +609,7 @@ const Playoffs = () => {
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4">
                   <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#8 vs Win (9/8)</div>
                   <div className="space-y-2">
-                    {[8].map(seedNum => {
+                    {playoffSeeds?.seeds && [8].map(seedNum => {
                       const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
                       return seed ? (
                         <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
@@ -638,7 +638,7 @@ const Playoffs = () => {
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4">
                   <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#2 vs #6</div>
                   <div className="space-y-2">
-                    {[2, 6].map(seedNum => {
+                    {playoffSeeds?.seeds && [2, 6].map(seedNum => {
                       const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
                       return seed ? (
                         <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
@@ -665,7 +665,7 @@ const Playoffs = () => {
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4">
                   <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#3 vs #5</div>
                   <div className="space-y-2">
-                    {[3, 5].map(seedNum => {
+                    {playoffSeeds?.seeds && [3, 5].map(seedNum => {
                       const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
                       return seed ? (
                         <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
@@ -690,7 +690,7 @@ const Playoffs = () => {
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4">
                   <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#4 vs #7 (if applicable)</div>
                   <div className="space-y-2">
-                    {[4].map(seedNum => {
+                    {playoffSeeds?.seeds && [4].map(seedNum => {
                       const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
                       return seed ? (
                         <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
