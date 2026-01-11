@@ -2509,7 +2509,7 @@ async def bulk_assign_teams(request: BulkTeamAssignments, admin_key: str = Heade
 
 @api_router.get("/playoffs/seeds")
 async def get_playoff_seeds():
-    """Compute conference-based playoff seeds: Each conference gets 5 teams, division leaders seeded higher."""
+    """Compute 10-team league-wide playoff seeds: Seeds 1-4 are division leaders, 5-10 by record."""
     try:
         games = await db.games.find({}, {"_id": 0}).to_list(1000)
         assignments = await _load_assignments()
@@ -2521,72 +2521,73 @@ async def get_playoff_seeds():
         for team, info in assignments.items():
             conf_div[info["conference"]][info["division"]].append(team)
 
-        conference_brackets = {}
+        # Find the leader of each division (4 total)
+        division_leaders = []
         
         for conf_name in ["Grand Central", "Ridge"]:
-            # Get all teams in this conference with their records
-            conf_teams = []
-            for div in ["North", "South"]:
-                for team in conf_div[conf_name][div]:
+            for div_name in ["North", "South"]:
+                div_teams = []
+                for team in conf_div[conf_name][div_name]:
                     if team in standings_by_team:
                         team_data = standings_by_team[team].copy()
-                        team_data["division"] = div
-                        conf_teams.append(team_data)
-            
-            # Sort by wins, then point differential
-            conf_teams.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
-            
-            # Find division leaders
-            north_leader = None
-            south_leader = None
-            north_teams = [t for t in conf_teams if t["division"] == "North"]
-            south_teams = [t for t in conf_teams if t["division"] == "South"]
-            
-            if north_teams:
-                north_leader = north_teams[0]
-            if south_teams:
-                south_leader = south_teams[0]
-            
-            # Seed the conference: Division leaders get seeds 1-2, rest by record
-            seeds = []
-            remaining_teams = []
-            
-            # Determine which division leader gets seed 1 vs 2
-            if north_leader and south_leader:
-                if (north_leader["wins"], north_leader["point_diff"]) >= (south_leader["wins"], south_leader["point_diff"]):
-                    seeds.append({**north_leader, "seed": 1, "source": "division_leader"})
-                    seeds.append({**south_leader, "seed": 2, "source": "division_leader"})
-                else:
-                    seeds.append({**south_leader, "seed": 1, "source": "division_leader"})
-                    seeds.append({**north_leader, "seed": 2, "source": "division_leader"})
+                        team_data["conference"] = conf_name
+                        team_data["division"] = div_name
+                        div_teams.append(team_data)
                 
-                # Remaining teams (excluding division leaders)
-                leader_teams = {north_leader["team"], south_leader["team"]}
-                remaining_teams = [t for t in conf_teams if t["team"] not in leader_teams]
-            elif north_leader:
-                seeds.append({**north_leader, "seed": 1, "source": "division_leader"})
-                remaining_teams = [t for t in conf_teams if t["team"] != north_leader["team"]]
-            elif south_leader:
-                seeds.append({**south_leader, "seed": 1, "source": "division_leader"})
-                remaining_teams = [t for t in conf_teams if t["team"] != south_leader["team"]]
-            else:
-                remaining_teams = conf_teams
-            
-            # Add remaining top teams (up to 5 total per conference)
-            seed_num = len(seeds) + 1
-            for team in remaining_teams:
-                if len(seeds) < 5:
-                    seeds.append({**team, "seed": seed_num, "source": "wildcard"})
-                    seed_num += 1
-            
-            conference_brackets[conf_name] = {
-                "seeds": seeds,
-                "north_leader": north_leader,
-                "south_leader": south_leader
-            }
-
+                # Sort by wins, point diff
+                div_teams.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
+                if div_teams:
+                    leader = div_teams[0]
+                    division_leaders.append(leader)
+        
+        # Sort division leaders by record (best 2 get seeds 1-2, next 2 get seeds 3-4)
+        division_leaders.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
+        
+        # Get remaining teams (non-division leaders) for wildcards
+        leader_names = {leader["team"] for leader in division_leaders}
+        wildcards = []
+        for s in standings:
+            if s["team"] not in leader_names and s["team"] in standings_by_team:
+                team_info = assignments.get(s["team"], {})
+                wildcards.append({
+                    **s,
+                    "conference": team_info.get("conference", "Unknown"),
+                    "division": team_info.get("division", "Unknown")
+                })
+        
+        wildcards.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
+        
+        # Build 10-team playoff bracket
+        seeds = []
+        
+        # Seeds 1-4: Division leaders (top 2 by record get seeds 1-2, next 2 get seeds 3-4)
+        for i, leader in enumerate(division_leaders[:4]):
+            seeds.append({
+                "seed": i + 1,
+                "team": leader["team"],
+                "wins": leader["wins"],
+                "losses": leader["losses"],
+                "conference": leader["conference"],
+                "division": leader["division"],
+                "is_division_leader": True,
+                "bye": i < 4  # Seeds 1-4 get byes to Elite 8
+            })
+        
+        # Seeds 5-10: Best remaining teams by record (wildcards)
+        for i, wildcard in enumerate(wildcards[:6]):
+            seeds.append({
+                "seed": i + 5,
+                "team": wildcard["team"],
+                "wins": wildcard["wins"],
+                "losses": wildcard["losses"],
+                "conference": wildcard["conference"],
+                "division": wildcard["division"],
+                "is_division_leader": False,
+                "bye": False
+            })
+        
         return {
-            "conferences": conference_brackets,
+            "seeds": seeds,
             "standings": standings,
         }
     except Exception as e:

@@ -355,32 +355,19 @@ const Playoffs = () => {
 
   // Get playoff seeded teams
   const getPlayoffTeams = () => {
-    if (!playoffSeeds || !playoffSeeds.conferences) return { grandCentral: [], ridge: [] };
+    if (!playoffSeeds || !playoffSeeds.seeds) return [];
     
-    const gcSeeds = playoffSeeds.conferences["Grand Central"]?.seeds || [];
-    const ridgeSeeds = playoffSeeds.conferences["Ridge"]?.seeds || [];
-    
-    return {
-      grandCentral: gcSeeds.map(s => {
-        const teamData = standings.find(st => st.team === s.team);
-        return {
-          ...s,
-          wins: teamData?.wins || 0,
-          losses: teamData?.losses || 0
-        };
-      }),
-      ridge: ridgeSeeds.map(s => {
-        const teamData = standings.find(st => st.team === s.team);
-        return {
-          ...s,
-          wins: teamData?.wins || 0,
-          losses: teamData?.losses || 0
-        };
-      })
-    };
+    return playoffSeeds.seeds.map(s => {
+      const teamData = standings.find(st => st.team === s.team);
+      return {
+        ...s,
+        wins: teamData?.wins || s.wins || 0,
+        losses: teamData?.losses || s.losses || 0
+      };
+    });
   };
 
-  const conferenceTeams = getPlayoffTeams();
+  const playoffTeams = getPlayoffTeams();
   const getTeamRecord = (team) => {
     const t = standings.find(s => s.team === team);
     return t ? `${t.wins}-${t.losses}` : '';
@@ -406,51 +393,147 @@ const Playoffs = () => {
       {/* Playoff Seeds */}
       <div className="max-w-7xl mx-auto mb-8">
         <div className="glass-card p-6 rounded-xl border border-white/10">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <Crown className="w-5 h-5 text-yellow-400" />
-            Conference Playoff Seeds
+          <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
+            <Crown className="w-6 h-6 text-yellow-400" />
+            Playoff Seeds
           </h3>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Grand Central Conference */}
-            <div>
-              <h4 className="text-md font-bold text-emerald-400 mb-3">Grand Central Conference</h4>
-              <div className="space-y-2">
-                {conferenceTeams.grandCentral.map((team, idx) => (
-                  <SeedCard 
-                    key={idx}
-                    seed={team.seed}
-                    team={team.team}
-                    record={`${team.wins}-${team.losses}`}
-                    isBye={team.seed === 1}
-                  />
-                ))}
+          {playoffTeams.length > 0 ? (
+            <div className="space-y-8">
+              {/* Seeds 1-4: Division Leaders (Bye to Elite 8) */}
+              <div>
+                <h4 className="text-lg font-bold text-yellow-400 mb-4 flex items-center gap-2">
+                  <Crown className="w-5 h-5" />
+                  Elite 8 - Division Leaders (Bye)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {playoffTeams.filter(t => t.seed <= 4).map((team) => (
+                    <div key={team.seed} className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-2 border-yellow-500/30 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <TeamLogoAvatar teamName={team.team} logoMap={logoMap} size="sm" />
+                          <div className="w-7 h-7 bg-yellow-500 text-black rounded-full flex items-center justify-center font-bold text-sm">
+                            {team.seed}
+                          </div>
+                        </div>
+                        <Crown className="w-4 h-4 text-yellow-400" />
+                      </div>
+                      <div className="font-semibold text-sm text-gray-200 mb-1" title={team.team}>{team.team}</div>
+                      <div className="text-xs text-gray-400">{team.wins}-{team.losses}</div>
+                      <div className="text-xs text-yellow-400 mt-1">Division Leader</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Ridge Conference */}
-            <div>
-              <h4 className="text-md font-bold text-blue-400 mb-3">Ridge Conference</h4>
-              <div className="space-y-2">
-                {conferenceTeams.ridge.map((team, idx) => (
-                  <SeedCard 
-                    key={idx}
-                    seed={team.seed}
-                    team={team.team}
-                    record={`${team.wins}-${team.losses}`}
-                    isBye={team.seed === 1}
-                  />
-                ))}
+              {/* Seeds 5-6: Wildcards to Elite 8 */}
+              <div>
+                <h4 className="text-lg font-bold text-green-400 mb-4 flex items-center gap-2">
+                  <Star className="w-5 h-5" />
+                  Elite 8 - Wildcards
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {playoffTeams.filter(t => t.seed >= 5 && t.seed <= 6).map((team) => (
+                    <div key={team.seed} className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-2 border-green-500/30 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <TeamLogoAvatar teamName={team.team} logoMap={logoMap} size="sm" />
+                          <div className="w-7 h-7 bg-green-500 text-black rounded-full flex items-center justify-center font-bold text-sm">
+                            {team.seed}
+                          </div>
+                        </div>
+                        <Star className="w-4 h-4 text-green-400" />
+                      </div>
+                      <div className="font-semibold text-sm text-gray-200 mb-1" title={team.team}>{team.team}</div>
+                      <div className="text-xs text-gray-400">{team.wins}-{team.losses}</div>
+                      <div className="text-xs text-green-400 mt-1">Wildcard</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Seeds 7-10: Playins Round */}
+              <div>
+                <h4 className="text-lg font-bold text-blue-400 mb-4 flex items-center gap-2">
+                  <Trophy className="w-5 h-5" />
+                  Playins Round
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Playin Game 1: #7 vs #10 */}
+                  <div className="glass-card p-4 bg-gradient-to-br from-blue-500/5 to-purple-500/5 border-2 border-blue-500/30">
+                    <div className="text-center text-blue-400 text-sm font-semibold mb-3">Playin Game 1</div>
+                    <div className="space-y-2">
+                      {[7, 10].map(seedNum => {
+                        const team = playoffTeams.find(t => t.seed === seedNum);
+                        return team ? (
+                          <div key={team.seed} className="bg-white/5 border border-white/10 rounded-lg p-2 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <TeamLogoAvatar teamName={team.team} logoMap={logoMap} size="xs" />
+                              <div className="w-6 h-6 bg-blue-500 text-white rounded flex items-center justify-center font-bold text-xs">
+                                {team.seed}
+                              </div>
+                              <span className="text-sm font-semibold text-gray-200">{team.team}</span>
+                            </div>
+                            <span className="text-xs text-gray-400">{team.wins}-{team.losses}</span>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Playin Game 2: #8 vs #9 */}
+                  <div className="glass-card p-4 bg-gradient-to-br from-purple-500/5 to-pink-500/5 border-2 border-purple-500/30">
+                    <div className="text-center text-purple-400 text-sm font-semibold mb-3">Playin Game 2</div>
+                    <div className="space-y-2">
+                      {[8, 9].map(seedNum => {
+                        const team = playoffTeams.find(t => t.seed === seedNum);
+                        return team ? (
+                          <div key={team.seed} className="bg-white/5 border border-white/10 rounded-lg p-2 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <TeamLogoAvatar teamName={team.team} logoMap={logoMap} size="xs" />
+                              <div className="w-6 h-6 bg-purple-500 text-white rounded flex items-center justify-center font-bold text-xs">
+                                {team.seed}
+                              </div>
+                              <span className="text-sm font-semibold text-gray-200">{team.team}</span>
+                            </div>
+                            <span className="text-xs text-gray-400">{team.wins}-{team.losses}</span>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Playoff Structure Info */}
+              <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-2 border-blue-500/30 rounded-xl p-5">
+                <h4 className="text-lg font-semibold mb-3 text-blue-400 flex items-center gap-2">
+                  <Trophy className="w-5 h-5" />
+                  Playoff Structure
+                </h4>
+                <div className="space-y-2 text-sm text-gray-300">
+                  <div className="flex items-start gap-2">
+                    <Trophy className="w-4 h-4 mt-0.5 text-blue-400 shrink-0" />
+                    <span><strong>Playins:</strong> #7 vs #10, #8 vs #9 (Winners advance to Elite 8)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Trophy className="w-4 h-4 mt-0.5 text-yellow-400 shrink-0" />
+                    <span><strong>Elite 8:</strong> Seeds 1-4 (bye) + Seeds 5-6 + Playin winners (8 teams)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Trophy className="w-4 h-4 mt-0.5 text-purple-400 shrink-0" />
+                    <span><strong>Final 4:</strong> Semifinals (4 teams remaining)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Crown className="w-4 h-4 mt-0.5 text-amber-400 shrink-0" />
+                    <span><strong>United Flag Bowl:</strong> Championship game (2 teams)</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="text-xs text-gray-500 border-t border-gray-700 pt-3 mt-4">
-            <p>• <span className="font-semibold">Seed 1:</span> Division leader with best record (gets bye)</p>
-            <p>• <span className="font-semibold">Seed 2:</span> Other division leader</p>
-            <p>• <span className="font-semibold">Seeds 3-5:</span> Best remaining records in conference</p>
-            <p>• <span className="font-semibold">Championship:</span> Conference winners face off</p>
-          </div>
+          ) : (
+            <p className="text-gray-400">No playoff seeds available yet</p>
+          )}
         </div>
       </div>
 

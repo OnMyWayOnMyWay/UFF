@@ -51,9 +51,12 @@ const Standings = () => {
 
   // Determine playoff status based on rank
   const getPlayoffStatus = (rank) => {
-    if (rank === 0) return { indicator: 'x', label: 'Clinched Playoffs - Conference #1 Seed', color: 'text-yellow-400', icon: Crown };
-    if (rank === 1) return { indicator: 'y', label: 'Clinched Playoffs - Conference #2 Seed', color: 'text-emerald-400', icon: Star };
-    if (rank >= 2 && rank <= 4) return { indicator: 'z', label: `Clinched Playoffs - Conference #${rank + 1} Seed`, color: 'text-blue-400', icon: Medal };
+    // Seeds 1-4 are division leaders (bye to Elite 8)
+    if (rank >= 0 && rank <= 3) return { indicator: 'x', label: `Division Leader - #${rank + 1} Seed (Bye to Elite 8)`, color: 'text-yellow-400', icon: Crown };
+    // Seeds 5-6 go straight to Elite 8
+    if (rank >= 4 && rank <= 5) return { indicator: 'y', label: `Wildcard - #${rank + 1} Seed (Elite 8)`, color: 'text-green-400', icon: Star };
+    // Seeds 7-10 play in Playins round
+    if (rank >= 6 && rank <= 9) return { indicator: 'z', label: `Playins - #${rank + 1} Seed`, color: 'text-blue-400', icon: Medal };
     return null;
   };
 
@@ -88,7 +91,7 @@ const Standings = () => {
           <tbody>
             {standings.map((team, idx) => {
               const playoffStatus = getPlayoffStatus(idx);
-              const isPlayoffTeam = idx < 5 && !compact;
+              const isPlayoffTeam = idx < 10 && !compact;
               const StatusIcon = playoffStatus?.icon;
               
               return (
@@ -110,7 +113,7 @@ const Standings = () => {
                         }`} />
                       )}
                       <span className="font-bold text-gray-400">{idx + 1}</span>
-                      {idx === 4 && !compact && (
+                      {idx === 9 && !compact && (
                         <div className="w-1 h-6 bg-emerald-500/50 ml-2"></div>
                       )}
                     </div>
@@ -251,7 +254,7 @@ const Standings = () => {
             </div>
             <div className="flex justify-between p-2 rounded bg-white/5">
               <span className="text-gray-400">Playoff Teams:</span>
-              <span className="text-emerald-400 font-semibold">10 (5 per conference)</span>
+              <span className="text-emerald-400 font-semibold">10</span>
             </div>
             <div className="flex justify-between p-2 rounded bg-white/5">
               <span className="text-gray-400">Conferences:</span>
@@ -441,30 +444,34 @@ const Standings = () => {
           </div>
           
           <div className="space-y-2">
-            <h4 className="text-yellow-400 font-semibold mb-2">Conference Playoff Indicators</h4>
+            <h4 className="text-yellow-400 font-semibold mb-2">Playoff Indicators</h4>
             <div className="flex items-center">
               <Crown className="w-4 h-4 text-yellow-400 mr-2" />
               <span className="text-yellow-400 font-bold mr-2">x -</span>
-              <span className="text-white">Conference #1 Seed (Bye)</span>
+              <span className="text-white">Division Leader (#1-4 Seed, Bye to Elite 8)</span>
             </div>
             <div className="flex items-center">
-              <Star className="w-4 h-4 text-emerald-400 mr-2" />
-              <span className="text-emerald-400 font-bold mr-2">y -</span>
-              <span className="text-white">Conference #2 Seed</span>
+              <Star className="w-4 h-4 text-green-400 mr-2" />
+              <span className="text-green-400 font-bold mr-2">y -</span>
+              <span className="text-white">Wildcard (#5-6 Seed, Elite 8)</span>
             </div>
             <div className="flex items-center">
               <Medal className="w-4 h-4 text-blue-400 mr-2" />
               <span className="text-blue-400 font-bold mr-2">z -</span>
-              <span className="text-white">Conference Wildcard (3-5)</span>
+              <span className="text-white">Playins (#7-10 Seed)</span>
             </div>
           </div>
           
           <div className="space-y-2">
             <h4 className="text-purple-400 font-semibold mb-2">Playoff Format</h4>
             <div className="text-gray-300 space-y-1">
-              <p>• Conference-based playoff system</p>
-              <p>• Top 5 teams per conference qualify</p>
-              <p>• Seed 1 in each conference gets bye</p>
+              <p>• 10-team playoff bracket</p>
+              <p>• Seeds 1-4: Division leaders (bye to Elite 8)</p>
+              <p>• Seeds 5-6: Wildcards (straight to Elite 8)</p>
+              <p>• Seeds 7-10: Playins round</p>
+              <p>• Elite 8 → Final 4 → United Flag Bowl</p>
+            </div>
+          </div>
               <p>• Conference champions meet in final</p>
             </div>
           </div>
