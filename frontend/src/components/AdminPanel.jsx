@@ -2580,7 +2580,6 @@ const AdminPanel = ({ isOpen, onClose }) => {
                       )}
                     </div>
                   )}
-                  )
 
                   {/* Submit Button */}
                   <button
