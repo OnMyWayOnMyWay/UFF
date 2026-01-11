@@ -2616,99 +2616,168 @@ async def bulk_assign_teams(request: BulkTeamAssignments, admin_key: str = Heade
         logger.error(f"Error bulk assigning teams: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+def _apply_tiebreakers(games: List[Dict[str, Any]], team_a: Dict[str, Any], team_b: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply tiebreaker rules: Wins > Point Diff > H2H > Points For"""
+    # Wins tiebreaker
+    if team_a["wins"] != team_b["wins"]:
+        return team_a if team_a["wins"] > team_b["wins"] else team_b
+    
+    # Point Diff tiebreaker
+    if team_a["point_diff"] != team_b["point_diff"]:
+        return team_a if team_a["point_diff"] > team_b["point_diff"] else team_b
+    
+    # H2H tiebreaker
+    h2h = _h2h_record(games, team_a["team"], team_b["team"])
+    if h2h[team_a["team"]] != h2h[team_b["team"]]:
+        return team_a if h2h[team_a["team"]] > h2h[team_b["team"]] else team_b
+    
+    # Points For tiebreaker
+    if team_a["points_for"] != team_b["points_for"]:
+        return team_a if team_a["points_for"] > team_b["points_for"] else team_b
+    
+    # Alphabetical tiebreaker (last resort)
+    return team_a if team_a["team"] < team_b["team"] else team_b
+
 @api_router.get("/playoffs/seeds")
 async def get_playoff_seeds():
-    """Compute conference-based playoff brackets: Each conference gets a 5-team bracket.
-    Seeds 1-2 are division leaders, Seeds 3-5 are wildcards."""
+    """Compute playoff seeds based on conference championship results.
+    Seeds 1-2: Conference champions (better record gets 1)
+    Seeds 3-4: Conference championship losers (better record gets 3)
+    Seeds 5+: Wildcards from remaining teams (guaranteed only seeds 1-4 for conf champs)"""
     try:
         games = await db.games.find({}, {"_id": 0}).to_list(1000)
         assignments = await _load_assignments()
         standings = _calculate_standings_from_games(games)
         standings_by_team = {s["team"]: s for s in standings}
 
-        # Group teams by conference/division
-        conf_div: Dict[str, Dict[str, List[str]]] = defaultdict(lambda: defaultdict(list))
+        # Group teams by conference
+        conf_teams: Dict[str, List[str]] = {"Grand Central": [], "Ridge": []}
         for team, info in assignments.items():
-            conf_div[info["conference"]][info["division"]].append(team)
+            conf_teams[info["conference"]].append(team)
 
-        # Build conference-based playoff seeds
-        all_seeds = []
-        conf_standings = {}
+        # Find conference championship winners and losers (week 11 games)
+        conf_champ_games = [g for g in games if g["week"] == 11]
+        conf_winners = {}
+        conf_losers = {}
         
-        for conf_name in ["Grand Central", "Ridge"]:
-            conf_teams_data = []
-            conf_division_leaders = []
+        for game in conf_champ_games:
+            home_team = game["home_team"]
+            away_team = game["away_team"]
+            home_conf = assignments.get(home_team, {}).get("conference")
+            away_conf = assignments.get(away_team, {}).get("conference")
             
-            # Find division leader in each division within this conference
-            for div_name in ["North", "South"]:
-                div_teams = []
-                for team in conf_div[conf_name][div_name]:
-                    if team in standings_by_team:
-                        team_data = standings_by_team[team].copy()
-                        team_data["conference"] = conf_name
-                        team_data["division"] = div_name
-                        div_teams.append(team_data)
-                
-                # Sort by wins, point diff
-                div_teams.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
-                if div_teams:
-                    leader = div_teams[0]
-                    conf_division_leaders.append(leader)
-                    conf_teams_data.extend(div_teams)
-            
-            # Get all conference teams sorted by record
-            conf_teams_data.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
-            
-            # Build seeds for this conference
-            # Seeds 1-2: Division leaders ranked by wins
-            div_leaders_sorted = sorted(conf_division_leaders, key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
-            
-            conf_seed_num = 1
-            for leader in div_leaders_sorted:
-                all_seeds.append({
-                    "seed": conf_seed_num,
-                    "team": leader["team"],
-                    "wins": leader["wins"],
-                    "losses": leader["losses"],
-                    "win_pct": leader.get("win_pct", 0),
-                    "points_for": leader.get("points_for", 0),
-                    "points_against": leader.get("points_against", 0),
-                    "point_diff": leader.get("point_diff", 0),
-                    "conference": conf_name,
-                    "division": leader["division"],
-                    "is_division_leader": True,
-                    "bye": True  # Seeds 1-2 in each conference get byes
-                })
-                conf_seed_num += 1
-            
-            # Seeds 3-5: Remaining teams by record (wildcards)
-            leader_names = {leader["team"] for leader in conf_division_leaders}
-            wildcards = [t for t in conf_teams_data if t["team"] not in leader_names]
-            
-            for wildcard in wildcards[:3]:  # Max 3 wildcards per conference
-                all_seeds.append({
-                    "seed": conf_seed_num,
-                    "team": wildcard["team"],
-                    "wins": wildcard["wins"],
-                    "losses": wildcard["losses"],
-                    "win_pct": wildcard.get("win_pct", 0),
-                    "points_for": wildcard.get("points_for", 0),
-                    "points_against": wildcard.get("points_against", 0),
-                    "point_diff": wildcard.get("point_diff", 0),
-                    "conference": conf_name,
-                    "division": wildcard["division"],
-                    "is_division_leader": False,
-                    "bye": False
-                })
-                conf_seed_num += 1
-            
-            # Store conference standings for reference
-            conf_standings[conf_name] = conf_teams_data
+            # Only count if both teams are in the same conference
+            if home_conf == away_conf and home_conf:
+                if game["home_score"] > game["away_score"]:
+                    conf_winners[home_conf] = home_team
+                    conf_losers[home_conf] = away_team
+                else:
+                    conf_winners[away_conf] = away_team
+                    conf_losers[away_conf] = home_team
+
+        # Build seeds
+        all_seeds = []
+        seed_num = 1
+        
+        # Seeds 1-2: Conference champions (better record gets seed 1)
+        champ_teams = []
+        for conf in ["Grand Central", "Ridge"]:
+            if conf in conf_winners:
+                team = conf_winners[conf]
+                if team in standings_by_team:
+                    team_data = standings_by_team[team].copy()
+                    team_data["conference"] = conf
+                    team_data["playoff_status"] = "conference_champion"
+                    champ_teams.append(team_data)
+        
+        # Sort champions by wins and tiebreakers
+        if len(champ_teams) >= 2:
+            champ_teams.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
+        
+        for champ in champ_teams:
+            all_seeds.append({
+                "seed": seed_num,
+                "team": champ["team"],
+                "wins": champ["wins"],
+                "losses": champ["losses"],
+                "win_pct": champ.get("win_pct", 0),
+                "points_for": champ.get("points_for", 0),
+                "points_against": champ.get("points_against", 0),
+                "point_diff": champ.get("point_diff", 0),
+                "conference": champ["conference"],
+                "playoff_status": "conference_champion",
+                "bye": True  # Seeds 1-2 get byes
+            })
+            seed_num += 1
+        
+        # Seeds 3-4: Conference championship losers (better record gets seed 3)
+        loser_teams = []
+        for conf in ["Grand Central", "Ridge"]:
+            if conf in conf_losers:
+                team = conf_losers[conf]
+                if team in standings_by_team:
+                    team_data = standings_by_team[team].copy()
+                    team_data["conference"] = conf
+                    team_data["playoff_status"] = "conference_finalist"
+                    loser_teams.append(team_data)
+        
+        # Sort losers by wins and tiebreakers
+        if len(loser_teams) >= 2:
+            loser_teams.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
+        
+        for loser in loser_teams:
+            all_seeds.append({
+                "seed": seed_num,
+                "team": loser["team"],
+                "wins": loser["wins"],
+                "losses": loser["losses"],
+                "win_pct": loser.get("win_pct", 0),
+                "points_for": loser.get("points_for", 0),
+                "points_against": loser.get("points_against", 0),
+                "point_diff": loser.get("point_diff", 0),
+                "conference": loser["conference"],
+                "playoff_status": "conference_finalist",
+                "bye": False
+            })
+            seed_num += 1
+        
+        # Seeds 5+: Wildcards from remaining teams
+        champ_and_loser_teams = set()
+        champ_and_loser_teams.update(conf_winners.values())
+        champ_and_loser_teams.update(conf_losers.values())
+        
+        wildcard_teams = []
+        for team in standings:
+            if team["team"] not in champ_and_loser_teams:
+                team_data = team.copy()
+                team_data["conference"] = assignments.get(team["team"], {}).get("conference")
+                team_data["playoff_status"] = "wildcard"
+                wildcard_teams.append(team_data)
+        
+        # Sort wildcards by wins and tiebreakers
+        wildcard_teams.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
+        
+        for wildcard in wildcard_teams[:6]:  # Max 6 wildcards
+            all_seeds.append({
+                "seed": seed_num,
+                "team": wildcard["team"],
+                "wins": wildcard["wins"],
+                "losses": wildcard["losses"],
+                "win_pct": wildcard.get("win_pct", 0),
+                "points_for": wildcard.get("points_for", 0),
+                "points_against": wildcard.get("points_against", 0),
+                "point_diff": wildcard.get("point_diff", 0),
+                "conference": wildcard["conference"],
+                "playoff_status": "wildcard",
+                "bye": False
+            })
+            seed_num += 1
         
         return {
             "seeds": all_seeds,
             "standings": standings,
-            "conference_standings": conf_standings
+            "conference_champs": conf_winners,
+            "conference_finalists": conf_losers
         }
     except Exception as e:
         logger.error(f"Error computing playoff seeds: {str(e)}")

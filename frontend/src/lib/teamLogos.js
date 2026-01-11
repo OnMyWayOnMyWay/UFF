@@ -6,7 +6,7 @@ let logoCache = null;
 let colorCache = null;
 
 // Pre-configured team color schemes for fallback logo generation
-const TEAM_COLORS = {
+export const TEAM_COLORS = {
   // Grand Central Conference
   'Everglades Elders': { primary: '#2D5016', secondary: '#FF6B35' },
   'Winter Haven Aces': { primary: '#C41E3A', secondary: '#FFFFFF' },

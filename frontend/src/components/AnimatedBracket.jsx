@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, RotateCcw, Zap } from 'lucide-react';
-import { TeamLogoAvatar } from '../lib/teamLogos';
+import { TeamLogoAvatar, TEAM_COLORS } from '../lib/teamLogos';
 
 const AnimatedBracket = ({ playoffSeeds, games, logoMap }) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [currentRound, setCurrentRound] = useState(0);
   const [animatedTeams, setAnimatedTeams] = useState(new Set());
+  
+  // Get team colors for helmet tint
+  const getTeamColor = (teamName) => {
+    return TEAM_COLORS[teamName]?.primary || '#3b82f6';
+  };
 
   const rounds = [
     { name: 'Play-Ins', week: 9, duration: 0.8 },
@@ -37,9 +42,10 @@ const AnimatedBracket = ({ playoffSeeds, games, logoMap }) => {
     setIsAnimating(false);
   };
 
-  // 3D Team Logo Card with rotation animation
+  // 3D Helmet Animation Card
   const AnimatedTeamCard = ({ team, seed, isWinner, roundIndex }) => {
     const shouldAnimate = isAnimating && currentRound >= roundIndex;
+    const teamColor = getTeamColor(team);
 
     return (
       <motion.div
@@ -62,14 +68,69 @@ const AnimatedBracket = ({ playoffSeeds, games, logoMap }) => {
         }`}
         style={{ perspective: 1000 }}
       >
-        {/* 3D Logo Container */}
+        {/* 3D Helmet Container */}
         <motion.div
-          animate={shouldAnimate && isWinner ? { rotateZ: [0, 10, -10, 0] } : {}}
-          transition={{ duration: 1, ease: 'easeInOut' }}
           className="relative p-4"
+          style={{ perspective: 1200 }}
         >
-          <div className="flex items-center gap-3 mb-2">
-            <TeamLogoAvatar teamName={team} logoMap={logoMap} size="md" />
+          <div className="flex flex-col items-center gap-3 mb-2">
+            {/* 3D Helmet SVG */}
+            <motion.div
+              animate={shouldAnimate && isWinner ? { 
+                rotateY: [0, 30, -30, 0],
+                rotateX: [0, 10, -10, 0]
+              } : {}}
+              transition={{ duration: 2, ease: 'easeInOut', repeat: Infinity }}
+              className="w-16 h-16 flex items-center justify-center"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+              <svg viewBox="0 0 100 100" className="w-full h-full" style={{ filter: `drop-shadow(0 0 10px ${teamColor}80)` }}>
+                {/* Helmet outer shell */}
+                <defs>
+                  <filter id={`helmet-glow-${team}`}>
+                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                  <linearGradient id={`helmet-gradient-${team}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style={{stopColor: teamColor, stopOpacity: 1}} />
+                    <stop offset="100%" style={{stopColor: teamColor, stopOpacity: 0.6}} />
+                  </linearGradient>
+                </defs>
+                
+                {/* Main helmet shape */}
+                <path
+                  d="M 30 35 Q 30 15 50 15 Q 70 15 70 35 L 70 55 Q 70 65 60 70 L 40 70 Q 30 65 30 55 Z"
+                  fill={`url(#helmet-gradient-${team})`}
+                  filter={`url(#helmet-glow-${team})`}
+                />
+                
+                {/* Helmet shine/reflection */}
+                <ellipse cx="45" cy="30" rx="8" ry="10" fill="white" opacity="0.3"/>
+                
+                {/* Face mask (cage) */}
+                <g stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" fill="none">
+                  <line x1="40" y1="45" x2="40" y2="62"/>
+                  <line x1="50" y1="45" x2="50" y2="62"/>
+                  <line x1="60" y1="45" x2="60" y2="62"/>
+                  <line x1="38" y1="50" x2="62" y2="50"/>
+                  <line x1="38" y1="55" x2="62" y2="55"/>
+                  <line x1="38" y1="60" x2="62" y2="60"/>
+                </g>
+                
+                {/* Chin strap */}
+                <path
+                  d="M 35 68 Q 50 75 65 68"
+                  stroke="rgba(0,0,0,0.3)"
+                  strokeWidth="1.5"
+                  fill="none"
+                />
+              </svg>
+            </motion.div>
+
+            {/* Seed Badge */}
             {seed && (
               <motion.div
                 animate={shouldAnimate ? { scale: [1, 1.2, 1] } : {}}
@@ -85,7 +146,8 @@ const AnimatedBracket = ({ playoffSeeds, games, logoMap }) => {
               </motion.div>
             )}
           </div>
-          <div className="text-sm font-bold text-white truncate">{team}</div>
+          
+          <div className="text-sm font-bold text-white text-center truncate">{team}</div>
         </motion.div>
 
         {/* Winner Badge */}
