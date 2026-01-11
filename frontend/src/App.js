@@ -14,6 +14,7 @@ import PlayerComparison from "@/pages/PlayerComparison";
 import SeasonAwards from "@/pages/SeasonAwards";
 import TeamAnalysis from "@/pages/TeamAnalysis";
 import Playoffs from "@/pages/Playoffs";
+import PlayerStatsLookup from "@/pages/PlayerStatsLookup";
 
 function App() {
   const [showAdmin, setShowAdmin] = useState(false);
@@ -21,18 +22,19 @@ function App() {
   return (
     <div className="App">
       <BrowserRouter>
-        <div className="flex min-h-screen">
+        <div className="flex min-h-screen w-full">
           {/* Sidebar */}
           <Sidebar onAdminOpen={() => setShowAdmin(true)} />
           
           {/* Main Content */}
-          <div className="flex-1 lg:ml-64">
+          <div className="flex-1 min-w-0 lg:ml-64">
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/stats-leaders" element={<StatsLeaders />} />
               <Route path="/standings" element={<Standings />} />
               <Route path="/schedule" element={<Schedule />} />
               <Route path="/playoffs" element={<Playoffs />} />
+              <Route path="/player-stats" element={<PlayerStatsLookup />} />
               <Route path="/compare" element={<PlayerComparison />} />
               <Route path="/awards" element={<SeasonAwards />} />
               <Route path="/team/:teamName" element={<TeamAnalysis />} />

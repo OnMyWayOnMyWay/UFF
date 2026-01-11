@@ -1081,6 +1081,7 @@ async def get_team_analysis(team_name: str):
                 team_data['head_to_head'][opponent]['losses'] += 1
             
             # Process player stats
+            players_counted_this_game: set[str] = set()
             for category in ['passing', 'defense', 'rushing', 'receiving']:
                 if category in stats:
                     for player in stats[category]:
@@ -1095,8 +1096,10 @@ async def get_team_analysis(team_name: str):
                                     'defense': {'tackles': 0, 'sacks': 0, 'ints': 0}
                                 }
                             }
-                        
-                        team_data['roster'][player_name]['games'] += 1
+
+                        if player_name not in players_counted_this_game:
+                            team_data['roster'][player_name]['games'] += 1
+                            players_counted_this_game.add(player_name)
                         
                         # Aggregate team season stats
                         if category == 'passing':

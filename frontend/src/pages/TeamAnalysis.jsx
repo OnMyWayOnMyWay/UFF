@@ -210,7 +210,7 @@ const TeamAnalysis = () => {
             </thead>
             <tbody>
               {Object.entries(teamData.roster).map(([name, data], idx) => (
-                <tr key={idx} onClick={() => navigate(`/player/${name}`)} className="cursor-pointer">
+                <tr key={idx} onClick={() => navigate(`/player/${encodeURIComponent(name)}`)} className="cursor-pointer">
                   <td><span className="font-semibold text-white">{name}</span></td>
                   <td className="text-center"><span className="text-emerald-400 font-semibold">{data.games}</span></td>
                   <td className="text-center">{data.stats.passing.yards > 0 ? data.stats.passing.yards : '-'}</td>
