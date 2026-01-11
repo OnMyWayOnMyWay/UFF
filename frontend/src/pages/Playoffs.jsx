@@ -34,17 +34,17 @@ const Playoffs = () => {
   };
 
   const organizePlayoffGames = (allGames) => {
-    // Assume playoffs start at week 9
-    // Week 9: Wildcard/Quarterfinals (4 teams to 2)
-    // Week 10: Semifinals (2 teams play for 3rd place)
-    // Week 11: Championship (top 2 teams)
+    // 8-team playoff bracket:
+    // Week 9: Quarterfinals (4 games - 1v8, 2v7, 3v6, 4v5)
+    // Week 10: Semifinals (2 games)
+    // Week 11: Championship (1 game)
     
-    const wildcard = allGames.filter(g => g.week === 9);
+    const quarterfinals = allGames.filter(g => g.week === 9);
     const semifinals = allGames.filter(g => g.week === 10);
     const championship = allGames.find(g => g.week === 11);
 
     setPlayoffGames({
-      wildcard,
+      wildcard: quarterfinals,
       semifinals,
       championship
     });
@@ -164,43 +164,48 @@ const Playoffs = () => {
         <div className="hidden lg:block">
           <div className="grid grid-cols-7 gap-4 items-center">
             {/* Round 1 - Quarterfinals */}
-            <div className="col-span-2 space-y-8">
-              <div>
-                <h3 className="text-center text-emerald-400 font-bold mb-4 uppercase tracking-wider text-sm">
-                  Quarterfinals - Week 9
-                </h3>
-                <div className="space-y-4">
-                  {playoffGames.wildcard[0] && <GameCard game={playoffGames.wildcard[0]} />}
-                  {playoffGames.wildcard[1] && <GameCard game={playoffGames.wildcard[1]} />}
-                </div>
-              </div>
-            </div>
-
-            {/* Connector */}
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <div className="flex items-center">
-                <div className="h-0.5 w-8 bg-gradient-to-r from-emerald-500/50 to-blue-500/50"></div>
-                <ChevronRight className="w-5 h-5 text-emerald-400" />
-              </div>
-              <div className="flex items-center">
-                <div className="h-0.5 w-8 bg-gradient-to-r from-emerald-500/50 to-blue-500/50"></div>
-                <ChevronRight className="w-5 h-5 text-emerald-400" />
-              </div>
-            </div>
-
-            {/* Round 2 - Third Place */}
-            <div className="col-span-2">
-              <h3 className="text-center text-blue-400 font-bold mb-4 uppercase tracking-wider text-sm">
-                Third Place - Week 10
+            <div className="col-span-2 space-y-3">
+              <h3 className="text-center text-emerald-400 font-bold mb-4 uppercase tracking-wider text-sm">
+                Quarterfinals - Week 9
               </h3>
-              {playoffGames.semifinals[0] ? (
-                <GameCard game={playoffGames.semifinals[0]} />
-              ) : (
-                <GameCard game={null} />
-              )}
+              <div className="space-y-3">
+                {[0, 1, 2, 3].map(idx => (
+                  playoffGames.wildcard[idx] ? (
+                    <GameCard key={idx} game={playoffGames.wildcard[idx]} />
+                  ) : (
+                    <GameCard key={idx} game={null} />
+                  )
+                ))}
+              </div>
             </div>
 
-            {/* Final Connector */}
+            {/* Connector to Semifinals */}
+            <div className="flex flex-col items-center justify-around h-full py-8">
+              {[0, 1].map(idx => (
+                <div key={idx} className="flex items-center">
+                  <div className="h-0.5 w-8 bg-gradient-to-r from-emerald-500/50 to-blue-500/50"></div>
+                  <ChevronRight className="w-5 h-5 text-emerald-400" />
+                </div>
+              ))}
+            </div>
+
+            {/* Round 2 - Semifinals */}
+            <div className="col-span-2 space-y-8">
+              <h3 className="text-center text-blue-400 font-bold mb-4 uppercase tracking-wider text-sm">
+                Semifinals - Week 10
+              </h3>
+              <div className="space-y-16">
+                {[0, 1].map(idx => (
+                  playoffGames.semifinals[idx] ? (
+                    <GameCard key={idx} game={playoffGames.semifinals[idx]} />
+                  ) : (
+                    <GameCard key={idx} game={null} />
+                  )
+                ))}
+              </div>
+            </div>
+
+            {/* Connector to Championship */}
             <div className="flex items-center justify-center">
               <div className="h-0.5 w-8 bg-gradient-to-r from-blue-500/50 to-yellow-500/50"></div>
               <ChevronRight className="w-5 h-5 text-yellow-400" />
@@ -209,7 +214,7 @@ const Playoffs = () => {
             {/* Championship */}
             <div className="col-span-1">
               <h3 className="text-center text-yellow-400 font-bold mb-4 uppercase tracking-wider text-sm">
-                Week 11
+                Championship
               </h3>
               {playoffGames.championship ? (
                 <GameCard game={playoffGames.championship} isFinal={true} />
@@ -238,16 +243,20 @@ const Playoffs = () => {
 
           <ConnectorLine vertical />
 
-          {/* Third Place */}
+          {/* Semifinals */}
           <div>
             <h3 className="text-center text-blue-400 font-bold mb-4 uppercase tracking-wider text-sm">
-              Third Place Game - Week 10
+              Semifinals - Week 10
             </h3>
-            {playoffGames.semifinals[0] ? (
-              <GameCard game={playoffGames.semifinals[0]} />
-            ) : (
-              <GameCard game={null} />
-            )}
+            <div className="space-y-4">
+              {[0, 1].map(idx => (
+                playoffGames.semifinals[idx] ? (
+                  <GameCard key={idx} game={playoffGames.semifinals[idx]} />
+                ) : (
+                  <GameCard key={idx} game={null} />
+                )
+              ))}
+            </div>
           </div>
 
           <ConnectorLine vertical />
@@ -258,14 +267,12 @@ const Playoffs = () => {
               Quarterfinals - Week 9
             </h3>
             <div className="space-y-4">
-              {playoffGames.wildcard.map((game, idx) => (
-                <GameCard key={game.id || idx} game={game} />
-              ))}
-              {playoffGames.wildcard.length === 0 && (
-                <>
-                  <GameCard game={null} />
-                  <GameCard game={null} />
-                </>
+              {playoffGames.wildcard.length > 0 ? (
+                playoffGames.wildcard.map((game, idx) => (
+                  <GameCard key={game.id || idx} game={game} />
+                ))
+              ) : (
+                [0, 1, 2, 3].map(idx => <GameCard key={idx} game={null} />)
               )}
             </div>
           </div>
@@ -278,9 +285,9 @@ const Playoffs = () => {
             Playoff Format
           </h3>
           <div className="space-y-2 text-sm text-gray-400">
-            <p>• <span className="text-emerald-400 font-semibold">Week 9</span>: Quarterfinals - Top 4 seeds compete</p>
-            <p>• <span className="text-blue-400 font-semibold">Week 10</span>: Third Place Game - Losers compete for 3rd place</p>
-            <p>• <span className="text-yellow-400 font-semibold">Week 11</span>: Championship - Winners compete for the title</p>
+            <p>• <span className="text-emerald-400 font-semibold">Week 9</span>: Quarterfinals - 8 teams, 4 games (1v8, 2v7, 3v6, 4v5)</p>
+            <p>• <span className="text-blue-400 font-semibold">Week 10</span>: Semifinals - 4 teams, 2 games</p>
+            <p>• <span className="text-yellow-400 font-semibold">Week 11</span>: Championship - 2 teams, 1 game for the title</p>
           </div>
         </div>
       </div>
