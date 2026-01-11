@@ -10,7 +10,7 @@ const Standings = () => {
   const navigate = useNavigate();
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [structure, setStructure] = useState({ Grand Central: { North: [], South: [] }, Ridge: { North: [], South: [] } });
+  const [structure, setStructure] = useState({ "Grand Central": { North: [], South: [] }, Ridge: { North: [], South: [] } });
 
   useEffect(() => {
     fetchStandings();
