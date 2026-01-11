@@ -10,7 +10,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [adminKey, setAdminKey] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [activeTab, setActiveTab] = useState('reset'); // reset, edit, games, roblox, admins
+  const [activeTab, setActiveTab] = useState('reset'); // reset, edit, games, roblox, admins, merge, weekstats
   const [isVerified, setIsVerified] = useState(false);
   const [adminInfo, setAdminInfo] = useState(null);
   
@@ -79,6 +79,21 @@ const AdminPanel = ({ isOpen, onClose }) => {
     notes: ''
   });
   const [isFixingTeams, setIsFixingTeams] = useState(false);
+  
+  // Player Merge State
+  const [mergeOldNames, setMergeOldNames] = useState('');
+  const [mergeNewName, setMergeNewName] = useState('');
+  
+  // Week-Specific Stat Edit State
+  const [weekStatEdit, setWeekStatEdit] = useState({
+    playerName: '',
+    week: '',
+    teamSide: 'home', // 'home' or 'away'
+    category: 'passing',
+    stats: {}
+  });
+  const [tempStatKey, setTempStatKey] = useState('');
+  const [tempStatValue, setTempStatValue] = useState('');
 
   // Verify admin key
   const verifyAdmin = async () => {
@@ -186,15 +201,18 @@ const AdminPanel = ({ isOpen, onClose }) => {
       const allTeams = new Set();
       
       games.forEach(game => {
-        allTeams.add(game.home_team);
-        allTeams.add(game.away_team);
+        if (!game) return;
+        if (game.home_team) allTeams.add(game.home_team);
+        if (game.away_team) allTeams.add(game.away_team);
         
         ['home_stats', 'away_stats'].forEach(statsKey => {
           const stats = game[statsKey];
-          if (stats) {
+          if (stats && typeof stats === 'object') {
             Object.keys(stats).forEach(category => {
               if (Array.isArray(stats[category])) {
-                stats[category].forEach(p => allPlayers.add(p.name));
+                stats[category].forEach(p => {
+                  if (p && p.name) allPlayers.add(p.name);
+                });
               }
             });
           }
@@ -651,6 +669,106 @@ const AdminPanel = ({ isOpen, onClose }) => {
       setRobloxResult(null);
     }
   };
+  
+  // Player Merge Function
+  const handleMergePlayers = async () => {
+    if (!mergeOldNames.trim() || !mergeNewName.trim()) {
+      toast.error('Please fill all merge fields');
+      return;
+    }
+
+    const oldNamesArray = mergeOldNames.split(',').map(name => name.trim()).filter(name => name);
+    
+    if (oldNamesArray.length === 0) {
+      toast.error('Please enter at least one old player name');
+      return;
+    }
+
+    if (!window.confirm(`Merge ${oldNamesArray.join(', ')} into "${mergeNewName}"? This will update all games.`)) {
+      return;
+    }
+
+    try {
+      const response = await axios.post(`${API}/admin/player/merge`, {
+        old_names: oldNamesArray,
+        new_name: mergeNewName
+      }, {
+        headers: { 'admin-key': adminKey }
+      });
+
+      toast.success(response.data.message);
+      setMergeOldNames('');
+      setMergeNewName('');
+      loadGames(); // Refresh games list
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to merge players');
+    }
+  };
+  
+  // Week-Specific Stat Edit Functions
+  const addWeekStat = () => {
+    if (!tempStatKey || !tempStatValue) {
+      toast.error('Please fill stat key and value');
+      return;
+    }
+
+    setWeekStatEdit(prev => ({
+      ...prev,
+      stats: {
+        ...prev.stats,
+        [tempStatKey]: parseFloat(tempStatValue) || 0
+      }
+    }));
+
+    setTempStatKey('');
+    setTempStatValue('');
+    toast.success('Stat added');
+  };
+  
+  const removeWeekStat = (key) => {
+    setWeekStatEdit(prev => {
+      const newStats = { ...prev.stats };
+      delete newStats[key];
+      return { ...prev, stats: newStats };
+    });
+    toast.success('Stat removed');
+  };
+  
+  const handleWeekStatEdit = async () => {
+    if (!weekStatEdit.playerName.trim() || !weekStatEdit.week) {
+      toast.error('Please enter player name and week');
+      return;
+    }
+    
+    if (Object.keys(weekStatEdit.stats).length === 0) {
+      toast.error('Please add at least one stat');
+      return;
+    }
+
+    try {
+      const response = await axios.put(`${API}/admin/player/week-stats`, {
+        player_name: weekStatEdit.playerName,
+        week: parseInt(weekStatEdit.week),
+        team_side: weekStatEdit.teamSide,
+        category: weekStatEdit.category,
+        stats: weekStatEdit.stats
+      }, {
+        headers: { 'admin-key': adminKey }
+      });
+
+      toast.success(response.data.message);
+      setWeekStatEdit({
+        playerName: '',
+        week: '',
+        teamSide: 'home',
+        category: 'passing',
+        stats: {}
+      });
+      loadGames(); // Refresh games list
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to edit week stats');
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -768,6 +886,28 @@ const AdminPanel = ({ isOpen, onClose }) => {
                   Manage Admins
                 </button>
               )}
+              <button
+                onClick={() => setActiveTab('merge')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  activeTab === 'merge' 
+                    ? 'bg-cyan-500 text-white' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <ArrowRightLeft className="w-4 h-4 inline mr-2" />
+                Merge Players
+              </button>
+              <button
+                onClick={() => setActiveTab('weekstats')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  activeTab === 'weekstats' 
+                    ? 'bg-pink-500 text-white' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <Wand2 className="w-4 h-4 inline mr-2" />
+                Week Stats Edit
+              </button>
             </div>
 
             {/* Tab Content */}
@@ -1214,7 +1354,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
                       <p className="text-gray-400 text-center py-8">No games found</p>
                     ) : (
                       <div className="space-y-2 max-h-96 overflow-y-auto">
-                        {gamesList.slice(0, 20).map((game, idx) => (
+                        {gamesList.map((game, idx) => (
                           <div key={idx} className="bg-[#1a1a1b] rounded-lg px-4 py-3 flex items-center justify-between hover:bg-gray-800 transition-colors">
                             <div className="flex-1">
                               <div className="flex items-center space-x-3 mb-1">
@@ -1352,6 +1492,179 @@ const AdminPanel = ({ isOpen, onClose }) => {
                         ))
                       )}
                     </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Merge Players Tab */}
+              {activeTab === 'merge' && (
+                <div className="space-y-4">
+                  <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-4 mb-4">
+                    <p className="text-cyan-400 text-sm">
+                      <strong>Merge Player Accounts:</strong> Combine stats from multiple player names (e.g., different accounts) into one primary name. All games will be updated.
+                    </p>
+                  </div>
+                  
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-semibold mb-3">Merge Configuration</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">
+                          Old Player Names (comma-separated)
+                        </label>
+                        <input
+                          type="text"
+                          value={mergeOldNames}
+                          onChange={(e) => setMergeOldNames(e.target.value)}
+                          placeholder="PlayerOldName1, PlayerOldName2, PlayerOldName3"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Enter multiple player names separated by commas</p>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">
+                          New Primary Name
+                        </label>
+                        <input
+                          type="text"
+                          value={mergeNewName}
+                          onChange={(e) => setMergeNewName(e.target.value)}
+                          placeholder="FinalPlayerName"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">This will be the unified player name</p>
+                      </div>
+                      
+                      <button
+                        onClick={handleMergePlayers}
+                        className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center space-x-2"
+                      >
+                        <ArrowRightLeft className="w-5 h-5" />
+                        <span>Merge Players</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Week-Specific Stats Edit Tab */}
+              {activeTab === 'weekstats' && (
+                <div className="space-y-4">
+                  <div className="bg-pink-500/10 border border-pink-500/20 rounded-lg p-4 mb-4">
+                    <p className="text-pink-400 text-sm">
+                      <strong>Edit Week-Specific Stats:</strong> Manually correct or add stats for a specific player in a specific week. This allows you to fix stat errors without affecting other weeks.
+                    </p>
+                  </div>
+                  
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-semibold mb-3">Week Stats Configuration</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Player Name</label>
+                        <input
+                          type="text"
+                          value={weekStatEdit.playerName}
+                          onChange={(e) => setWeekStatEdit({...weekStatEdit, playerName: e.target.value})}
+                          placeholder="Player name"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-pink-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Week Number</label>
+                        <input
+                          type="number"
+                          value={weekStatEdit.week}
+                          onChange={(e) => setWeekStatEdit({...weekStatEdit, week: e.target.value})}
+                          placeholder="Week #"
+                          min="1"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-pink-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Team Side</label>
+                        <select
+                          value={weekStatEdit.teamSide}
+                          onChange={(e) => setWeekStatEdit({...weekStatEdit, teamSide: e.target.value})}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-pink-500"
+                        >
+                          <option value="home">Home Team</option>
+                          <option value="away">Away Team</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Category</label>
+                        <select
+                          value={weekStatEdit.category}
+                          onChange={(e) => setWeekStatEdit({...weekStatEdit, category: e.target.value})}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-pink-500"
+                        >
+                          <option value="passing">Passing</option>
+                          <option value="rushing">Rushing</option>
+                          <option value="receiving">Receiving</option>
+                          <option value="defense">Defense</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    {/* Stats Builder */}
+                    <div className="border border-gray-700 rounded-lg p-3 mb-3">
+                      <h4 className="text-white text-sm font-semibold mb-2">Build Stats</h4>
+                      <div className="flex space-x-2 mb-3">
+                        <input
+                          type="text"
+                          value={tempStatKey}
+                          onChange={(e) => setTempStatKey(e.target.value)}
+                          placeholder="Stat key (e.g., yards, td)"
+                          className="flex-1 bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-pink-500"
+                        />
+                        <input
+                          type="number"
+                          value={tempStatValue}
+                          onChange={(e) => setTempStatValue(e.target.value)}
+                          placeholder="Value"
+                          className="w-24 bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-pink-500"
+                        />
+                        <button
+                          onClick={addWeekStat}
+                          className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded transition-all"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                      
+                      {/* Current Stats */}
+                      {Object.keys(weekStatEdit.stats).length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-gray-400 text-xs mb-2">Current Stats:</p>
+                          {Object.entries(weekStatEdit.stats).map(([key, value]) => (
+                            <div key={key} className="flex items-center justify-between bg-[#0d0d0e] rounded px-3 py-2">
+                              <span className="text-white text-sm">
+                                <span className="text-pink-400 font-mono">{key}</span>: {value}
+                              </span>
+                              <button
+                                onClick={() => removeWeekStat(key)}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <Minus className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={handleWeekStatEdit}
+                      disabled={!weekStatEdit.playerName || !weekStatEdit.week || Object.keys(weekStatEdit.stats).length === 0}
+                      className="w-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center space-x-2"
+                    >
+                      <Wand2 className="w-5 h-5" />
+                      <span>Update Week Stats</span>
+                    </button>
                   </div>
                 </div>
               )}

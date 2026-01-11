@@ -34,6 +34,7 @@ const Dashboard = () => {
   };
 
   const getRecentGames = () => {
+    if (!games || !Array.isArray(games)) return [];
     return games.slice(-5).reverse();
   };
 

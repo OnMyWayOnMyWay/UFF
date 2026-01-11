@@ -30,24 +30,27 @@ const TeamAnalysis = () => {
   };
 
   const getHeadToHeadChartData = () => {
-    if (!teamData) return [];
+    if (!teamData || !teamData.head_to_head) return [];
     return Object.entries(teamData.head_to_head).map(([opponent, record]) => ({
       name: opponent,
-      wins: record.wins,
-      losses: record.losses
+      wins: record?.wins || 0,
+      losses: record?.losses || 0
     }));
   };
 
   const getTopPlayers = (category) => {
-    if (!teamData) return [];
-    const players = Object.entries(teamData.roster).map(([name, data]) => ({
-      name,
-      value: category === 'passing' ? data.stats.passing.yards :
-             category === 'rushing' ? data.stats.rushing.yards :
-             category === 'receiving' ? data.stats.receiving.yards :
-             data.stats.defense.tackles,
-      games: data.games
-    }));
+    if (!teamData || !teamData.roster) return [];
+    const players = Object.entries(teamData.roster).map(([name, data]) => {
+      if (!data || !data.stats) return null;
+      return {
+        name,
+        value: category === 'passing' ? (data.stats.passing?.yards || 0) :
+               category === 'rushing' ? (data.stats.rushing?.yards || 0) :
+               category === 'receiving' ? (data.stats.receiving?.yards || 0) :
+               (data.stats.defense?.tackles || 0),
+        games: data.games || 0
+      };
+    }).filter(p => p !== null);
     return players.filter(p => p.value > 0).sort((a, b) => b.value - a.value).slice(0, 5);
   };
 

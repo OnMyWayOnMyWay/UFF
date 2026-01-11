@@ -23,12 +23,21 @@ const PlayerComparison = () => {
     try {
       const response = await axios.get(`${API}/stats/leaders`);
       const players = new Set();
-      Object.values(response.data).forEach(category => {
-        category.forEach(player => players.add(player.name));
-      });
+      if (response.data && typeof response.data === 'object') {
+        Object.values(response.data).forEach(category => {
+          if (Array.isArray(category)) {
+            category.forEach(player => {
+              if (player && player.name) {
+                players.add(player.name);
+              }
+            });
+          }
+        });
+      }
       setAllPlayers(Array.from(players).sort());
     } catch (error) {
       console.error('Error fetching players:', error);
+      setAllPlayers([]);
     } finally {
       setLoading(false);
     }

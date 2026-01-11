@@ -21,6 +21,13 @@ import string
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# Configure logging FIRST before anything uses it
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -99,6 +106,17 @@ class GameEdit(BaseModel):
     game_date: Optional[str] = None
     home_stats: Optional[Dict[str, Any]] = None
     away_stats: Optional[Dict[str, Any]] = None
+
+class PlayerMerge(BaseModel):
+    old_names: List[str]  # List of player names to merge
+    new_name: str  # The primary name to keep
+    
+class WeekStatEdit(BaseModel):
+    player_name: str
+    week: int
+    team_side: str  # 'home' or 'away'
+    category: str  # 'passing', 'rushing', 'receiving', 'defense'
+    stats: Dict[str, Any]  # New stats to set for this player in this specific week
 
 
 async def send_to_discord(game: Game):
@@ -1565,6 +1583,141 @@ async def get_player_names(admin_key: str = Header(...)):
         logger.error(f"Error getting player names: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.post("/admin/player/merge")
+async def merge_players(player_merge: PlayerMerge, admin_key: str = Header(...)):
+    """Merge multiple player accounts into one - for players who used multiple accounts"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        if len(player_merge.old_names) < 1:
+            raise HTTPException(status_code=400, detail="Need at least one old name to merge")
+        
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        updated_count = 0
+        games_updated = []
+        
+        for game in games:
+            game_modified = False
+            
+            # Check both home and away stats
+            for team_key in ['home_stats', 'away_stats']:
+                stats = game[team_key]
+                
+                # Check each category
+                for category in ['passing', 'defense', 'rushing', 'receiving']:
+                    if category in stats:
+                        for i, player in enumerate(stats[category]):
+                            # If player name matches any of the old names, change to new name
+                            if player['name'] in player_merge.old_names:
+                                game_modified = True
+                                stats[category][i]['name'] = player_merge.new_name
+            
+            # Update the game in database if modified
+            if game_modified:
+                await db.games.update_one(
+                    {"id": game['id']},
+                    {"$set": game}
+                )
+                updated_count += 1
+                games_updated.append({"week": game['week'], "id": game['id']})
+        
+        if updated_count == 0:
+            raise HTTPException(status_code=404, detail=f"No games found with players: {', '.join(player_merge.old_names)}")
+        
+        logger.info(f"Merged players {player_merge.old_names} into '{player_merge.new_name}' across {updated_count} games")
+        
+        return {
+            "success": True,
+            "message": f"Merged {len(player_merge.old_names)} player accounts into '{player_merge.new_name}' across {updated_count} games",
+            "old_names": player_merge.old_names,
+            "new_name": player_merge.new_name,
+            "games_updated": updated_count,
+            "games_list": games_updated[:10]  # Return first 10 for reference
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error merging players: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/admin/player/week-stats")
+async def edit_week_stats(week_stat_edit: WeekStatEdit, admin_key: str = Header(...)):
+    """Edit a specific player's stats for a specific week/game"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        # Find games for this week
+        games = await db.games.find({"week": week_stat_edit.week}, {"_id": 0}).to_list(100)
+        
+        if not games:
+            raise HTTPException(status_code=404, detail=f"No games found for week {week_stat_edit.week}")
+        
+        updated_count = 0
+        games_updated = []
+        
+        for game in games:
+            game_modified = False
+            team_key = f"{week_stat_edit.team_side}_stats"
+            
+            if team_key not in game:
+                continue
+            
+            stats = game[team_key]
+            category = week_stat_edit.category
+            
+            if category in stats:
+                # Find the player in this category
+                for i, player in enumerate(stats[category]):
+                    if player['name'] == week_stat_edit.player_name:
+                        game_modified = True
+                        # Update the stats for this player
+                        stats[category][i]['stats'] = week_stat_edit.stats
+                        break
+                
+                # If player not found in this category, add them
+                if not game_modified and week_stat_edit.stats:
+                    game_modified = True
+                    if category not in stats:
+                        stats[category] = []
+                    stats[category].append({
+                        'name': week_stat_edit.player_name,
+                        'stats': week_stat_edit.stats
+                    })
+            
+            # Update the game in database if modified
+            if game_modified:
+                await db.games.update_one(
+                    {"id": game['id']},
+                    {"$set": game}
+                )
+                updated_count += 1
+                games_updated.append({
+                    "week": game['week'], 
+                    "id": game['id'],
+                    "matchup": f"{game['home_team']} vs {game['away_team']}"
+                })
+        
+        if updated_count == 0:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Player '{week_stat_edit.player_name}' not found in week {week_stat_edit.week} games"
+            )
+        
+        logger.info(f"Updated stats for '{week_stat_edit.player_name}' in week {week_stat_edit.week}")
+        
+        return {
+            "success": True,
+            "message": f"Updated stats for '{week_stat_edit.player_name}' in {updated_count} game(s) for week {week_stat_edit.week}",
+            "games_updated": games_updated
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error editing week stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/admin/teams")
 async def get_all_teams(admin_key: str = Header(...)):
     """Get list of all teams"""
@@ -2053,13 +2206,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

@@ -23,20 +23,25 @@ const Schedule = () => {
         axios.get(`${API}/games`),
         axios.get(`${API}/weeks`)
       ]);
-      setGames(gamesRes.data);
-      setWeeks(weeksRes.data.weeks || []);
-      if (weeksRes.data.weeks.length > 0) {
-        setSelectedWeek(weeksRes.data.weeks[0]);
+      const gamesData = gamesRes.data || [];
+      const weeksData = weeksRes.data?.weeks || [];
+      setGames(Array.isArray(gamesData) ? gamesData : []);
+      setWeeks(Array.isArray(weeksData) ? weeksData : []);
+      if (weeksData.length > 0) {
+        setSelectedWeek(weeksData[0]);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
+      setGames([]);
+      setWeeks([]);
     } finally {
       setLoading(false);
     }
   };
 
   const getGamesForWeek = (week) => {
-    return games.filter(g => g.week === week);
+    if (!games || !Array.isArray(games)) return [];
+    return games.filter(g => g && g.week === week);
   };
 
   if (loading) {

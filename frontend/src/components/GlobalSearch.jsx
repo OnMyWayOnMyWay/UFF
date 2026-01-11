@@ -31,10 +31,14 @@ const GlobalSearch = () => {
 
   useEffect(() => {
     if (query.length > 1) {
-      searchData();
+      const timer = setTimeout(() => {
+        searchData();
+      }, 300); // Debounce search
+      return () => clearTimeout(timer);
     } else {
       setResults({ players: [], teams: [] });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
   const searchData = async () => {
@@ -46,21 +50,30 @@ const GlobalSearch = () => {
       ]);
 
       const allPlayers = new Set();
-      Object.values(leadersRes.data).forEach(category => {
-        category.forEach(player => allPlayers.add(player.name));
-      });
+      if (leadersRes.data) {
+        Object.values(leadersRes.data).forEach(category => {
+          if (Array.isArray(category)) {
+            category.forEach(player => {
+              if (player && player.name) {
+                allPlayers.add(player.name);
+              }
+            });
+          }
+        });
+      }
 
       const filteredPlayers = Array.from(allPlayers)
-        .filter(name => name.toLowerCase().includes(query.toLowerCase()))
+        .filter(name => name && name.toLowerCase().includes(query.toLowerCase()))
         .slice(0, 5);
 
-      const filteredTeams = standingsRes.data
-        .filter(team => team.team.toLowerCase().includes(query.toLowerCase()))
+      const filteredTeams = (standingsRes.data || [])
+        .filter(team => team && team.team && team.team.toLowerCase().includes(query.toLowerCase()))
         .slice(0, 5);
 
       setResults({ players: filteredPlayers, teams: filteredTeams });
     } catch (error) {
       console.error('Search error:', error);
+      setResults({ players: [], teams: [] });
     } finally {
       setLoading(false);
     }

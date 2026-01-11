@@ -38,15 +38,17 @@ const NewDashboard = () => {
     }
   };
 
-  const getRecentGames = () => games.slice(-5).reverse();
+  const getRecentGames = () => (games && Array.isArray(games)) ? games.slice(-5).reverse() : [];
 
   const getScoresByWeek = () => {
+    if (!games || !Array.isArray(games)) return [];
     const weekData = {};
     games.forEach(game => {
+      if (!game || !game.week) return;
       if (!weekData[game.week]) {
         weekData[game.week] = { week: game.week, avgScore: 0, totalGames: 0, totalPoints: 0 };
       }
-      weekData[game.week].totalPoints += game.home_score + game.away_score;
+      weekData[game.week].totalPoints += (game.home_score || 0) + (game.away_score || 0);
       weekData[game.week].totalGames += 1;
     });
     return Object.values(weekData).map(w => ({

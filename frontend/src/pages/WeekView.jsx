@@ -20,12 +20,14 @@ const WeekView = () => {
   const fetchWeekGames = async () => {
     try {
       const response = await axios.get(`${API}/games/week/${weekNumber}`);
-      setGames(response.data);
-      if (response.data.length > 0) {
-        setExpandedGame(response.data[0].id);
+      const gamesData = response.data || [];
+      setGames(Array.isArray(gamesData) ? gamesData : []);
+      if (gamesData.length > 0 && gamesData[0].id) {
+        setExpandedGame(gamesData[0].id);
       }
     } catch (error) {
       console.error('Error fetching week games:', error);
+      setGames([]);
     } finally {
       setLoading(false);
     }
@@ -36,7 +38,7 @@ const WeekView = () => {
   };
 
   const renderStatsTable = (stats, category, columns, teamName) => {
-    if (!stats[category] || stats[category].length === 0) return null;
+    if (!stats || !stats[category] || !Array.isArray(stats[category]) || stats[category].length === 0) return null;
 
     return (
       <div className="mb-6">

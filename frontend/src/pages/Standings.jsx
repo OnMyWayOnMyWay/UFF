@@ -18,9 +18,11 @@ const Standings = () => {
   const fetchStandings = async () => {
     try {
       const response = await axios.get(`${API}/teams/standings`);
-      setStandings(response.data);
+      const standingsData = response.data || [];
+      setStandings(Array.isArray(standingsData) ? standingsData : []);
     } catch (error) {
       console.error('Error fetching standings:', error);
+      setStandings([]);
     } finally {
       setLoading(false);
     }

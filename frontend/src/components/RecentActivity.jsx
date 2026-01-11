@@ -18,7 +18,8 @@ const RecentActivity = () => {
   const fetchRecentGames = async () => {
     try {
       const response = await axios.get(`${API}/games`);
-      setRecentGames(response.data.slice(-5).reverse());
+      const gamesData = response.data || [];
+      setRecentGames(Array.isArray(gamesData) ? gamesData.slice(-5).reverse() : []);
     } catch (error) {
       console.error('Error fetching recent games:', error);
     } finally {

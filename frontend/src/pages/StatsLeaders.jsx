@@ -19,9 +19,10 @@ const StatsLeaders = () => {
   const fetchLeaders = async () => {
     try {
       const response = await axios.get(`${API}/stats/leaders`);
-      setLeaders(response.data);
+      setLeaders(response.data || {});
     } catch (error) {
       console.error('Error fetching leaders:', error);
+      setLeaders({});
     } finally {
       setLoading(false);
     }
@@ -51,7 +52,7 @@ const StatsLeaders = () => {
     if (!leaders || !leaders[activeTab]) return null;
 
     const data = leaders[activeTab];
-    if (data.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
       return (
         <div className="text-center py-12">
           <p className="text-gray-400">No stats recorded yet</p>
@@ -61,9 +62,11 @@ const StatsLeaders = () => {
 
     return (
       <div className="space-y-4">
-        {data.map((player, index) => (
+        {data.map((player, index) => {
+          if (!player || !player.name) return null;
+          return (
           <div
-            key={index}
+            key={`${player.name}-${index}`}
             onClick={() => navigate(`/player/${player.name}`)}
             data-testid={`leader-${activeTab}-${index}`}
             className="stat-card-modern cursor-pointer"
@@ -79,16 +82,16 @@ const StatsLeaders = () => {
                 {/* Player Info */}
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-white">{player.name}</h3>
-                  <p className="text-sm text-gray-400">{player.games} games played</p>
+                  <p className="text-sm text-gray-400">{player.games || 0} games played</p>
                 </div>
 
                 {/* Stats */}
                 <div className="text-right">
                   <div className="text-3xl font-bold gradient-text">
-                    {activeTab === 'points' ? player.value.toFixed(1) : 
-                     activeTab === 'passer_rating' ? player.value.toFixed(1) :
-                     activeTab === 'yards_per_carry' ? player.value.toFixed(2) :
-                     player.value}
+                    {activeTab === 'points' ? (player.value || 0).toFixed(1) : 
+                     activeTab === 'passer_rating' ? (player.value || 0).toFixed(1) :
+                     activeTab === 'yards_per_carry' ? (player.value || 0).toFixed(2) :
+                     (player.value || 0)}
                   </div>
                   {player.tds !== undefined && (
                     <p className="text-sm text-emerald-500 font-semibold">{player.tds} TDs</p>
@@ -115,7 +118,8 @@ const StatsLeaders = () => {
               </div>
             </div>
           </div>
-        ))}
+          );
+        }).filter(Boolean)}
       </div>
     );
   };

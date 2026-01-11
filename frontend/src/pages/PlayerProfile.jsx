@@ -30,21 +30,27 @@ const PlayerProfile = () => {
   };
 
   const getRadarData = () => {
-    if (!player) return [];
+    if (!player || !player.total_stats) return [];
     const stats = player.total_stats;
+    const passingYards = stats.passing?.yards || 0;
+    const rushingYards = stats.rushing?.yards || 0;
+    const receivingYards = stats.receiving?.yards || 0;
+    const tackles = stats.defense?.tak || 0;
+    const totalTds = (stats.passing?.tds || 0) + (stats.rushing?.tds || 0) + (stats.receiving?.tds || 0) + (stats.defense?.tds || 0);
+    
     return [
-      { stat: 'Passing', value: Math.min(stats.passing.yards / 10, 100) },
-      { stat: 'Rushing', value: Math.min(stats.rushing.yards / 3, 100) },
-      { stat: 'Receiving', value: Math.min(stats.receiving.yards / 3, 100) },
-      { stat: 'Defense', value: Math.min(stats.defense.tak * 5, 100) },
-      { stat: 'TDs', value: Math.min((stats.passing.tds + stats.rushing.tds + stats.receiving.tds + stats.defense.tds) * 10, 100) }
+      { stat: 'Passing', value: Math.min(passingYards / 10, 100) },
+      { stat: 'Rushing', value: Math.min(rushingYards / 3, 100) },
+      { stat: 'Receiving', value: Math.min(receivingYards / 3, 100) },
+      { stat: 'Defense', value: Math.min(tackles * 5, 100) },
+      { stat: 'TDs', value: Math.min(totalTds * 10, 100) }
     ];
   };
 
   const getGameLogChart = () => {
-    if (!player) return [];
+    if (!player || !player.game_log || !Array.isArray(player.game_log)) return [];
     return player.game_log.map(game => ({
-      week: `W${game.week}`,
+      week: `W${game.week || '?'}`,
       points: calculateGamePoints(game)
     }));
   };
@@ -133,13 +139,13 @@ const PlayerProfile = () => {
               )}
             </div>
             {/* Team History */}
-            {player.team_history && player.team_history.length > 1 && (
+            {player.team_history && Array.isArray(player.team_history) && player.team_history.length > 1 && (
               <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                 <p className="text-xs text-blue-400 uppercase tracking-wide mb-2">Team History (Trades)</p>
                 <div className="flex items-center space-x-2 flex-wrap gap-2">
                   {player.team_history.map((th, idx) => (
                     <span key={idx} className="px-3 py-1 bg-white/5 text-white rounded-lg text-sm">
-                      {th.team} ({th.games} games)
+                      {th && th.team ? `${th.team} (${th.games || 0} games)` : 'Unknown'}
                     </span>
                   ))}
                 </div>
