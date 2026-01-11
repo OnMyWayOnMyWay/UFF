@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { AlertTriangle, RefreshCw, X, Edit, UserPlus, Users, Search, Trash2, Plus, Minus, Database, BarChart3, Download, ArrowRightLeft, Wand2, FileText, Copy, AlertCircle, CheckCircle } from 'lucide-react';
+import { AlertTriangle, RefreshCw, X, Edit, UserPlus, Users, Search, Trash2, Plus, Minus, Database, BarChart3, Download, ArrowRightLeft, Wand2, FileText, Copy, AlertCircle, CheckCircle, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
@@ -103,6 +103,12 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [validationResults, setValidationResults] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  
+  // Team Logos State
+  const [teamLogos, setTeamLogos] = useState({});
+  const [logoTeam, setLogoTeam] = useState('');
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   // League setup state
   const [leagueAssignments, setLeagueAssignments] = useState({});
@@ -206,6 +212,10 @@ const AdminPanel = ({ isOpen, onClose }) => {
       loadTeams();
       loadLeagueAssignments();
     }
+    if (isVerified && activeTab === 'teamlogos') {
+      loadTeams();
+      loadTeamLogos();
+    }
     if (isVerified && activeTab === 'gamestats') {
       loadWeeksWithGames();
       loadPlayerNames();
@@ -240,6 +250,45 @@ const AdminPanel = ({ isOpen, onClose }) => {
       setAllTeams(response.data.teams || []);
     } catch (error) {
       console.error('Failed to load teams:', error);
+    }
+  };
+
+  // Load team logos (public)
+  const loadTeamLogos = async () => {
+    try {
+      const response = await axios.get(`${API}/teams/logos`);
+      setTeamLogos(response.data.logos || {});
+    } catch (error) {
+      console.error('Failed to load team logos:', error);
+    }
+  };
+
+  const handleUploadTeamLogo = async () => {
+    if (!logoTeam) {
+      toast.error('Please select a team');
+      return;
+    }
+    if (!logoFile) {
+      toast.error('Please choose an image file');
+      return;
+    }
+
+    try {
+      setLogoUploading(true);
+      const form = new FormData();
+      form.append('team', logoTeam);
+      form.append('file', logoFile);
+      const response = await axios.post(`${API}/admin/team-logo`, form, {
+        headers: { 'admin-key': adminKey }
+      });
+      toast.success('Team logo uploaded');
+      // Refresh logos map
+      setLogoFile(null);
+      await loadTeamLogos();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to upload logo');
+    } finally {
+      setLogoUploading(false);
     }
   };
 
@@ -1335,6 +1384,17 @@ const AdminPanel = ({ isOpen, onClose }) => {
                 League Setup
               </button>
               <button
+                onClick={() => setActiveTab('teamlogos')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  activeTab === 'teamlogos' 
+                    ? 'bg-fuchsia-500 text-white' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <ImageIcon />
+                <span className="ml-2">Team Logos</span>
+              </button>
+              <button
                 onClick={() => setActiveTab('merge')}
                 className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
                   activeTab === 'merge' 
@@ -1415,6 +1475,110 @@ const AdminPanel = ({ isOpen, onClose }) => {
 
             {/* Tab Content */}
             <div className="space-y-4">
+              {/* Team Logos Tab */}
+              {activeTab === 'teamlogos' && (
+                <div className="space-y-4">
+                  <div className="bg-fuchsia-500/10 border border-fuchsia-500/20 rounded-lg p-4 mb-4">
+                    <p className="text-fuchsia-400 text-sm">
+                      <strong>Team Logos:</strong> Select a team and upload an image to use as its logo. Supported types: PNG, JPG, WebP.
+                    </p>
+                  </div>
+
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-semibold mb-3 flex items-center">
+                      <ImageIcon className="w-4 h-4 mr-2" />
+                      Upload Team Logo
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Team</label>
+                        <select
+                          value={logoTeam}
+                          onChange={(e) => setLogoTeam(e.target.value)}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white"
+                        >
+                          <option value="">Select team...</option>
+                          {allTeams.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Logo Image</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                          className="w-full text-white"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Preview */}
+                    {logoTeam && (teamLogos[logoTeam] || logoFile) && (
+                      <div className="bg-[#0d0d0e] border border-gray-800 rounded-lg p-3 mb-3">
+                        <p className="text-gray-400 text-xs mb-2">Preview</p>
+                        <div className="flex items-center gap-3">
+                          <div className="w-24 h-24 bg-black/30 border border-gray-800 rounded flex items-center justify-center overflow-hidden">
+                            {logoFile ? (
+                              <img src={URL.createObjectURL(logoFile)} alt="New Logo" className="w-full h-full object-contain" />
+                            ) : (
+                              <img src={`${BACKEND_URL}${teamLogos[logoTeam] || ''}`} alt="Current Logo" className="w-full h-full object-contain" />
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {teamLogos[logoTeam] ? (
+                              <p>Current: {teamLogos[logoTeam]}</p>
+                            ) : (
+                              <p>No logo set for this team yet.</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleUploadTeamLogo}
+                      disabled={logoUploading}
+                      className="w-full bg-fuchsia-500 hover:bg-fuchsia-600 disabled:bg-gray-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center space-x-2"
+                    >
+                      {logoUploading ? (
+                        <>
+                          <RefreshCw className="w-5 h-5 animate-spin" />
+                          <span>Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ImageIcon className="w-5 h-5" />
+                          <span>Upload Logo</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Current Logos */}
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-semibold mb-3">Current Logos</h3>
+                    {Object.keys(teamLogos).length === 0 ? (
+                      <p className="text-gray-400 text-sm">No logos uploaded yet.</p>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {Object.entries(teamLogos).map(([team, url]) => (
+                          <div key={team} className="bg-[#1a1a1b] rounded-lg p-3 flex items-center gap-3">
+                            <div className="w-12 h-12 bg-black/30 border border-gray-800 rounded overflow-hidden">
+                              <img src={`${BACKEND_URL}${url}`} alt={`${team} logo`} className="w-full h-full object-contain" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-white text-sm font-medium">{team}</p>
+                              <p className="text-gray-500 text-xs break-all">{url}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               {/* League Setup Tab */}
               {activeTab === 'league' && (
                 <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">

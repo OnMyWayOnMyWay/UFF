@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Header
+from fastapi import FastAPI, APIRouter, HTTPException, Header, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv
@@ -17,6 +17,7 @@ import io
 import secrets
 import string
 from collections import defaultdict
+import re
 
 
 ROOT_DIR = Path(__file__).parent
@@ -2124,6 +2125,94 @@ async def get_all_teams(admin_key: str = Header(...)):
         return {"teams": sorted(list(teams))}
     except Exception as e:
         logger.error(f"Error getting teams: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ---- Team Logos ----
+
+def _slugify_team(team: str) -> str:
+    s = team.lower()
+    s = re.sub(r"[^a-z0-9\s-]", "", s)
+    s = re.sub(r"[\s-]+", "-", s).strip("-")
+    return s or "team"
+
+async def _load_team_logos() -> Dict[str, str]:
+    try:
+        doc = await db.assets.find_one({"_id": "team_logos"}, {"_id": 0})
+        if doc and isinstance(doc.get("logos"), dict):
+            return doc["logos"]
+    except Exception as e:
+        logger.error(f"Error loading team logos: {str(e)}")
+    return {}
+
+async def _save_team_logo(team: str, logo_url: str):
+    try:
+        logos = await _load_team_logos()
+        logos[team] = logo_url
+        await db.assets.update_one(
+            {"_id": "team_logos"},
+            {"$set": {"logos": logos, "updated_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+    except Exception as e:
+        logger.error(f"Error saving team logo: {str(e)}")
+
+@api_router.get("/teams/logos")
+async def get_team_logos():
+    """Public: return team -> logo URL mapping."""
+    logos = await _load_team_logos()
+    return {"logos": logos}
+
+@api_router.post("/admin/team-logo")
+async def upload_team_logo(
+    team: str = Form(...),
+    file: UploadFile = File(...),
+    admin_key: str = Header(...),
+):
+    """Admin: upload a logo image for a team. Stores under /static/team-logos and records mapping."""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+
+    try:
+        if not team or not team.strip():
+            raise HTTPException(status_code=400, detail="Team is required")
+
+        content_type = (file.content_type or "").lower()
+        allowed_types = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
+        # Fallback to extension from filename if content-type is missing
+        ext = None
+        if content_type in allowed_types:
+            ext = allowed_types[content_type]
+        else:
+            name = (file.filename or "").lower()
+            for e in [".png", ".jpg", ".jpeg", ".webp"]:
+                if name.endswith(e):
+                    ext = ".jpg" if e == ".jpeg" else e
+                    break
+        if not ext:
+            raise HTTPException(status_code=400, detail="Unsupported image type. Use PNG/JPG/WebP.")
+
+        # Ensure directory exists
+        logos_dir = Path("static") / "team-logos"
+        logos_dir.mkdir(parents=True, exist_ok=True)
+
+        # Build file path
+        slug = _slugify_team(team)
+        dest_path = logos_dir / f"{slug}{ext}"
+
+        # Save file
+        data = await file.read()
+        with open(dest_path, "wb") as f:
+            f.write(data)
+
+        logo_url = f"/static/team-logos/{dest_path.name}"
+        await _save_team_logo(team, logo_url)
+
+        await log_admin_action(admin_key, "upload_team_logo", {"team": team, "logo_url": logo_url})
+        return {"success": True, "team": team, "logo_url": logo_url}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading team logo: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ---- League assignments & playoffs ----
