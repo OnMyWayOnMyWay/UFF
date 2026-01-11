@@ -990,7 +990,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
         gameData.player_of_game = '';
       }
       
-      const response = await axios.post(`${API}/games`, gameData, {
+      const response = await axios.post(`${API}/game`, gameData, {
         headers: { 'admin-key': adminKey }
       });
       
