@@ -79,7 +79,7 @@ const Playoffs = () => {
         onClick={() => navigate(`/team/${team}`)}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
               seed === 1 ? 'bg-yellow-500 text-black' :
               seed === 2 ? 'bg-gray-400 text-black' :
@@ -87,8 +87,8 @@ const Playoffs = () => {
             }`}>
               {seed}
             </div>
-            <div>
-              <div className="font-bold text-white text-lg leading-tight">{team}</div>
+            <div className="min-w-0">
+              <div className="font-bold text-white text-lg leading-tight truncate" title={team}>{team}</div>
               {record && <div className="text-gray-400 text-xs">{record}</div>}
             </div>
           </div>
@@ -132,9 +132,9 @@ const Playoffs = () => {
             <div className={`flex items-center justify-between p-2 rounded ${
               homeWin ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-gray-800/50'
             }`}>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 {homeWin && <Trophy className="w-4 h-4 text-emerald-400" />}
-                <span className={`font-semibold ${homeWin ? 'text-emerald-400' : 'text-gray-300'}`}>
+                <span className={`font-semibold truncate ${homeWin ? 'text-emerald-400' : 'text-gray-300'}`} title={game.home_team}>
                   {game.home_team}
                 </span>
               </div>
@@ -146,9 +146,9 @@ const Playoffs = () => {
             <div className={`flex items-center justify-between p-2 rounded ${
               awayWin ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-gray-800/50'
             }`}>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 {awayWin && <Trophy className="w-4 h-4 text-emerald-400" />}
-                <span className={`font-semibold ${awayWin ? 'text-emerald-400' : 'text-gray-300'}`}>
+                <span className={`font-semibold truncate ${awayWin ? 'text-emerald-400' : 'text-gray-300'}`} title={game.away_team}>
                   {game.away_team}
                 </span>
               </div>
@@ -172,7 +172,7 @@ const Playoffs = () => {
     return (
       <div className="bg-white/5 border-2 border-gray-700/50 rounded-lg p-3 space-y-2">
         <div className="flex items-center justify-between p-2 rounded bg-gray-800/50">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             {seed1 && (
               <div className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs ${
                 seed1 === 1 ? 'bg-yellow-500 text-black' :
@@ -182,13 +182,13 @@ const Playoffs = () => {
                 {seed1}
               </div>
             )}
-            <span className="font-semibold text-gray-300">{team1 || 'TBD'}</span>
+            <span className="font-semibold text-gray-300 truncate" title={team1 || 'TBD'}>{team1 || 'TBD'}</span>
           </div>
           {record1 && <span className="text-xs text-gray-500">{record1}</span>}
         </div>
 
         <div className="flex items-center justify-between p-2 rounded bg-gray-800/50">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             {seed2 && (
               <div className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs ${
                 seed2 === 1 ? 'bg-yellow-500 text-black' :
@@ -198,7 +198,7 @@ const Playoffs = () => {
                 {seed2}
               </div>
             )}
-            <span className="font-semibold text-gray-300">{team2 || 'TBD'}</span>
+            <span className="font-semibold text-gray-300 truncate" title={team2 || 'TBD'}>{team2 || 'TBD'}</span>
           </div>
           {record2 && <span className="text-xs text-gray-500">{record2}</span>}
         </div>
@@ -246,25 +246,39 @@ const Playoffs = () => {
     const seedChip = (seed) => {
       if (!seed) return null;
       return (
-        <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-bold">
+        <div className="w-6 h-6 rounded-md bg-white/30 text-white/90 border border-white/25 backdrop-blur-sm flex items-center justify-center text-xs font-bold shrink-0">
           {seed}
         </div>
       );
     };
 
+    const TeamName = ({ name, win, compactName = false }) => (
+      <div
+        className={
+          compactName
+            ? `text-[13px] font-semibold truncate ${win ? 'text-emerald-200' : 'text-white/90'}`
+            : `text-[clamp(12px,1.1vw,14px)] font-semibold leading-snug break-words overflow-hidden ${win ? 'text-emerald-200' : 'text-white/90'}`
+        }
+        style={compactName ? undefined : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+        title={name}
+      >
+        {name}
+      </div>
+    );
+
     return (
       <div
         className={
           variant === 'final'
-            ? 'relative rounded-2xl overflow-hidden shadow-lg border border-slate-200 bg-white'
-            : 'relative rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-white'
+            ? 'relative rounded-2xl overflow-hidden shadow-xl border border-white/25 bg-white/10 backdrop-blur-xl'
+            : 'relative rounded-2xl overflow-hidden shadow-lg border border-white/20 bg-white/10 backdrop-blur-xl'
         }
       >
         {variant !== 'final' && (
           <div className={`absolute left-0 top-0 h-full w-[5px] ${accentClass}`} />
         )}
         {title && (
-          <div className="px-4 py-2 text-[11px] font-semibold tracking-widest text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+          <div className="px-4 py-2 text-[11px] font-semibold tracking-widest text-white/70 uppercase bg-white/10 border-b border-white/15">
             {title}
           </div>
         )}
@@ -280,37 +294,37 @@ const Playoffs = () => {
 
         <div className={compact ? 'p-3' : 'p-4'}>
           {isTbd ? (
-            <div className="h-16 flex items-center justify-center text-slate-400 text-sm font-medium">TBD</div>
+            <div className="h-16 flex items-center justify-center text-white/50 text-sm font-medium">TBD</div>
           ) : (
             <div className="space-y-2">
-              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${rows.top.win ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200'}`}>
-                <div className="flex items-center gap-2 min-w-0">
+              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${rows.top.win ? 'bg-emerald-500/15 border border-emerald-400/25' : 'bg-white/8 border border-white/15'}`}>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   {seedChip(seedTop)}
                   <div className="min-w-0">
-                    <div className={`text-sm font-semibold truncate ${rows.top.win ? 'text-emerald-700' : 'text-slate-800'}`}>{rows.top.name}</div>
-                    {recordTop && !game && <div className="text-[11px] text-slate-500">{recordTop}</div>}
+                    <TeamName name={rows.top.name} win={rows.top.win} compactName={compact} />
+                    {recordTop && !game && <div className="text-[11px] text-white/55">{recordTop}</div>}
                   </div>
                 </div>
                 {rows.top.score !== null && (
-                  <div className={`text-sm font-bold ${rows.top.win ? 'text-emerald-700' : 'text-slate-600'}`}>{rows.top.score}</div>
+                  <div className={`text-sm font-bold tabular-nums ${rows.top.win ? 'text-emerald-200' : 'text-white/70'}`}>{rows.top.score}</div>
                 )}
               </div>
 
-              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${rows.bottom.win ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200'}`}>
-                <div className="flex items-center gap-2 min-w-0">
+              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${rows.bottom.win ? 'bg-emerald-500/15 border border-emerald-400/25' : 'bg-white/8 border border-white/15'}`}>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   {seedChip(seedBottom)}
                   <div className="min-w-0">
-                    <div className={`text-sm font-semibold truncate ${rows.bottom.win ? 'text-emerald-700' : 'text-slate-800'}`}>{rows.bottom.name}</div>
-                    {recordBottom && !game && <div className="text-[11px] text-slate-500">{recordBottom}</div>}
+                    <TeamName name={rows.bottom.name} win={rows.bottom.win} compactName={compact} />
+                    {recordBottom && !game && <div className="text-[11px] text-white/55">{recordBottom}</div>}
                   </div>
                 </div>
                 {rows.bottom.score !== null && (
-                  <div className={`text-sm font-bold ${rows.bottom.win ? 'text-emerald-700' : 'text-slate-600'}`}>{rows.bottom.score}</div>
+                  <div className={`text-sm font-bold tabular-nums ${rows.bottom.win ? 'text-emerald-200' : 'text-white/70'}`}>{rows.bottom.score}</div>
                 )}
               </div>
 
               {rows.status && (
-                <div className="pt-1 text-[11px] text-slate-500 flex items-center gap-1">
+                <div className="pt-1 text-[11px] text-white/55 flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
                   {rows.status}
                 </div>
@@ -382,17 +396,17 @@ const Playoffs = () => {
       <div className="max-w-7xl mx-auto">
         {/* Desktop View - NFL-inspired (original) */}
         <div className="hidden lg:block">
-          <div className="rounded-3xl bg-gradient-to-b from-slate-50 to-slate-100 border border-slate-200 shadow-sm p-6 overflow-x-auto">
+          <div className="rounded-3xl bg-white/8 backdrop-blur-2xl border border-white/15 shadow-2xl p-6 overflow-x-auto">
             {/* Stage Header */}
             <div className="min-w-[1100px]">
-              <div className="bg-white/80 border border-slate-200 rounded-2xl px-6 py-3 flex items-center justify-between mb-6">
-                <div className="text-xs font-bold tracking-widest text-slate-700">WILD CARD</div>
-                <div className="text-xs font-bold tracking-widest text-slate-700">DIVISIONAL</div>
-                <div className="text-xs font-bold tracking-widest text-slate-700">CONFERENCE</div>
-                <div className="text-xs font-bold tracking-widest text-slate-700">FINAL</div>
-                <div className="text-xs font-bold tracking-widest text-slate-700">CONFERENCE</div>
-                <div className="text-xs font-bold tracking-widest text-slate-700">DIVISIONAL</div>
-                <div className="text-xs font-bold tracking-widest text-slate-700">WILD CARD</div>
+              <div className="bg-white/10 border border-white/15 rounded-2xl px-6 py-3 flex items-center justify-between mb-6">
+                <div className="text-xs font-bold tracking-widest text-white/70">WILD CARD</div>
+                <div className="text-xs font-bold tracking-widest text-white/70">DIVISIONAL</div>
+                <div className="text-xs font-bold tracking-widest text-white/70">CONFERENCE</div>
+                <div className="text-xs font-bold tracking-widest text-white/70">FINAL</div>
+                <div className="text-xs font-bold tracking-widest text-white/70">CONFERENCE</div>
+                <div className="text-xs font-bold tracking-widest text-white/70">DIVISIONAL</div>
+                <div className="text-xs font-bold tracking-widest text-white/70">WILD CARD</div>
               </div>
 
               {/* Bracket Grid */}
