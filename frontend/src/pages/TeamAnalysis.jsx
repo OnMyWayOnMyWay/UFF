@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Trophy, TrendingUp, TrendingDown, Award, Users, Target, Shield, Zap, MapPinned } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { TeamLogoAvatar, loadTeamLogos, loadTeamColors } from '../lib/teamLogos';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -14,9 +15,13 @@ const TeamAnalysis = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [assignment, setAssignment] = useState(null);
+  const [logoMap, setLogoMap] = useState({});
+  const [teamColors, setTeamColors] = useState(null);
 
   useEffect(() => {
     fetchTeamData();
+    loadTeamLogos().then(logos => setLogoMap(logos));
+    loadTeamColors().then(colors => setTeamColors(colors));
   }, [teamName]);
 
   const fetchTeamData = async () => {
@@ -96,155 +101,333 @@ const TeamAnalysis = () => {
   }
 
   return (
-    <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8">
-      <button onClick={() => navigate('/standings')} className="flex items-center space-x-2 text-gray-400 hover:text-white mb-4 sm:mb-6 transition-colors text-sm sm:text-base">
-        <ArrowLeft className="w-5 h-5" />
-        <span>Back to Standings</span>
-      </button>
+    <div className="min-h-screen relative">
+      {/* Dynamic Gradient Background with Team Colors */}
+      <div
+        className="fixed inset-0 z-0"
+        style={{
+          background: teamColors && teamColors[teamName]
+            ? `linear-gradient(135deg, ${teamColors[teamName].primary}15 0%, ${teamColors[teamName].secondary}10 100%)`
+            : 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
+        }}
+      />
 
-      <div className="glass-card mb-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-blue-500/10 to-purple-500/10"></div>
-        <div className="relative p-4 sm:p-6 md:p-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold gradient-text mb-1 sm:mb-2">{teamData.name}</h1>
-              <div className="flex items-center flex-wrap gap-2 mb-1">
-                <MapPinned className="w-4 h-4 text-emerald-400" />
-                {assignment ? (
-                  <>
-                    <span className="text-xs sm:text-sm text-gray-300 font-semibold">{assignment.conference} Conference</span>
-                    <span className="text-gray-600">•</span>
-                    <span className="text-xs sm:text-sm text-gray-300 font-semibold">{assignment.division} Division</span>
-                  </>
-                ) : (
-                  <span className="text-xs sm:text-sm text-gray-500">Assignment not available</span>
-                )}
+      {/* Animated Background Pattern */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gray-900/20 to-gray-900"></div>
+      </div>
+
+      {/* Top Bar with Team Color */}
+      <div
+        className="fixed top-0 left-0 right-0 z-30 h-1 bg-gradient-to-r"
+        style={{
+          background: teamColors && teamColors[teamName]
+            ? `linear-gradient(90deg, ${teamColors[teamName].primary}, ${teamColors[teamName].secondary})`
+            : 'linear-gradient(90deg, #10b981, #3b82f6)',
+        }}
+      />
+
+      {/* Large Background Logo */}
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 opacity-5 pointer-events-none">
+        <div className="text-[500px] font-bold text-white">
+          {teamName?.charAt(0) || 'T'}
+        </div>
+      </div>
+
+      {/* Logo and Team Badge in Middle */}
+      <div className="fixed top-24 left-1/2 -translate-x-1/2 z-10 text-center">
+        <div
+          className="w-24 h-24 md:w-32 md:h-32 rounded-2xl shadow-2xl flex items-center justify-center backdrop-blur-sm border-2"
+          style={{
+            borderColor: teamColors && teamColors[teamName] ? teamColors[teamName].primary : '#10b981',
+            backgroundColor: teamColors && teamColors[teamName] ? `${teamColors[teamName].primary}20` : 'rgba(16, 185, 129, 0.1)',
+          }}
+        >
+          <TeamLogoAvatar teamName={teamName} logoMap={logoMap} size="lg" />
+        </div>
+        <div className="mt-4 text-center">
+          <h3 className="text-sm md:text-base font-bold text-gray-300 uppercase tracking-wide opacity-75">
+            {assignment?.conference || 'Conference'} • {assignment?.division || 'Division'}
+          </h3>
+        </div>
+      </div>
+
+      {/* Content Container */}
+      <div className="relative z-20 min-h-screen pt-56 md:pt-64 pb-8">
+        <div className="px-3 sm:px-4 md:px-6 lg:px-8">
+          <button onClick={() => navigate('/standings')} className="flex items-center space-x-2 text-gray-400 hover:text-white mb-4 sm:mb-6 transition-colors text-sm sm:text-base">
+            <ArrowLeft className="w-5 h-5" />
+            <span>Back to Standings</span>
+          </button>
+
+          {/* Main Header Card with Gradient */}
+          <div
+            className="glass-card mb-6 relative overflow-hidden border-2"
+            style={{
+              borderColor: teamColors && teamColors[teamName] ? `${teamColors[teamName].primary}50` : 'rgba(16, 185, 129, 0.3)',
+              background: teamColors && teamColors[teamName]
+                ? `linear-gradient(135deg, ${teamColors[teamName].primary}20 0%, ${teamColors[teamName].secondary}10 100%)`
+                : 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
+            }}
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r"
+              style={{
+                background: teamColors && teamColors[teamName]
+                  ? `linear-gradient(90deg, ${teamColors[teamName].primary}, ${teamColors[teamName].secondary})`
+                  : 'linear-gradient(90deg, #10b981, #3b82f6)',
+              }}
+            />
+            <div className="relative p-4 sm:p-6 md:p-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h1
+                    className="text-3xl sm:text-4xl md:text-5xl font-bold mb-1 sm:mb-2"
+                    style={{
+                      color: teamColors && teamColors[teamName] ? teamColors[teamName].primary : '#10b981',
+                    }}
+                  >
+                    {teamData.name}
+                  </h1>
+                  <div className="flex items-center flex-wrap gap-2 mb-1">
+                    <MapPinned className="w-4 h-4" style={{ color: teamColors && teamColors[teamName] ? teamColors[teamName].primary : '#10b981' }} />
+                    {assignment ? (
+                      <>
+                        <span className="text-xs sm:text-sm text-gray-300 font-semibold">{assignment.conference} Conference</span>
+                        <span className="text-gray-600">•</span>
+                        <span className="text-xs sm:text-sm text-gray-300 font-semibold">{assignment.division} Division</span>
+                      </>
+                    ) : (
+                      <span className="text-xs sm:text-sm text-gray-500">Assignment not available</span>
+                    )}
+                  </div>
+                  <p className="text-gray-400 text-sm sm:text-base md:text-lg">Franchise Analysis & Legacy</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl sm:text-4xl font-bold text-white mb-1">
+                    {teamData.all_time_record.wins}-{teamData.all_time_record.losses}
+                  </div>
+                  <p
+                    className="text-sm sm:text-base md:text-lg font-semibold"
+                    style={{
+                      color: teamColors && teamColors[teamName] ? teamColors[teamName].primary : '#10b981',
+                    }}
+                  >
+                    {(teamData.all_time_record.win_pct * 100).toFixed(1)}% Win Rate
+                  </p>
+                </div>
               </div>
-              <p className="text-gray-400 text-sm sm:text-base md:text-lg">Franchise Analysis & Legacy</p>
             </div>
-            <div className="text-right">
-              <div className="text-3xl sm:text-4xl font-bold text-white mb-1">
-                {teamData.all_time_record.wins}-{teamData.all_time_record.losses}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-8">
+            <div
+              className="stat-card-modern border-2"
+              style={{
+                borderColor: teamColors && teamColors[teamName] ? `${teamColors[teamName].primary}40` : 'rgba(16, 185, 129, 0.3)',
+              }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <Trophy className="w-8 h-8 text-yellow-500" />
+                <span className="text-xs text-gray-400 uppercase tracking-wide">Total Games</span>
               </div>
-              <p className="text-emerald-400 text-sm sm:text-base md:text-lg font-semibold">
-                {(teamData.all_time_record.win_pct * 100).toFixed(1)}% Win Rate
+              <p className="text-3xl font-bold text-white">{teamData.total_games}</p>
+              <p className="text-sm text-gray-400 mt-1">
+                {teamData.current_streak.type} streak: {teamData.current_streak.count}
               </p>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-8">
-        <div className="stat-card-modern">
-          <div className="flex items-center justify-between mb-3">
-            <Trophy className="w-8 h-8 text-yellow-500" />
-            <span className="text-xs text-gray-400 uppercase tracking-wide">Total Games</span>
-          </div>
-          <p className="text-3xl font-bold text-white">{teamData.total_games}</p>
-          <p className="text-sm text-gray-400 mt-1">
-            {teamData.current_streak.type} streak: {teamData.current_streak.count}
-          </p>
-        </div>
+            <div
+              className="stat-card-modern border-2"
+              style={{
+                borderColor: teamColors && teamColors[teamName] ? `${teamColors[teamName].secondary}40` : 'rgba(59, 130, 246, 0.3)',
+              }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <Target className="w-8 h-8" style={{ color: teamColors && teamColors[teamName] ? teamColors[teamName].primary : '#10b981' }} />
+                <span className="text-xs text-gray-400 uppercase tracking-wide">Avg Points</span>
+              </div>
+              <p
+                className="text-3xl font-bold"
+                style={{
+                  color: teamColors && teamColors[teamName] ? teamColors[teamName].primary : '#10b981',
+                }}
+              >
+                {teamData.avg_points_scored}
+              </p>
+              <p className="text-sm text-gray-400 mt-1">Allowed: {teamData.avg_points_allowed}</p>
+            </div>
 
-        <div className="stat-card-modern">
-          <div className="flex items-center justify-between mb-3">
-            <Target className="w-8 h-8 text-emerald-500" />
-            <span className="text-xs text-gray-400 uppercase tracking-wide">Avg Points</span>
-          </div>
-          <p className="text-3xl font-bold text-emerald-400">{teamData.avg_points_scored}</p>
-          <p className="text-sm text-gray-400 mt-1">Allowed: {teamData.avg_points_allowed}</p>
-        </div>
+            <div
+              className="stat-card-modern border-2"
+              style={{
+                borderColor: teamColors && teamColors[teamName] ? `${teamColors[teamName].secondary}40` : 'rgba(249, 115, 22, 0.3)',
+              }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <Zap className="w-8 h-8 text-orange-500" />
+                <span className="text-xs text-gray-400 uppercase tracking-wide">Total TDs</span>
+              </div>
+              <p className="text-3xl font-bold text-orange-400">{teamData.season_stats.total_touchdowns}</p>
+              <p className="text-sm text-gray-400 mt-1">All categories</p>
+            </div>
 
-        <div className="stat-card-modern">
-          <div className="flex items-center justify-between mb-3">
-            <Zap className="w-8 h-8 text-orange-500" />
-            <span className="text-xs text-gray-400 uppercase tracking-wide">Total TDs</span>
+            <div
+              className="stat-card-modern border-2"
+              style={{
+                borderColor: teamColors && teamColors[teamName] ? `${teamColors[teamName].primary}40` : 'rgba(168, 85, 247, 0.3)',
+              }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <Users className="w-8 h-8 text-purple-500" />
+                <span className="text-xs text-gray-400 uppercase tracking-wide">Roster</span>
+              </div>
+              <p className="text-3xl font-bold text-purple-400">{Object.keys(teamData.roster).length}</p>
+              <p className="text-sm text-gray-400 mt-1">Players all-time</p>
+            </div>
           </div>
-          <p className="text-3xl font-bold text-orange-400">{teamData.season_stats.total_touchdowns}</p>
-          <p className="text-sm text-gray-400 mt-1">All categories</p>
-        </div>
 
-        <div className="stat-card-modern">
-          <div className="flex items-center justify-between mb-3">
-            <Users className="w-8 h-8 text-purple-500" />
-            <span className="text-xs text-gray-400 uppercase tracking-wide">Roster</span>
+          <div
+            className="glass-card mb-8 border-2"
+            style={{
+              borderColor: teamColors && teamColors[teamName] ? `${teamColors[teamName].primary}30` : 'rgba(16, 185, 129, 0.2)',
+              background: teamColors && teamColors[teamName]
+                ? `linear-gradient(135deg, ${teamColors[teamName].primary}10 0%, ${teamColors[teamName].secondary}05 100%)`
+                : 'rgba(16, 185, 129, 0.05)',
+            }}
+          >
+            <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Season Statistics</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+              <div
+                className="text-center p-3 sm:p-4 rounded-xl"
+                style={{
+                  backgroundColor: teamColors && teamColors[teamName] ? `${teamColors[teamName].primary}20` : 'rgba(59, 130, 246, 0.1)',
+                }}
+              >
+                <p
+                  className="text-2xl sm:text-3xl font-bold"
+                  style={{
+                    color: teamColors && teamColors[teamName] ? teamColors[teamName].primary : '#3b82f6',
+                  }}
+                >
+                  {teamData.season_stats.total_passing_yards.toLocaleString()}
+                </p>
+                <p className="text-xs sm:text-sm text-gray-400 mt-1">Passing Yards</p>
+              </div>
+              <div
+                className="text-center p-3 sm:p-4 rounded-xl"
+                style={{
+                  backgroundColor: teamColors && teamColors[teamName] ? `${teamColors[teamName].secondary}20` : 'rgba(249, 115, 22, 0.1)',
+                }}
+              >
+                <p
+                  className="text-2xl sm:text-3xl font-bold"
+                  style={{
+                    color: teamColors && teamColors[teamName] ? teamColors[teamName].secondary : '#f97316',
+                  }}
+                >
+                  {teamData.season_stats.total_rushing_yards.toLocaleString()}
+                </p>
+                <p className="text-xs sm:text-sm text-gray-400 mt-1">Rushing Yards</p>
+              </div>
+              <div
+                className="text-center p-3 sm:p-4 rounded-xl"
+                style={{
+                  backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                }}
+              >
+                <p className="text-2xl sm:text-3xl font-bold text-purple-400">
+                  {teamData.season_stats.total_receiving_yards.toLocaleString()}
+                </p>
+                <p className="text-xs sm:text-sm text-gray-400 mt-1">Receiving Yards</p>
+              </div>
+              <div
+                className="text-center p-3 sm:p-4 rounded-xl"
+                style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                }}
+              >
+                <p className="text-2xl sm:text-3xl font-bold text-red-400">{teamData.season_stats.total_tackles}</p>
+                <p className="text-xs sm:text-sm text-gray-400 mt-1">Total Tackles</p>
+              </div>
+            </div>
           </div>
-          <p className="text-3xl font-bold text-purple-400">{Object.keys(teamData.roster).length}</p>
-          <p className="text-sm text-gray-400 mt-1">Players all-time</p>
-        </div>
-      </div>
 
-      <div className="glass-card mb-8">
-        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Season Statistics</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-          <div className="text-center p-3 sm:p-4 rounded-xl bg-blue-500/10">
-            <p className="text-2xl sm:text-3xl font-bold text-blue-400">{teamData.season_stats.total_passing_yards.toLocaleString()}</p>
-            <p className="text-xs sm:text-sm text-gray-400 mt-1">Passing Yards</p>
-          </div>
-          <div className="text-center p-3 sm:p-4 rounded-xl bg-orange-500/10">
-            <p className="text-2xl sm:text-3xl font-bold text-orange-400">{teamData.season_stats.total_rushing_yards.toLocaleString()}</p>
-            <p className="text-xs sm:text-sm text-gray-400 mt-1">Rushing Yards</p>
-          </div>
-          <div className="text-center p-3 sm:p-4 rounded-xl bg-purple-500/10">
-            <p className="text-2xl sm:text-3xl font-bold text-purple-400">{teamData.season_stats.total_receiving_yards.toLocaleString()}</p>
-            <p className="text-xs sm:text-sm text-gray-400 mt-1">Receiving Yards</p>
-          </div>
-          <div className="text-center p-3 sm:p-4 rounded-xl bg-red-500/10">
-            <p className="text-2xl sm:text-3xl font-bold text-red-400">{teamData.season_stats.total_tackles}</p>
-            <p className="text-xs sm:text-sm text-gray-400 mt-1">Total Tackles</p>
-          </div>
-        </div>
-      </div>
+          {Object.keys(teamData.head_to_head).length > 0 && (
+            <div
+              className="glass-card mb-8 border-2"
+              style={{
+                borderColor: teamColors && teamColors[teamName] ? `${teamColors[teamName].primary}30` : 'rgba(239, 68, 68, 0.2)',
+                background: teamColors && teamColors[teamName]
+                  ? `linear-gradient(135deg, ${teamColors[teamName].primary}10 0%, ${teamColors[teamName].secondary}05 100%)`
+                  : 'rgba(239, 68, 68, 0.05)',
+              }}
+            >
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6 flex items-center">
+                <Shield
+                  className="w-5 sm:w-6 h-5 sm:h-6 mr-2"
+                  style={{
+                    color: teamColors && teamColors[teamName] ? teamColors[teamName].primary : '#ef4444',
+                  }}
+                />
+                Head-to-Head Records
+              </h2>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={getHeadToHeadChartData()}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="name" stroke="#9ca3af" />
+                  <YAxis stroke="#9ca3af" />
+                  <Tooltip
+                    contentStyle={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '12px' }}
+                    labelStyle={{ color: '#10b981' }}
+                  />
+                  <Bar
+                    dataKey="wins"
+                    fill={teamColors && teamColors[teamName] ? teamColors[teamName].primary : '#10b981'}
+                    radius={[8, 8, 0, 0]}
+                  />
+                  <Bar dataKey="losses" fill="#ef4444" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
-      {Object.keys(teamData.head_to_head).length > 0 && (
-        <div className="glass-card mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6 flex items-center">
-            <Shield className="w-5 sm:w-6 h-5 sm:h-6 mr-2 text-red-500" />
-            Head-to-Head Records
-          </h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={getHeadToHeadChartData()}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="name" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" />
-              <Tooltip
-                contentStyle={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '12px' }}
-                labelStyle={{ color: '#10b981' }}
-              />
-              <Bar dataKey="wins" fill="#10b981" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="losses" fill="#ef4444" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      <div className="glass-card">
-        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Franchise Roster History</h2>
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="w-full text-xs sm:text-sm">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left px-3 sm:px-4 py-2 sm:py-3">PLAYER</th>
-                <th className="text-center px-2 sm:px-3 py-2 sm:py-3">GAMES</th>
-                <th className="text-center px-2 sm:px-3 py-2 sm:py-3">PASS</th>
-                <th className="text-center px-2 sm:px-3 py-2 sm:py-3">RUSH</th>
-                <th className="text-center px-2 sm:px-3 py-2 sm:py-3">REC</th>
-                <th className="text-center px-2 sm:px-3 py-2 sm:py-3">TCK</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(teamData.roster).map(([name, data], idx) => (
-                <tr key={idx} onClick={() => navigate(`/player/${encodeURIComponent(name)}`)} className="cursor-pointer border-b border-white/5 hover:bg-white/5 transition-colors">
-                  <td className="px-3 sm:px-4 py-2 sm:py-3"><span className="font-semibold text-white">{name}</span></td>
-                  <td className="text-center px-2 sm:px-3 py-2 sm:py-3"><span className="text-emerald-400 font-semibold">{data.games}</span></td>
-                  <td className="text-center px-2 sm:px-3 py-2 sm:py-3">{data.stats.passing.yards > 0 ? data.stats.passing.yards : '-'}</td>
-                  <td className="text-center px-2 sm:px-3 py-2 sm:py-3">{data.stats.rushing.yards > 0 ? data.stats.rushing.yards : '-'}</td>
-                  <td className="text-center px-2 sm:px-3 py-2 sm:py-3">{data.stats.receiving.yards > 0 ? data.stats.receiving.yards : '-'}</td>
-                  <td className="text-center px-2 sm:px-3 py-2 sm:py-3">{data.stats.defense.tackles > 0 ? data.stats.defense.tackles : '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div
+            className="glass-card border-2"
+            style={{
+              borderColor: teamColors && teamColors[teamName] ? `${teamColors[teamName].primary}30` : 'rgba(16, 185, 129, 0.2)',
+              background: teamColors && teamColors[teamName]
+                ? `linear-gradient(135deg, ${teamColors[teamName].primary}10 0%, ${teamColors[teamName].secondary}05 100%)`
+                : 'rgba(16, 185, 129, 0.05)',
+            }}
+          >
+            <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Franchise Roster History</h2>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <table className="w-full text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left px-3 sm:px-4 py-2 sm:py-3">PLAYER</th>
+                    <th className="text-center px-2 sm:px-3 py-2 sm:py-3">GAMES</th>
+                    <th className="text-center px-2 sm:px-3 py-2 sm:py-3">PASS</th>
+                    <th className="text-center px-2 sm:px-3 py-2 sm:py-3">RUSH</th>
+                    <th className="text-center px-2 sm:px-3 py-2 sm:py-3">REC</th>
+                    <th className="text-center px-2 sm:px-3 py-2 sm:py-3">TCK</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(teamData.roster).map(([name, data], idx) => (
+                    <tr key={idx} onClick={() => navigate(`/player/${encodeURIComponent(name)}`)} className="cursor-pointer border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="px-3 sm:px-4 py-2 sm:py-3"><span className="font-semibold text-white">{name}</span></td>
+                      <td className="text-center px-2 sm:px-3 py-2 sm:py-3"><span style={{ color: teamColors && teamColors[teamName] ? teamColors[teamName].primary : '#10b981' }} className="font-semibold">{data.games}</span></td>
+                      <td className="text-center px-2 sm:px-3 py-2 sm:py-3">{data.stats.passing.yards > 0 ? data.stats.passing.yards : '-'}</td>
+                      <td className="text-center px-2 sm:px-3 py-2 sm:py-3">{data.stats.rushing.yards > 0 ? data.stats.rushing.yards : '-'}</td>
+                      <td className="text-center px-2 sm:px-3 py-2 sm:py-3">{data.stats.receiving.yards > 0 ? data.stats.receiving.yards : '-'}</td>
+                      <td className="text-center px-2 sm:px-3 py-2 sm:py-3">{data.stats.defense.tackles > 0 ? data.stats.defense.tackles : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>
