@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Trophy, TrendingUp, Users, Activity, Zap, Target, Award } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import Watchlist from '@/components/Watchlist';
+import RecentTrades from '@/components/RecentTrades';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -271,6 +273,12 @@ const NewDashboard = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Watchlist + Trades */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+        <Watchlist />
+        <RecentTrades />
       </div>
     </div>
   );

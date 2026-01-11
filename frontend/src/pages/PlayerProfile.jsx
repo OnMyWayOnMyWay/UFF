@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Trophy, Target, Activity, Shield } from 'lucide-react';
+import { ArrowLeft, Trophy, Target, Activity, Shield, Star } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { toast } from 'sonner';
+import useWatchlist from '@/hooks/useWatchlist';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -13,6 +15,7 @@ const PlayerProfile = () => {
   const [player, setPlayer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { isWatching, addPlayer, removePlayer } = useWatchlist();
 
   useEffect(() => {
     fetchPlayerData();
@@ -128,7 +131,30 @@ const PlayerProfile = () => {
             {player.name.charAt(0)}
           </div>
           <div className="flex-1">
-            <h1 className="text-4xl font-bold gradient-text mb-2">{player.name}</h1>
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="text-4xl font-bold gradient-text mb-2">{player.name}</h1>
+              <button
+                onClick={() => {
+                  const watching = isWatching(player.name);
+                  if (watching) {
+                    removePlayer(player.name);
+                    toast.success(`Removed ${player.name} from Watchlist`);
+                  } else {
+                    addPlayer(player.name);
+                    toast.success(`Added ${player.name} to Watchlist`);
+                  }
+                }}
+                className={`px-4 py-2 rounded-xl border transition-all flex items-center gap-2 whitespace-nowrap ${
+                  isWatching(player.name)
+                    ? 'bg-yellow-500/15 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20'
+                    : 'bg-white/5 border-white/10 text-gray-200 hover:bg-white/10'
+                }`}
+                title="Watchlist"
+              >
+                <Star className={`w-4 h-4 ${isWatching(player.name) ? 'fill-yellow-500 text-yellow-500' : 'text-gray-300'}`} />
+                {isWatching(player.name) ? 'Watching' : 'Watch'}
+              </button>
+            </div>
             <div className="flex items-center space-x-6 text-sm text-gray-400">
               <span>{player.games_played} Games Played</span>
               <span className="text-yellow-500 font-bold text-lg">{player.fantasy_points.toFixed(1)} Fantasy Points</span>

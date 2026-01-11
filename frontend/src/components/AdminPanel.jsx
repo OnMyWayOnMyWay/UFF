@@ -10,7 +10,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [adminKey, setAdminKey] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [activeTab, setActiveTab] = useState('reset'); // reset, edit, games, roblox, admins, merge, weekstats, gamestats, creategame, tools, analytics
+  const [activeTab, setActiveTab] = useState('reset'); // reset, edit, games, roblox, admins, merge, weekstats, gamestats, creategame, tools, audit, analytics
   const [isVerified, setIsVerified] = useState(false);
   const [adminInfo, setAdminInfo] = useState(null);
   
@@ -103,6 +103,12 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [validationResults, setValidationResults] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  // Admin Audit Log State
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditActionFilter, setAuditActionFilter] = useState('');
+  const [auditLimit, setAuditLimit] = useState(100);
 
   // Game Stats Edit State
   const [gameStatsEdit, setGameStatsEdit] = useState({
@@ -1128,10 +1134,37 @@ const AdminPanel = ({ isOpen, onClose }) => {
     }
   };
 
+  const loadAuditLogs = async (opts = {}) => {
+    if (!isVerified) return;
+
+    const limit = typeof opts.limit === 'number' ? opts.limit : auditLimit;
+    const action = typeof opts.action === 'string' ? opts.action : auditActionFilter;
+
+    setAuditLoading(true);
+    try {
+      const response = await axios.get(`${API}/admin/audit`, {
+        headers: { 'admin-key': adminKey },
+        params: {
+          limit,
+          action: action || undefined
+        }
+      });
+      setAuditLogs(Array.isArray(response.data?.logs) ? response.data.logs : []);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to load audit log');
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
   // Load analytics when tab is opened
   useEffect(() => {
     if (activeTab === 'analytics' && isVerified && !analytics) {
       loadAnalytics();
+    }
+
+    if (activeTab === 'audit' && isVerified && auditLogs.length === 0 && !auditLoading) {
+      loadAuditLogs();
     }
   }, [activeTab, isVerified]);
 
@@ -1305,6 +1338,17 @@ const AdminPanel = ({ isOpen, onClose }) => {
               >
                 <Database className="w-4 h-4 inline mr-2" />
                 Advanced Tools
+              </button>
+              <button
+                onClick={() => setActiveTab('audit')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  activeTab === 'audit' 
+                    ? 'bg-slate-500 text-white' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <FileText className="w-4 h-4 inline mr-2" />
+                Audit Log
               </button>
               <button
                 onClick={() => setActiveTab('analytics')}
@@ -2741,6 +2785,99 @@ const AdminPanel = ({ isOpen, onClose }) => {
                             ))}
                           </div>
                         )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Audit Log Tab */}
+              {activeTab === 'audit' && (
+                <div className="space-y-4">
+                  <div className="bg-slate-500/10 border border-slate-500/20 rounded-lg p-4 mb-4">
+                    <p className="text-slate-300 text-sm">
+                      <strong>Audit Log:</strong> Tracks admin actions like edits, deletes, trades, and bulk operations.
+                    </p>
+                  </div>
+
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                      <div className="flex-1">
+                        <label className="block text-gray-400 text-sm mb-1">Filter by Action (optional)</label>
+                        <input
+                          type="text"
+                          value={auditActionFilter}
+                          onChange={(e) => setAuditActionFilter(e.target.value)}
+                          placeholder="e.g. delete_game, record_trade"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-slate-500"
+                        />
+                      </div>
+
+                      <div className="w-full md:w-40">
+                        <label className="block text-gray-400 text-sm mb-1">Limit</label>
+                        <select
+                          value={auditLimit}
+                          onChange={(e) => setAuditLimit(parseInt(e.target.value))}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-slate-500"
+                        >
+                          {[25, 50, 100, 200].map((n) => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <button
+                        onClick={() => loadAuditLogs({ limit: auditLimit, action: auditActionFilter })}
+                        disabled={auditLoading}
+                        className="w-full md:w-auto bg-slate-500 hover:bg-slate-600 disabled:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center space-x-2"
+                      >
+                        {auditLoading ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>Loading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4" />
+                            <span>Refresh</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-semibold mb-3 flex items-center">
+                      <FileText className="w-4 h-4 mr-2 text-slate-300" />
+                      Recent Entries
+                    </h3>
+
+                    {auditLoading ? (
+                      <div className="text-center py-10">
+                        <RefreshCw className="w-8 h-8 animate-spin text-gray-500 mx-auto mb-2" />
+                        <p className="text-gray-400">Loading audit log...</p>
+                      </div>
+                    ) : auditLogs.length === 0 ? (
+                      <p className="text-gray-400 text-sm">No audit entries found.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[420px] overflow-y-auto">
+                        {auditLogs.map((log, idx) => (
+                          <div key={log.id || idx} className="bg-[#1a1a1b] border border-gray-800 rounded-lg p-3">
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-semibold">{log.action}</span>
+                                <span className="text-xs text-gray-400">by {log.admin_username || 'Unknown'}</span>
+                              </div>
+                              <span className="text-xs text-gray-500">{(log.timestamp || '').replace('T', ' ').replace('Z', '')}</span>
+                            </div>
+
+                            {log.details && Object.keys(log.details).length > 0 && (
+                              <pre className="mt-2 text-xs text-gray-300 bg-black/30 border border-gray-800 rounded p-2 overflow-x-auto max-h-40">
+{JSON.stringify(log.details, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

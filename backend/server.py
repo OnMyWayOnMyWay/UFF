@@ -799,6 +799,37 @@ async def get_team_standings():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/player-names")
+async def get_public_player_names(query: Optional[str] = None, limit: int = 25):
+    """Public endpoint: search player names for autocomplete."""
+    safe_limit = max(1, min(int(limit), 100))
+    q = (query or "").strip().lower()
+
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        player_names: set[str] = set()
+
+        for game in games:
+            for team_key in ['home_stats', 'away_stats']:
+                stats = game.get(team_key, {})
+                for category in ['passing', 'defense', 'rushing', 'receiving']:
+                    if category in stats:
+                        for player in stats[category]:
+                            name = player.get('name')
+                            if name:
+                                player_names.add(name)
+
+        names = sorted(list(player_names))
+
+        if q:
+            names = [n for n in names if q in n.lower()]
+
+        return {"players": names[:safe_limit]}
+    except Exception as e:
+        logger.error(f"Error getting public player names: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/players/{player_name}")
 async def get_player_profile(player_name: str):
     """Get detailed player profile with all stats"""
@@ -1239,6 +1270,36 @@ async def verify_admin(admin_key: str) -> bool:
     admin_user = await db.admins.find_one({"admin_key": admin_key})
     return admin_user is not None
 
+
+async def get_admin_username(admin_key: str) -> str:
+    """Resolve an admin key to a human-friendly username for logging."""
+    if admin_key == os.environ.get('ADMIN_KEY', 'reset_season_2025'):
+        return "Master Admin"
+
+    try:
+        admin = await db.admins.find_one({"admin_key": admin_key}, {"_id": 0, "username": 1})
+        if admin and admin.get("username"):
+            return str(admin["username"])
+    except Exception as e:
+        logger.error(f"Error resolving admin username: {str(e)}")
+
+    return "Unknown Admin"
+
+
+async def log_admin_action(admin_key: str, action: str, details: Optional[Dict[str, Any]] = None) -> None:
+    """Best-effort audit log for admin actions (never raises)."""
+    try:
+        doc = {
+            "id": str(uuid.uuid4()),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "action": action,
+            "admin_username": await get_admin_username(admin_key),
+            "details": details or {},
+        }
+        await db.admin_audit.insert_one(doc)
+    except Exception as e:
+        logger.error(f"Error writing admin audit log: {str(e)}")
+
 @api_router.post("/admin/reset-season")
 async def reset_season(admin_key: str):
     """Reset the season by wiping all game data"""
@@ -1248,6 +1309,13 @@ async def reset_season(admin_key: str):
     try:
         result = await db.games.delete_many({})
         logger.info(f"Season reset - deleted {result.deleted_count} games")
+
+        await log_admin_action(
+            admin_key,
+            "reset_season",
+            {"deleted_games": result.deleted_count},
+        )
+
         return {
             "success": True,
             "message": f"Season reset complete. Deleted {result.deleted_count} games.",
@@ -1280,6 +1348,12 @@ async def add_admin(request: AddAdminRequest, admin_key: str = Header(...)):
         
         await db.admins.insert_one(doc)
         logger.info(f"New admin added: {request.username}")
+
+        await log_admin_action(
+            admin_key,
+            "add_admin",
+            {"username": request.username},
+        )
         
         return {
             "success": True,
@@ -1306,6 +1380,12 @@ async def remove_admin(admin_key_to_remove: str, admin_key: str = Header(...)):
             raise HTTPException(status_code=404, detail="Admin not found")
         
         logger.info(f"Admin removed: {admin_key_to_remove}")
+
+        await log_admin_action(
+            admin_key,
+            "remove_admin",
+            {"admin_key_removed": admin_key_to_remove},
+        )
         
         return {
             "success": True,
@@ -1484,6 +1564,23 @@ async def edit_player(player_edit: PlayerEdit, admin_key: str = Header(...)):
             raise HTTPException(status_code=404, detail=f"Player '{player_edit.old_name}' not found in any games")
         
         logger.info(f"Player '{player_edit.old_name}' updated in {updated_count} games")
+
+        await log_admin_action(
+            admin_key,
+            "edit_player",
+            {
+                "old_name": player_edit.old_name,
+                "new_name": player_edit.new_name,
+                "new_team": player_edit.new_team,
+                "games_updated": updated_count,
+                "changes": {
+                    "name_changed": player_edit.new_name is not None,
+                    "team_changed": player_edit.new_team is not None,
+                    "stats_added": player_edit.stats_to_add is not None,
+                    "stats_removed": player_edit.stats_to_remove is not None,
+                },
+            },
+        )
         
         return {
             "success": True,
@@ -1542,6 +1639,12 @@ async def delete_player(player_name: str, admin_key: str = Header(...)):
             raise HTTPException(status_code=404, detail=f"Player '{player_name}' not found in any games")
         
         logger.info(f"Player '{player_name}' deleted from {updated_count} games")
+
+        await log_admin_action(
+            admin_key,
+            "delete_player",
+            {"player_name": player_name, "games_updated": updated_count},
+        )
         
         return {
             "success": True,
@@ -1611,6 +1714,16 @@ async def bulk_delete_weeks(request: BulkDeleteRequest, admin_key: str = Header(
         })
         
         logger.info(f"Bulk deleted {result.deleted_count} games from weeks {request.week_start}-{request.week_end}")
+
+        await log_admin_action(
+            admin_key,
+            "bulk_delete_weeks",
+            {
+                "week_start": request.week_start,
+                "week_end": request.week_end,
+                "deleted_games": result.deleted_count,
+            },
+        )
         
         return {
             "success": True,
@@ -1742,6 +1855,16 @@ async def clone_game(request: GameClone, admin_key: str = Header(...)):
         await db.games.insert_one(new_game)
         
         logger.info(f"Cloned game {request.game_id} to week {request.new_week}")
+
+        await log_admin_action(
+            admin_key,
+            "clone_game",
+            {
+                "source_game_id": request.game_id,
+                "new_week": request.new_week,
+                "new_game_id": new_game['id'],
+            },
+        )
         
         return {
             "success": True,
@@ -1849,6 +1972,12 @@ async def merge_players(player_merge: PlayerMerge, admin_key: str = Header(...))
             raise HTTPException(status_code=404, detail=f"No games found with players: {', '.join(player_merge.old_names)}")
         
         logger.info(f"Merged players {player_merge.old_names} into '{player_merge.new_name}' across {updated_count} games")
+
+        await log_admin_action(
+            admin_key,
+            "merge_players",
+            {"old_names": player_merge.old_names, "new_name": player_merge.new_name, "games_updated": updated_count},
+        )
         
         return {
             "success": True,
@@ -1929,6 +2058,18 @@ async def edit_week_stats(week_stat_edit: WeekStatEdit, admin_key: str = Header(
             )
         
         logger.info(f"Updated stats for '{week_stat_edit.player_name}' in week {week_stat_edit.week}")
+
+        await log_admin_action(
+            admin_key,
+            "edit_week_stats",
+            {
+                "player_name": week_stat_edit.player_name,
+                "week": week_stat_edit.week,
+                "team_side": week_stat_edit.team_side,
+                "category": week_stat_edit.category,
+                "games_updated": updated_count,
+            },
+        )
         
         return {
             "success": True,
@@ -1984,6 +2125,7 @@ async def detect_and_update_userids(admin_key: str = Header(...)):
                                 numeric_names.add(name)
         
         if not numeric_names:
+            await log_admin_action(admin_key, "detect_userids", {"updated": 0, "reason": "no_userids_found"})
             return {"success": True, "message": "No user IDs found", "updated": 0}
         
         # Fetch usernames from Roblox
@@ -2002,6 +2144,7 @@ async def detect_and_update_userids(admin_key: str = Header(...)):
                     logger.error(f"Error fetching username for {user_id}: {str(e)}")
         
         if not userid_mapping:
+            await log_admin_action(admin_key, "detect_userids", {"updated": 0, "reason": "no_valid_usernames"})
             return {"success": True, "message": "No valid usernames found for user IDs", "updated": 0}
         
         # Update games
@@ -2026,6 +2169,12 @@ async def detect_and_update_userids(admin_key: str = Header(...)):
                 updated_count += 1
         
         logger.info(f"Updated {updated_count} games, converted {len(userid_mapping)} user IDs to usernames")
+
+        await log_admin_action(
+            admin_key,
+            "detect_userids",
+            {"updated": updated_count, "converted": len(userid_mapping)},
+        )
         
         return {
             "success": True,
@@ -2121,6 +2270,19 @@ async def record_trade(trade: TradeRecord, admin_key: str = Header(...)):
                 logger.error(f"Error sending trade to Discord: {str(e)}")
         
         logger.info(f"Trade recorded: {trade.player_name} from {trade.from_team} to {trade.to_team}")
+
+        await log_admin_action(
+            admin_key,
+            "record_trade",
+            {
+                "trade_id": trade_doc["id"],
+                "player_name": trade.player_name,
+                "from_team": trade.from_team,
+                "to_team": trade.to_team,
+                "week": trade.week,
+                "updated_games": updated_count,
+            },
+        )
         
         return {
             "success": True,
@@ -2209,6 +2371,12 @@ async def fix_team_assignments(admin_key: str = Header(...)):
                 updated_count += 1
         
         logger.info(f"Fixed team assignments in {updated_count} games, made {len(fixes_made)} fixes")
+
+        await log_admin_action(
+            admin_key,
+            "fix_team_assignments",
+            {"games_updated": updated_count, "total_fixes": len(fixes_made)},
+        )
         
         return {
             "success": True,
@@ -2275,6 +2443,19 @@ async def edit_game_player_stats(game_id: str, edit: GamePlayerStatEdit, admin_k
             )
             
             logger.info(f"Added new player {edit.player_name} to game {game_id} - Week {game['week']}")
+
+            await log_admin_action(
+                admin_key,
+                "edit_game_player_stats",
+                {
+                    "game_id": game_id,
+                    "week": game.get("week"),
+                    "player_name": edit.player_name,
+                    "team_side": edit.team_side,
+                    "category": edit.category,
+                    "action": "added",
+                },
+            )
             
             return {
                 "success": True,
@@ -2297,6 +2478,19 @@ async def edit_game_player_stats(game_id: str, edit: GamePlayerStatEdit, admin_k
             )
             
             logger.info(f"Updated player {edit.player_name} in game {game_id} - Week {game['week']}")
+
+            await log_admin_action(
+                admin_key,
+                "edit_game_player_stats",
+                {
+                    "game_id": game_id,
+                    "week": game.get("week"),
+                    "player_name": edit.player_name,
+                    "team_side": edit.team_side,
+                    "category": edit.category,
+                    "action": "updated",
+                },
+            )
             
             return {
                 "success": True,
@@ -2445,6 +2639,12 @@ async def edit_game(game_id: str, game_edit: GameEdit, twofa_code: str, admin_ke
             raise HTTPException(status_code=404, detail="Game not found or no changes made")
         
         logger.info(f"Game {game_id} updated by admin")
+
+        await log_admin_action(
+            admin_key,
+            "edit_game",
+            {"game_id": game_id, "updated_fields": list(update_data.keys())},
+        )
         
         return {
             "success": True,
@@ -2481,6 +2681,16 @@ async def delete_game(game_id: str, twofa_code: str, admin_key: str = Header(...
             raise HTTPException(status_code=404, detail="Game not found")
         
         logger.info(f"Game {game_id} (Week {game.get('week')}) deleted by admin")
+
+        await log_admin_action(
+            admin_key,
+            "delete_game",
+            {
+                "game_id": game_id,
+                "week": game.get("week"),
+                "matchup": f"{game.get('home_team')} vs {game.get('away_team')}",
+            },
+        )
         
         return {
             "success": True,
@@ -2491,6 +2701,41 @@ async def delete_game(game_id: str, twofa_code: str, admin_key: str = Header(...
         raise
     except Exception as e:
         logger.error(f"Error deleting game: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/audit")
+async def get_admin_audit_logs(
+    limit: int = 100,
+    action: Optional[str] = None,
+    admin_key: str = Header(...),
+):
+    """Get recent admin audit log entries."""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+
+    safe_limit = max(1, min(int(limit), 250))
+    query: Dict[str, Any] = {}
+    if action:
+        query["action"] = action
+
+    try:
+        logs = await db.admin_audit.find(query, {"_id": 0}).sort("timestamp", -1).to_list(safe_limit)
+        return {"logs": logs}
+    except Exception as e:
+        logger.error(f"Error fetching audit logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/trades")
+async def list_trades(limit: int = 10):
+    """Public endpoint: return recent trade records."""
+    safe_limit = max(1, min(int(limit), 50))
+    try:
+        trades = await db.trades.find({}, {"_id": 0}).sort("timestamp", -1).to_list(safe_limit)
+        return {"trades": trades}
+    except Exception as e:
+        logger.error(f"Error fetching trades: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
