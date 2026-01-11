@@ -1,5 +1,5 @@
 // Team logo configuration and utilities
-// Logos and colors are fetched from the API and cached
+// Logos and colors are fetched from the API and cached in memory + localStorage
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 
 let logoCache = null;
@@ -26,39 +26,65 @@ const TEAM_COLORS = {
   'Egypt Pharaohs': { primary: '#FFD700', secondary: '#8B0000' },
 };
 
-export async function loadTeamLogos() {
-  if (logoCache) return logoCache;
+export async function loadTeamLogos(forceRefresh = false) {
+  // Return cached version if available and not forcing refresh
+  if (logoCache && !forceRefresh) return logoCache;
   
   try {
     const response = await fetch(`${BACKEND_URL}/api/teams/logos`);
     if (response.ok) {
       const data = await response.json();
       logoCache = data.logos || {};
+      // Also save to localStorage for persistence
+      try {
+        localStorage.setItem('teamLogosCache', JSON.stringify(logoCache));
+      } catch (e) {
+        console.warn('Failed to save logos to localStorage:', e);
+      }
     } else {
       logoCache = {};
     }
   } catch (error) {
     console.error('Error loading team logos:', error);
-    logoCache = {};
+    // Try to load from localStorage as fallback
+    try {
+      const cached = localStorage.getItem('teamLogosCache');
+      logoCache = cached ? JSON.parse(cached) : {};
+    } catch (e) {
+      logoCache = {};
+    }
   }
   
   return logoCache;
 }
 
-export async function loadTeamColors() {
-  if (colorCache) return colorCache;
+export async function loadTeamColors(forceRefresh = false) {
+  // Return cached version if available and not forcing refresh
+  if (colorCache && !forceRefresh) return colorCache;
   
   try {
     const response = await fetch(`${BACKEND_URL}/api/teams/colors`);
     if (response.ok) {
       const data = await response.json();
       colorCache = data.colors || {};
+      // Also save to localStorage for persistence
+      try {
+        localStorage.setItem('teamColorsCache', JSON.stringify(colorCache));
+      } catch (e) {
+        console.warn('Failed to save colors to localStorage:', e);
+      }
     } else {
       colorCache = {};
     }
   } catch (error) {
     console.error('Error loading team colors:', error);
-    colorCache = {};
+    // Try to load from localStorage as fallback
+    try {
+      const cached = localStorage.getItem('teamColorsCache');
+      colorCache = cached ? JSON.parse(cached) : {};
+    } catch (e) {
+      colorCache = {};
+    }
   }
   
   return colorCache;

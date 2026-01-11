@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { AlertTriangle, RefreshCw, X, Edit, UserPlus, Users, Search, Trash2, Plus, Minus, Database, BarChart3, Download, ArrowRightLeft, Wand2, FileText, Copy, AlertCircle, CheckCircle, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { loadTeamLogos as loadTeamLogosLib, loadTeamColors as loadTeamColorsLib } from '../lib/teamLogos';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -262,22 +263,22 @@ const AdminPanel = ({ isOpen, onClose }) => {
   };
 
   // Load team logos (public)
-  const loadTeamLogos = async () => {
+  const loadTeamLogos = async (forceRefresh = false) => {
     try {
-      const response = await axios.get(`${API}/teams/logos`);
-      console.log('Loaded team logos:', response.data.logos);
-      setTeamLogos(response.data.logos || {});
+      const logos = await loadTeamLogosLib(forceRefresh);
+      console.log('Loaded team logos:', logos);
+      setTeamLogos(logos || {});
     } catch (error) {
       console.error('Failed to load team logos:', error);
     }
   };
 
   // Load team colors (public)
-  const loadTeamColors = async () => {
+  const loadTeamColors = async (forceRefresh = false) => {
     try {
-      const response = await axios.get(`${API}/teams/colors`);
-      console.log('Loaded team colors:', response.data.colors);
-      setTeamColors(response.data.colors || {});
+      const colors = await loadTeamColorsLib(forceRefresh);
+      console.log('Loaded team colors:', colors);
+      setTeamColors(colors || {});
     } catch (error) {
       console.error('Failed to load team colors:', error);
     }
@@ -303,9 +304,10 @@ const AdminPanel = ({ isOpen, onClose }) => {
       });
       console.log('Logo upload response:', response.data);
       toast.success(`Team logo uploaded: ${response.data.logo_url}`);
-      // Refresh logos map
+      // Refresh logos map with force refresh
       setLogoFile(null);
-      await loadTeamLogos();
+      setLogoTeam('');
+      await loadTeamLogos(true);
     } catch (error) {
       console.error('Logo upload error:', error);
       toast.error(error.response?.data?.detail || 'Failed to upload logo');
@@ -678,6 +680,22 @@ const AdminPanel = ({ isOpen, onClose }) => {
       toast.success('CSV copied to clipboard!');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to copy CSV');
+    }
+  };
+
+  const handleSendGameToDiscord = async (game, webhookType = 'default') => {
+    try {
+      const response = await axios.post(`${API}/admin/send-to-discord`, {
+        game_id: game.timestamp || game.id,
+        webhook_type: webhookType
+      }, {
+        headers: { 'admin-key': adminKey }
+      });
+      
+      const webhookName = webhookType === 'default' ? 'Discord' : 'Merge Discord';
+      toast.success(`Game sent to ${webhookName}!`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || `Failed to send to Discord`);
     }
   };
   
@@ -2277,6 +2295,20 @@ const AdminPanel = ({ isOpen, onClose }) => {
                               </div>
                             </div>
                             <div className="flex items-center space-x-2 ml-4">
+                              <button
+                                onClick={() => handleSendGameToDiscord(game, 'default')}
+                                className="text-blue-400 hover:text-blue-300 transition-colors"
+                                title="Send to Discord"
+                              >
+                                <AlertCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleSendGameToDiscord(game, 'merge')}
+                                className="text-purple-400 hover:text-purple-300 transition-colors"
+                                title="Send to Merge Discord"
+                              >
+                                <ArrowRightLeft className="w-4 h-4" />
+                              </button>
                               <button
                                 onClick={() => handleCopyCSV(game.id)}
                                 className="text-green-400 hover:text-green-300 transition-colors"

@@ -146,11 +146,17 @@ class GamePlayerStatEdit(BaseModel):
     stats: Dict[str, Any]  # Stats to update for this player
 
 
-async def send_to_discord(game: Game):
-    """Send game results to Discord with embed and CSV file"""
-    webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
+async def send_to_discord(game: Game, webhook_type: str = 'default'):
+    """Send game results to Discord with embed and CSV file.
+    
+    Args:
+        game: Game object to send
+        webhook_type: 'default' for DISCORD_WEBHOOK_URL, 'merge' for MERGE_DISCORD_URL
+    """
+    webhook_key = 'DISCORD_WEBHOOK_URL' if webhook_type == 'default' else 'MERGE_DISCORD_URL'
+    webhook_url = os.environ.get(webhook_key)
     if not webhook_url:
-        logger.warning("Discord webhook URL not configured")
+        logger.warning(f"Discord webhook URL ({webhook_key}) not configured")
         return
     
     try:
@@ -468,6 +474,52 @@ async def get_available_weeks():
     ]
     weeks = await db.games.aggregate(pipeline).to_list(100)
     return {"weeks": [w["_id"] for w in weeks]}
+
+
+@api_router.post("/admin/send-to-discord")
+async def send_game_to_discord(
+    game_id: str = Body(...),
+    webhook_type: str = Body(default="default"),
+    admin_key: str = Header(...),
+):
+    """Admin: Send a specific game to Discord webhook.
+    
+    Args:
+        game_id: The ID/timestamp of the game to send
+        webhook_type: 'default' for DISCORD_WEBHOOK_URL, 'merge' for MERGE_DISCORD_URL
+        admin_key: Admin authentication key
+    """
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        # Find the game
+        games = await db.games.find({"timestamp": game_id}, {"_id": 0}).to_list(1)
+        if not games:
+            raise HTTPException(status_code=404, detail="Game not found")
+        
+        game_doc = games[0]
+        # Convert to Game object
+        if isinstance(game_doc['timestamp'], str):
+            game_doc['timestamp'] = datetime.fromisoformat(game_doc['timestamp'])
+        
+        game = Game(**game_doc)
+        
+        # Send to Discord
+        await send_to_discord(game, webhook_type=webhook_type)
+        await log_admin_action(admin_key, "send_game_to_discord", {
+            "game_id": game_id,
+            "webhook_type": webhook_type,
+            "home_team": game.home_team,
+            "away_team": game.away_team
+        })
+        
+        return {"success": True, "message": f"Game sent to Discord ({webhook_type})"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending game to Discord: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def calculate_passer_rating(completions: int, attempts: int, yards: int, touchdowns: int, interceptions: int) -> float:
@@ -2618,6 +2670,10 @@ async def get_playoff_seeds():
                     "team": leader["team"],
                     "wins": leader["wins"],
                     "losses": leader["losses"],
+                    "win_pct": leader.get("win_pct", 0),
+                    "points_for": leader.get("points_for", 0),
+                    "points_against": leader.get("points_against", 0),
+                    "point_diff": leader.get("point_diff", 0),
                     "conference": conf_name,
                     "division": leader["division"],
                     "is_division_leader": True,
@@ -2635,6 +2691,10 @@ async def get_playoff_seeds():
                     "team": wildcard["team"],
                     "wins": wildcard["wins"],
                     "losses": wildcard["losses"],
+                    "win_pct": wildcard.get("win_pct", 0),
+                    "points_for": wildcard.get("points_for", 0),
+                    "points_against": wildcard.get("points_against", 0),
+                    "point_diff": wildcard.get("point_diff", 0),
                     "conference": conf_name,
                     "division": wildcard["division"],
                     "is_division_leader": False,
