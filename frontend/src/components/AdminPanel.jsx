@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { AlertTriangle, RefreshCw, X, Edit, UserPlus, Users, Search, Trash2, Plus, Minus, Database, BarChart3, Download, ArrowRightLeft, Wand2 } from 'lucide-react';
+import { AlertTriangle, RefreshCw, X, Edit, UserPlus, Users, Search, Trash2, Plus, Minus, Database, BarChart3, Download, ArrowRightLeft, Wand2, FileText, Copy, AlertCircle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
@@ -10,7 +10,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [adminKey, setAdminKey] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [activeTab, setActiveTab] = useState('reset'); // reset, edit, games, roblox, admins, merge, weekstats
+  const [activeTab, setActiveTab] = useState('reset'); // reset, edit, games, roblox, admins, merge, weekstats, tools, analytics
   const [isVerified, setIsVerified] = useState(false);
   const [adminInfo, setAdminInfo] = useState(null);
   
@@ -94,6 +94,15 @@ const AdminPanel = ({ isOpen, onClose }) => {
   });
   const [tempStatKey, setTempStatKey] = useState('');
   const [tempStatValue, setTempStatValue] = useState('');
+  
+  // Advanced Tools State
+  const [bulkDeleteWeeks, setBulkDeleteWeeks] = useState({ start: '', end: '' });
+  const [exportLoading, setExportLoading] = useState(false);
+  const [cloneGameId, setCloneGameId] = useState('');
+  const [cloneWeek, setCloneWeek] = useState('');
+  const [validationResults, setValidationResults] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   // Verify admin key
   const verifyAdmin = async () => {
@@ -769,6 +778,120 @@ const AdminPanel = ({ isOpen, onClose }) => {
       toast.error(error.response?.data?.detail || 'Failed to edit week stats');
     }
   };
+  
+  // Advanced Tools Functions
+  const handleBulkDeleteWeeks = async () => {
+    if (!bulkDeleteWeeks.start || !bulkDeleteWeeks.end) {
+      toast.error('Please enter start and end weeks');
+      return;
+    }
+
+    if (!window.confirm(`Delete ALL games from week ${bulkDeleteWeeks.start} to ${bulkDeleteWeeks.end}? This cannot be undone!`)) {
+      return;
+    }
+
+    try {
+      const response = await axios.post(`${API}/admin/bulk-delete-weeks`, {
+        week_start: parseInt(bulkDeleteWeeks.start),
+        week_end: parseInt(bulkDeleteWeeks.end)
+      }, {
+        headers: { 'admin-key': adminKey }
+      });
+
+      toast.success(response.data.message);
+      setBulkDeleteWeeks({ start: '', end: '' });
+      loadGames();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to bulk delete');
+    }
+  };
+
+  const handleExportAllCSV = async () => {
+    setExportLoading(true);
+    try {
+      const response = await axios.get(`${API}/admin/export-all-csv`, {
+        headers: { 'admin-key': adminKey }
+      });
+
+      // Download CSV
+      const blob = new Blob([response.data.csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `uff-all-games-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('CSV exported successfully!');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to export CSV');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleCloneGame = async () => {
+    if (!cloneGameId || !cloneWeek) {
+      toast.error('Please enter game ID and new week');
+      return;
+    }
+
+    try {
+      const response = await axios.post(`${API}/admin/clone-game`, {
+        game_id: cloneGameId,
+        new_week: parseInt(cloneWeek)
+      }, {
+        headers: { 'admin-key': adminKey }
+      });
+
+      toast.success(response.data.message);
+      setCloneGameId('');
+      setCloneWeek('');
+      loadGames();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to clone game');
+    }
+  };
+
+  const handleValidateData = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/validate-data`, {
+        headers: { 'admin-key': adminKey }
+      });
+
+      setValidationResults(response.data);
+      if (response.data.valid) {
+        toast.success('All data is valid!');
+      } else {
+        toast.warning(`Found ${response.data.issues_found} issues`);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to validate data');
+    }
+  };
+
+  const loadAnalytics = async () => {
+    setAnalyticsLoading(true);
+    try {
+      const response = await axios.get(`${API}/admin/analytics`, {
+        headers: { 'admin-key': adminKey }
+      });
+      setAnalytics(response.data);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to load analytics');
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  // Load analytics when tab is opened
+  useEffect(() => {
+    if (activeTab === 'analytics' && isVerified && !analytics) {
+      loadAnalytics();
+    }
+  }, [activeTab, isVerified]);
 
   if (!isOpen) return null;
 
@@ -907,6 +1030,28 @@ const AdminPanel = ({ isOpen, onClose }) => {
               >
                 <Wand2 className="w-4 h-4 inline mr-2" />
                 Week Stats Edit
+              </button>
+              <button
+                onClick={() => setActiveTab('tools')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  activeTab === 'tools' 
+                    ? 'bg-indigo-500 text-white' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <Database className="w-4 h-4 inline mr-2" />
+                Advanced Tools
+              </button>
+              <button
+                onClick={() => setActiveTab('analytics')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  activeTab === 'analytics' 
+                    ? 'bg-orange-500 text-white' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4 inline mr-2" />
+                Analytics
               </button>
             </div>
 
@@ -1666,6 +1811,286 @@ const AdminPanel = ({ isOpen, onClose }) => {
                       <span>Update Week Stats</span>
                     </button>
                   </div>
+                </div>
+              )}
+              
+              {/* Advanced Tools Tab */}
+              {activeTab === 'tools' && (
+                <div className="space-y-4">
+                  <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-4 mb-4">
+                    <p className="text-indigo-400 text-sm">
+                      <strong>Advanced Tools:</strong> Powerful utilities for managing your database including bulk operations, exports, and data validation.
+                    </p>
+                  </div>
+
+                  {/* Bulk Delete by Week Range */}
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-semibold mb-3 flex items-center">
+                      <Trash2 className="w-4 h-4 mr-2 text-red-400" />
+                      Bulk Delete Games by Week Range
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Start Week</label>
+                        <input
+                          type="number"
+                          value={bulkDeleteWeeks.start}
+                          onChange={(e) => setBulkDeleteWeeks({...bulkDeleteWeeks, start: e.target.value})}
+                          placeholder="1"
+                          min="1"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-red-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">End Week</label>
+                        <input
+                          type="number"
+                          value={bulkDeleteWeeks.end}
+                          onChange={(e) => setBulkDeleteWeeks({...bulkDeleteWeeks, end: e.target.value})}
+                          placeholder="5"
+                          min="1"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-red-500"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleBulkDeleteWeeks}
+                      className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg transition-all flex items-center justify-center space-x-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Delete Games in Range</span>
+                    </button>
+                  </div>
+
+                  {/* Export All Games */}
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-semibold mb-3 flex items-center">
+                      <Download className="w-4 h-4 mr-2 text-green-400" />
+                      Export All Games to CSV
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-3">Download a CSV file containing all games in the database.</p>
+                    <button
+                      onClick={handleExportAllCSV}
+                      disabled={exportLoading}
+                      className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 text-white font-semibold py-2 rounded-lg transition-all flex items-center justify-center space-x-2"
+                    >
+                      {exportLoading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Exporting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4" />
+                          <span>Export to CSV</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Clone Game */}
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-semibold mb-3 flex items-center">
+                      <Copy className="w-4 h-4 mr-2 text-blue-400" />
+                      Clone Game to Different Week
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Game ID</label>
+                        <input
+                          type="text"
+                          value={cloneGameId}
+                          onChange={(e) => setCloneGameId(e.target.value)}
+                          placeholder="Game ID to clone"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">New Week</label>
+                        <input
+                          type="number"
+                          value={cloneWeek}
+                          onChange={(e) => setCloneWeek(e.target.value)}
+                          placeholder="Target week"
+                          min="1"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleCloneGame}
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-lg transition-all flex items-center justify-center space-x-2"
+                    >
+                      <Copy className="w-4 h-4" />
+                      <span>Clone Game</span>
+                    </button>
+                  </div>
+
+                  {/* Data Validation */}
+                  <div className="border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-semibold mb-3 flex items-center">
+                      <AlertCircle className="w-4 h-4 mr-2 text-yellow-400" />
+                      Data Validation
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-3">Check database for integrity issues and missing fields.</p>
+                    <button
+                      onClick={handleValidateData}
+                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 rounded-lg transition-all flex items-center justify-center space-x-2 mb-3"
+                    >
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Validate Data</span>
+                    </button>
+                    
+                    {validationResults && (
+                      <div className={`p-3 rounded-lg ${validationResults.valid ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                        <div className="flex items-center mb-2">
+                          {validationResults.valid ? (
+                            <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
+                          ) : (
+                            <AlertCircle className="w-5 h-5 text-red-400 mr-2" />
+                          )}
+                          <span className={validationResults.valid ? 'text-green-400' : 'text-red-400'}>
+                            {validationResults.valid ? 'All data is valid!' : `Found ${validationResults.issues_found} issues`}
+                          </span>
+                        </div>
+                        <p className="text-gray-400 text-xs mb-2">Checked {validationResults.total_games_checked} games</p>
+                        {!validationResults.valid && validationResults.issues.length > 0 && (
+                          <div className="max-h-48 overflow-y-auto">
+                            <p className="text-xs text-gray-400 mb-2">First {validationResults.issues.length} issues:</p>
+                            {validationResults.issues.map((issue, idx) => (
+                              <p key={idx} className="text-xs text-red-400 font-mono mb-1">{issue}</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Analytics Tab */}
+              {activeTab === 'analytics' && (
+                <div className="space-y-4">
+                  {analyticsLoading ? (
+                    <div className="text-center py-12">
+                      <RefreshCw className="w-8 h-8 animate-spin text-gray-500 mx-auto mb-2" />
+                      <p className="text-gray-400">Loading analytics...</p>
+                    </div>
+                  ) : analytics ? (
+                    <>
+                      {/* Overview Stats */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-lg p-4">
+                          <p className="text-emerald-400 text-xs uppercase mb-1">Total Games</p>
+                          <p className="text-3xl font-bold text-white">{analytics.total_games}</p>
+                        </div>
+                        <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-4">
+                          <p className="text-blue-400 text-xs uppercase mb-1">Total Players</p>
+                          <p className="text-3xl font-bold text-white">{analytics.total_players}</p>
+                        </div>
+                        <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-4">
+                          <p className="text-purple-400 text-xs uppercase mb-1">Total Teams</p>
+                          <p className="text-3xl font-bold text-white">{analytics.total_teams}</p>
+                        </div>
+                        <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-lg p-4">
+                          <p className="text-orange-400 text-xs uppercase mb-1">Total Weeks</p>
+                          <p className="text-3xl font-bold text-white">{analytics.total_weeks}</p>
+                        </div>
+                      </div>
+
+                      {/* Stat Breakdown */}
+                      <div className="border border-gray-800 rounded-lg p-4">
+                        <h3 className="text-white font-semibold mb-3">Stat Entry Breakdown</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div className="bg-[#1a1a1b] rounded p-3">
+                            <p className="text-gray-400 text-xs">Passing</p>
+                            <p className="text-xl font-bold text-blue-400">{analytics.stat_breakdown.passing}</p>
+                          </div>
+                          <div className="bg-[#1a1a1b] rounded p-3">
+                            <p className="text-gray-400 text-xs">Rushing</p>
+                            <p className="text-xl font-bold text-orange-400">{analytics.stat_breakdown.rushing}</p>
+                          </div>
+                          <div className="bg-[#1a1a1b] rounded p-3">
+                            <p className="text-gray-400 text-xs">Receiving</p>
+                            <p className="text-xl font-bold text-purple-400">{analytics.stat_breakdown.receiving}</p>
+                          </div>
+                          <div className="bg-[#1a1a1b] rounded p-3">
+                            <p className="text-gray-400 text-xs">Defense</p>
+                            <p className="text-xl font-bold text-red-400">{analytics.stat_breakdown.defense}</p>
+                          </div>
+                        </div>
+                        <p className="text-gray-400 text-xs mt-3">Total: {analytics.total_stat_entries} stat entries</p>
+                      </div>
+
+                      {/* Top Active Players */}
+                      <div className="border border-gray-800 rounded-lg p-4">
+                        <h3 className="text-white font-semibold mb-3">Top 10 Most Active Players</h3>
+                        <div className="space-y-2">
+                          {analytics.top_players.map(([name, games], idx) => (
+                            <div key={idx} className="flex items-center justify-between bg-[#1a1a1b] rounded px-3 py-2">
+                              <span className="text-white">{idx + 1}. {name}</span>
+                              <span className="text-emerald-400 font-semibold">{games} games</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Potential Duplicates */}
+                      {analytics.potential_duplicates.length > 0 && (
+                        <div className="border border-yellow-500/20 bg-yellow-500/10 rounded-lg p-4">
+                          <h3 className="text-yellow-400 font-semibold mb-3 flex items-center">
+                            <AlertCircle className="w-4 h-4 mr-2" />
+                            Potential Duplicate Players ({analytics.potential_duplicates.length})
+                          </h3>
+                          <p className="text-gray-400 text-sm mb-3">These players have very similar names and might be duplicates:</p>
+                          <div className="space-y-2">
+                            {analytics.potential_duplicates.map((pair, idx) => (
+                              <div key={idx} className="bg-[#1a1a1b] rounded px-3 py-2">
+                                <span className="text-yellow-400">{pair[0]}</span>
+                                <span className="text-gray-500 mx-2">↔</span>
+                                <span className="text-yellow-400">{pair[1]}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Date Range */}
+                      <div className="border border-gray-800 rounded-lg p-4">
+                        <h3 className="text-white font-semibold mb-3">Season Date Range</h3>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-gray-400 text-sm">Oldest Game</p>
+                            <p className="text-white font-semibold">{analytics.oldest_game}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 text-sm">Newest Game</p>
+                            <p className="text-white font-semibold">{analytics.newest_game}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Refresh Button */}
+                      <button
+                        onClick={loadAnalytics}
+                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 rounded-lg transition-all flex items-center justify-center space-x-2"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        <span>Refresh Analytics</span>
+                      </button>
+                    </>
+                  ) : (
+                    <div className="text-center py-12">
+                      <BarChart3 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                      <p className="text-gray-400">Click to load analytics</p>
+                      <button
+                        onClick={loadAnalytics}
+                        className="mt-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-lg transition-all"
+                      >
+                        Load Analytics
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

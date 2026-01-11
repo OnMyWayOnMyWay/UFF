@@ -118,6 +118,15 @@ class WeekStatEdit(BaseModel):
     category: str  # 'passing', 'rushing', 'receiving', 'defense'
     stats: Dict[str, Any]  # New stats to set for this player in this specific week
 
+class BulkDeleteRequest(BaseModel):
+    week_start: int
+    week_end: int
+
+class GameClone(BaseModel):
+    game_id: str
+    new_week: int
+    new_date: Optional[str] = None
+
 
 async def send_to_discord(game: Game):
     """Send game results to Discord with embed and CSV file"""
@@ -1581,6 +1590,213 @@ async def get_player_names(admin_key: str = Header(...)):
         return {"players": sorted(list(player_names))}
     except Exception as e:
         logger.error(f"Error getting player names: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/bulk-delete-weeks")
+async def bulk_delete_weeks(request: BulkDeleteRequest, admin_key: str = Header(...)):
+    """Delete all games in a week range"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        result = await db.games.delete_many({
+            "week": {"$gte": request.week_start, "$lte": request.week_end}
+        })
+        
+        logger.info(f"Bulk deleted {result.deleted_count} games from weeks {request.week_start}-{request.week_end}")
+        
+        return {
+            "success": True,
+            "message": f"Deleted {result.deleted_count} games from weeks {request.week_start} to {request.week_end}",
+            "deleted_count": result.deleted_count
+        }
+    except Exception as e:
+        logger.error(f"Error bulk deleting games: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/export-all-csv")
+async def export_all_csv(admin_key: str = Header(...)):
+    """Export all games to CSV format"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Header
+        writer.writerow(['Week', 'Date', 'Home Team', 'Home Score', 'Away Team', 'Away Score', 'POG', 'Game ID'])
+        
+        for game in sorted(games, key=lambda g: (g['week'], g['game_date'])):
+            writer.writerow([
+                game['week'],
+                game['game_date'],
+                game['home_team'],
+                game['home_score'],
+                game['away_team'],
+                game['away_score'],
+                game['player_of_game'],
+                game['id']
+            ])
+        
+        return {"csv": output.getvalue()}
+    except Exception as e:
+        logger.error(f"Error exporting CSV: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/analytics")
+async def get_admin_analytics(admin_key: str = Header(...)):
+    """Get comprehensive analytics for admin dashboard"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        
+        # Collect analytics
+        players = {}
+        teams = set()
+        weeks = set()
+        total_stats = {'passing': 0, 'rushing': 0, 'receiving': 0, 'defense': 0}
+        
+        for game in games:
+            weeks.add(game['week'])
+            teams.add(game['home_team'])
+            teams.add(game['away_team'])
+            
+            for team_key in ['home_stats', 'away_stats']:
+                stats = game[team_key]
+                for category in ['passing', 'defense', 'rushing', 'receiving']:
+                    if category in stats and isinstance(stats[category], list):
+                        total_stats[category] += len(stats[category])
+                        for player in stats[category]:
+                            name = player.get('name')
+                            if name:
+                                if name not in players:
+                                    players[name] = {'games': 0, 'categories': set()}
+                                players[name]['games'] += 1
+                                players[name]['categories'].add(category)
+        
+        # Top active players
+        top_players = sorted(
+            [(name, data['games']) for name, data in players.items()],
+            key=lambda x: x[1],
+            reverse=True
+        )[:10]
+        
+        # Find potential duplicates (similar names)
+        potential_duplicates = []
+        player_list = list(players.keys())
+        for i, name1 in enumerate(player_list):
+            for name2 in player_list[i+1:]:
+                if name1.lower().replace('_', '').replace(' ', '') == name2.lower().replace('_', '').replace(' ', ''):
+                    potential_duplicates.append([name1, name2])
+        
+        return {
+            "total_games": len(games),
+            "total_players": len(players),
+            "total_teams": len(teams),
+            "weeks": sorted(list(weeks)),
+            "total_weeks": len(weeks),
+            "total_stat_entries": sum(total_stats.values()),
+            "stat_breakdown": total_stats,
+            "top_players": top_players,
+            "potential_duplicates": potential_duplicates[:10],
+            "oldest_game": min([g['game_date'] for g in games]) if games else None,
+            "newest_game": max([g['game_date'] for g in games]) if games else None
+        }
+    except Exception as e:
+        logger.error(f"Error getting analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/clone-game")
+async def clone_game(request: GameClone, admin_key: str = Header(...)):
+    """Clone an existing game to a new week"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        # Find original game
+        original = await db.games.find_one({"id": request.game_id}, {"_id": 0})
+        if not original:
+            raise HTTPException(status_code=404, detail="Game not found")
+        
+        # Create new game
+        new_game = original.copy()
+        new_game['id'] = str(uuid.uuid4())
+        new_game['week'] = request.new_week
+        if request.new_date:
+            new_game['game_date'] = request.new_date
+        new_game['timestamp'] = datetime.now(timezone.utc)
+        
+        # Insert
+        await db.games.insert_one(new_game)
+        
+        logger.info(f"Cloned game {request.game_id} to week {request.new_week}")
+        
+        return {
+            "success": True,
+            "message": f"Game cloned to week {request.new_week}",
+            "new_game_id": new_game['id']
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error cloning game: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/validate-data")
+async def validate_data(admin_key: str = Header(...)):
+    """Validate data integrity and find issues"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        
+        issues = []
+        
+        for game in games:
+            game_id = game.get('id', 'unknown')
+            
+            # Check required fields
+            required_fields = ['week', 'home_team', 'away_team', 'home_score', 'away_score', 'player_of_game']
+            for field in required_fields:
+                if field not in game or game[field] is None:
+                    issues.append(f"Game {game_id}: Missing {field}")
+            
+            # Check stats structure
+            for team_key in ['home_stats', 'away_stats']:
+                if team_key not in game:
+                    issues.append(f"Game {game_id}: Missing {team_key}")
+                    continue
+                
+                stats = game[team_key]
+                if not isinstance(stats, dict):
+                    issues.append(f"Game {game_id}: {team_key} is not a dictionary")
+                    continue
+                
+                for category in ['passing', 'rushing', 'receiving', 'defense']:
+                    if category in stats:
+                        if not isinstance(stats[category], list):
+                            issues.append(f"Game {game_id}: {team_key}.{category} is not a list")
+                        else:
+                            for player in stats[category]:
+                                if 'name' not in player:
+                                    issues.append(f"Game {game_id}: Player in {category} missing name")
+                                if 'stats' not in player:
+                                    issues.append(f"Game {game_id}: Player {player.get('name', '?')} missing stats")
+        
+        return {
+            "valid": len(issues) == 0,
+            "total_games_checked": len(games),
+            "issues_found": len(issues),
+            "issues": issues[:50]  # Return first 50 issues
+        }
+    except Exception as e:
+        logger.error(f"Error validating data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/admin/player/merge")
