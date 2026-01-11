@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Trophy, Calendar, ChevronRight, Medal, Crown, Star } from 'lucide-react';
+import { TeamLogoAvatar, loadTeamLogos } from '../lib/teamLogos';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -10,6 +11,8 @@ const Playoffs = () => {
   const [games, setGames] = useState([]);
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [playoffSeeds, setPlayoffSeeds] = useState(null);
+  const [logoMap, setLogoMap] = useState({});
   const [playoffGames, setPlayoffGames] = useState({
     wildcard: [],
     divisional: [],
@@ -20,20 +23,22 @@ const Playoffs = () => {
 
   useEffect(() => {
     fetchData();
+    loadTeamLogos().then(logos => setLogoMap(logos));
   }, []);
 
   const fetchData = async () => {
     try {
-      const [gamesRes, standingsRes] = await Promise.all([
+      const [gamesRes, seedsRes] = await Promise.all([
         axios.get(`${API}/games`),
-        axios.get(`${API}/teams/standings`)
+        axios.get(`${API}/playoffs/seeds`)
       ]);
       
       const gamesData = Array.isArray(gamesRes.data) ? gamesRes.data : (gamesRes.data.games || []);
-      const standingsData = Array.isArray(standingsRes.data) ? standingsRes.data : [];
+      const seedsData = seedsRes.data || {};
       
       setGames(gamesData);
-      setStandings(standingsData);
+      setPlayoffSeeds(seedsData);
+      setStandings(seedsData.standings || []);
       organizePlayoffGames(gamesData);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -78,22 +83,23 @@ const Playoffs = () => {
         }`}
         onClick={() => navigate(`/team/${team}`)}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+            <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
               seed === 1 ? 'bg-yellow-500 text-black' :
               seed === 2 ? 'bg-gray-400 text-black' :
               'bg-gray-700 text-white'
             }`}>
               {seed}
             </div>
+            <TeamLogoAvatar teamName={team} logoMap={logoMap} size="sm" />
             <div className="min-w-0">
-              <div className="font-bold text-white text-lg leading-tight truncate" title={team}>{team}</div>
+              <div className="font-bold text-white text-sm leading-tight truncate" title={team}>{team}</div>
               {record && <div className="text-gray-400 text-xs">{record}</div>}
             </div>
           </div>
           {isBye && (
-            <div className="text-yellow-500 text-xs font-bold uppercase">Bye</div>
+            <div className="text-yellow-500 text-xs font-bold uppercase shrink-0">Bye</div>
           )}
         </div>
       </div>
@@ -347,8 +353,20 @@ const Playoffs = () => {
     );
   }
 
-  // Get top 10 teams for playoff seeding
-  const playoffTeams = standings.slice(0, 10);
+  // Get playoff seeded teams
+  const getPlayoffTeams = () => {
+    if (!playoffSeeds || !playoffSeeds.seeds) return [];
+    return playoffSeeds.seeds.map(s => {
+      const teamData = standings.find(st => st.team === s.team);
+      return {
+        ...s,
+        wins: teamData?.wins || 0,
+        losses: teamData?.losses || 0
+      };
+    });
+  };
+
+  const playoffTeams = getPlayoffTeams();
   const getTeamRecord = (team) => {
     const t = standings.find(s => s.team === team);
     return t ? `${t.wins}-${t.losses}` : '';
@@ -376,18 +394,41 @@ const Playoffs = () => {
         <div className="glass-card p-6 rounded-xl border border-white/10">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
             <Crown className="w-5 h-5 text-yellow-400" />
-            Playoff Seeds
+            Playoff Seeds (Division Leaders + Top Records)
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {playoffTeams.map((team, idx) => (
-              <SeedCard 
-                key={idx}
-                seed={idx + 1}
-                team={team.team}
-                record={`${team.wins}-${team.losses}`}
-                isBye={idx < 2}
-              />
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+            <div className="col-span-1 md:col-span-2 lg:col-span-2">
+              <p className="text-sm text-gray-400 mb-3 font-semibold">Seeds 1-4: Division Leaders (CC Determined)</p>
+              <div className="space-y-2">
+                {playoffTeams.filter(t => t.seed <= 4).map((team, idx) => (
+                  <SeedCard 
+                    key={idx}
+                    seed={team.seed}
+                    team={team.team}
+                    record={`${team.wins}-${team.losses}`}
+                    isBye={team.seed <= 2}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="col-span-1 md:col-span-2 lg:col-span-3">
+              <p className="text-sm text-gray-400 mb-3 font-semibold">Seeds 5-10: League Standings</p>
+              <div className="space-y-2">
+                {playoffTeams.filter(t => t.seed > 4).map((team, idx) => (
+                  <SeedCard 
+                    key={idx}
+                    seed={team.seed}
+                    team={team.team}
+                    record={`${team.wins}-${team.losses}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="text-xs text-gray-500 border-t border-gray-700 pt-3">
+            <p>• <span className="font-semibold">Seeds 1-2:</span> Conference Champions (get bye)</p>
+            <p>• <span className="font-semibold">Seeds 3-4:</span> Division Leaders who lost Championship</p>
+            <p>• <span className="font-semibold">Seeds 5-10:</span> Best remaining records by league standings</p>
           </div>
         </div>
       </div>

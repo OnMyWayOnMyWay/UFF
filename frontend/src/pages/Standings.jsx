@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Trophy, TrendingUp, TrendingDown, Crown, Medal, Star, LayoutGrid } from 'lucide-react';
+import { TeamLogoAvatar, loadTeamLogos } from '../lib/teamLogos';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -11,16 +12,22 @@ const Standings = () => {
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [structure, setStructure] = useState({ "Grand Central": { North: [], South: [] }, Ridge: { North: [], South: [] } });
+  const [activeTab, setActiveTab] = useState('league');
+  const [conferenceStandings, setConferenceStandings] = useState({ 'Grand Central': [], 'Ridge': [] });
+  const [logoMap, setLogoMap] = useState({});
 
   useEffect(() => {
     fetchStandings();
+    loadTeamLogos().then(logos => setLogoMap(logos));
   }, []);
 
   const fetchStandings = async () => {
     try {
-      const [standingsRes, structureRes] = await Promise.all([
+      const [standingsRes, structureRes, grandCentralRes, ridgeRes] = await Promise.all([
         axios.get(`${API}/teams/standings`),
         axios.get(`${API}/league/structure`),
+        axios.get(`${API}/teams/standings/conference/Grand Central`),
+        axios.get(`${API}/teams/standings/conference/Ridge`),
       ]);
       const standingsData = standingsRes.data || [];
       setStandings(Array.isArray(standingsData) ? standingsData : []);
@@ -28,6 +35,12 @@ const Standings = () => {
       if (s && typeof s === 'object') {
         setStructure(s);
       }
+      const gcData = grandCentralRes.data || [];
+      const rData = ridgeRes.data || [];
+      setConferenceStandings({
+        'Grand Central': Array.isArray(gcData) ? gcData : [],
+        'Ridge': Array.isArray(rData) ? rData : []
+      });
     } catch (error) {
       console.error('Error fetching standings/structure:', error);
       setStandings([]);
@@ -54,6 +67,123 @@ const Standings = () => {
       </div>
     );
   }
+
+  const StandingsTable = ({ standings, getPlayoffStatus, compact = false, showDivision = false }) => {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-700">
+              <th className="text-left py-3 px-4">RANK</th>
+              <th className="text-left py-3 px-4">TEAM</th>
+              <th className="text-center py-3 px-2">W</th>
+              <th className="text-center py-3 px-2">L</th>
+              <th className="text-center py-3 px-2">PCT</th>
+              <th className="text-center py-3 px-2">PF</th>
+              <th className="text-center py-3 px-2">PA</th>
+              <th className="text-center py-3 px-2">DIFF</th>
+              {showDivision && <th className="text-center py-3 px-2">DIV</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {standings.map((team, idx) => {
+              const playoffStatus = getPlayoffStatus(idx);
+              const isPlayoffTeam = idx < 10 && !compact;
+              const StatusIcon = playoffStatus?.icon;
+              
+              return (
+                <tr
+                  key={idx}
+                  className={`group cursor-pointer border-b border-gray-800 hover:bg-white/5 transition-all ${
+                    isPlayoffTeam ? 'bg-emerald-500/5' : ''
+                  }`}
+                  onClick={() => navigate(`/team/${team.team}`)}
+                  data-testid={`standing-${idx}`}
+                >
+                  <td className="py-4 px-4">
+                    <div className="flex items-center space-x-2">
+                      {idx < 3 && !compact && (
+                        <Trophy className={`w-5 h-5 ${
+                          idx === 0 ? 'text-yellow-500' :
+                          idx === 1 ? 'text-gray-400' :
+                          'text-orange-600'
+                        }`} />
+                      )}
+                      <span className="font-bold text-gray-400">{idx + 1}</span>
+                      {idx === 9 && !compact && (
+                        <div className="w-1 h-6 bg-emerald-500/50 ml-2"></div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className="shrink-0">
+                        <TeamLogoAvatar teamName={team.team} logoMap={logoMap} size="md" />
+                      </div>
+                      <div className="flex items-center space-x-2 min-w-0">
+                        {playoffStatus && StatusIcon && (
+                          <StatusIcon className={`w-4 h-4 ${playoffStatus.color} shrink-0`} />
+                        )}
+                        {playoffStatus && (
+                          <span className={`font-bold text-xs ${playoffStatus.color} shrink-0`}>
+                            {playoffStatus.indicator}
+                          </span>
+                        )}
+                        <span className="font-bold text-white hover:text-emerald-400 transition-colors truncate">
+                          {team.team}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="text-center py-4 px-2">
+                    <span className="text-emerald-400 font-bold">{team.wins}</span>
+                  </td>
+                  <td className="text-center py-4 px-2">
+                    <span className="text-red-400 font-bold">{team.losses}</span>
+                  </td>
+                  <td className="text-center py-4 px-2">
+                    <span className="font-semibold text-white">{(team.win_pct * 100).toFixed(1)}%</span>
+                  </td>
+                  <td className="text-center py-4 px-2">
+                    <span className="text-blue-400 font-semibold">{team.points_for}</span>
+                  </td>
+                  <td className="text-center py-4 px-2">
+                    <span className="text-purple-400 font-semibold">{team.points_against}</span>
+                  </td>
+                  <td className="text-center py-4 px-2">
+                    <div className="flex items-center justify-center space-x-1">
+                      {team.point_diff > 0 ? (
+                        <>
+                          <TrendingUp className="w-4 h-4 text-emerald-500" />
+                          <span className="text-emerald-400 font-bold">+{team.point_diff}</span>
+                        </>
+                      ) : (
+                        <>
+                          <TrendingDown className="w-4 h-4 text-red-500" />
+                          <span className="text-red-400 font-bold">{team.point_diff}</span>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                  {showDivision && (
+                    <td className="text-center py-4 px-2">
+                      <span className="text-gray-400 font-semibold">{team.division}</span>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {standings.length === 0 && (
+          <div className="text-center py-12">
+            <Trophy className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-400">No standings data yet</p>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8">
@@ -160,108 +290,101 @@ const Standings = () => {
         </div>
       </div>
 
-      {/* Standings Table */}
-      <div className="glass-card animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className="text-left py-3 px-4">RANK</th>
-                <th className="text-left py-3 px-4">TEAM</th>
-                <th className="text-center py-3 px-2">W</th>
-                <th className="text-center py-3 px-2">L</th>
-                <th className="text-center py-3 px-2">PCT</th>
-                <th className="text-center py-3 px-2">PF</th>
-                <th className="text-center py-3 px-2">PA</th>
-                <th className="text-center py-3 px-2">DIFF</th>
-              </tr>
-            </thead>
-            <tbody>
-              {standings.map((team, idx) => {
-                const playoffStatus = getPlayoffStatus(idx);
-                const isPlayoffTeam = idx < 10;
-                const StatusIcon = playoffStatus?.icon;
-                
-                return (
-                  <tr
-                    key={idx}
-                    className={`group cursor-pointer border-b border-gray-800 hover:bg-white/5 transition-all ${
-                      isPlayoffTeam ? 'bg-emerald-500/5' : ''
-                    }`}
-                    onClick={() => navigate(`/team/${team.team}`)}
-                    data-testid={`standing-${idx}`}
-                  >
-                    <td className="py-4 px-4">
-                      <div className="flex items-center space-x-2">
-                        {idx < 3 && (
-                          <Trophy className={`w-5 h-5 ${
-                            idx === 0 ? 'text-yellow-500' :
-                            idx === 1 ? 'text-gray-400' :
-                            'text-orange-600'
-                          }`} />
-                        )}
-                        <span className="font-bold text-gray-400">{idx + 1}</span>
-                        {idx === 9 && (
-                          <div className="w-1 h-6 bg-emerald-500/50 ml-2"></div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center space-x-2">
-                        {playoffStatus && StatusIcon && (
-                          <StatusIcon className={`w-4 h-4 ${playoffStatus.color}`} />
-                        )}
-                        {playoffStatus && (
-                          <span className={`font-bold text-xs ${playoffStatus.color}`}>
-                            {playoffStatus.indicator}
-                          </span>
-                        )}
-                        <span className="font-bold text-white text-lg hover:text-emerald-400 transition-colors">
-                          {team.team}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="text-center py-4 px-2">
-                      <span className="text-emerald-400 font-bold text-lg">{team.wins}</span>
-                    </td>
-                    <td className="text-center py-4 px-2">
-                      <span className="text-red-400 font-bold text-lg">{team.losses}</span>
-                    </td>
-                    <td className="text-center py-4 px-2">
-                      <span className="font-semibold text-white">{(team.win_pct * 100).toFixed(1)}%</span>
-                    </td>
-                    <td className="text-center py-4 px-2">
-                      <span className="text-blue-400 font-semibold">{team.points_for}</span>
-                    </td>
-                    <td className="text-center py-4 px-2">
-                      <span className="text-purple-400 font-semibold">{team.points_against}</span>
-                    </td>
-                    <td className="text-center py-4 px-2">
-                      <div className="flex items-center justify-center space-x-2">
-                        {team.point_diff > 0 ? (
-                          <>
-                            <TrendingUp className="w-4 h-4 text-emerald-500" />
-                            <span className="text-emerald-400 font-bold">+{team.point_diff}</span>
-                          </>
-                        ) : (
-                          <>
-                            <TrendingDown className="w-4 h-4 text-red-500" />
-                            <span className="text-red-400 font-bold">{team.point_diff}</span>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {/* Standings Tabs */}
+      <div className="glass-card mb-6 animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
+        <div className="flex flex-wrap border-b border-gray-700 mb-6">
+          <button
+            onClick={() => setActiveTab('league')}
+            className={`px-4 py-3 font-semibold border-b-2 transition-all ${
+              activeTab === 'league'
+                ? 'border-emerald-500 text-emerald-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            League Standings
+          </button>
+          <button
+            onClick={() => setActiveTab('grand-central')}
+            className={`px-4 py-3 font-semibold border-b-2 transition-all ${
+              activeTab === 'grand-central'
+                ? 'border-emerald-500 text-emerald-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            Grand Central Conference
+          </button>
+          <button
+            onClick={() => setActiveTab('ridge')}
+            className={`px-4 py-3 font-semibold border-b-2 transition-all ${
+              activeTab === 'ridge'
+                ? 'border-emerald-500 text-emerald-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            Ridge Conference
+          </button>
         </div>
 
-        {standings.length === 0 && (
-          <div className="text-center py-12">
-            <Trophy className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">No standings data yet</p>
+        {/* League Standings Table */}
+        {activeTab === 'league' && (
+          <StandingsTable standings={standings} getPlayoffStatus={getPlayoffStatus} />
+        )}
+
+        {/* Grand Central Standings Table */}
+        {activeTab === 'grand-central' && (
+          <div>
+            <h4 className="text-lg font-bold text-white mb-4">Grand Central Conference</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <h5 className="text-sm font-semibold text-gray-300 mb-3">North Division</h5>
+                <StandingsTable 
+                  standings={conferenceStandings['Grand Central'].filter(t => t.division === 'North')}
+                  getPlayoffStatus={() => null}
+                  compact
+                />
+              </div>
+              <div>
+                <h5 className="text-sm font-semibold text-gray-300 mb-3">South Division</h5>
+                <StandingsTable 
+                  standings={conferenceStandings['Grand Central'].filter(t => t.division === 'South')}
+                  getPlayoffStatus={() => null}
+                  compact
+                />
+              </div>
+            </div>
+            <div className="mt-6">
+              <h5 className="text-sm font-semibold text-gray-300 mb-3">Conference Standings</h5>
+              <StandingsTable standings={conferenceStandings['Grand Central']} getPlayoffStatus={() => null} showDivision />
+            </div>
+          </div>
+        )}
+
+        {/* Ridge Standings Table */}
+        {activeTab === 'ridge' && (
+          <div>
+            <h4 className="text-lg font-bold text-white mb-4">Ridge Conference</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <h5 className="text-sm font-semibold text-gray-300 mb-3">North Division</h5>
+                <StandingsTable 
+                  standings={conferenceStandings['Ridge'].filter(t => t.division === 'North')}
+                  getPlayoffStatus={() => null}
+                  compact
+                />
+              </div>
+              <div>
+                <h5 className="text-sm font-semibold text-gray-300 mb-3">South Division</h5>
+                <StandingsTable 
+                  standings={conferenceStandings['Ridge'].filter(t => t.division === 'South')}
+                  getPlayoffStatus={() => null}
+                  compact
+                />
+              </div>
+            </div>
+            <div className="mt-6">
+              <h5 className="text-sm font-semibold text-gray-300 mb-3">Conference Standings</h5>
+              <StandingsTable standings={conferenceStandings['Ridge']} getPlayoffStatus={() => null} showDivision />
+            </div>
           </div>
         )}
       </div>
@@ -321,11 +444,10 @@ const Standings = () => {
             <h4 className="text-purple-400 font-semibold mb-2">Playoff Format</h4>
             <div className="text-gray-300 space-y-1">
               <p>• Top 10 teams make playoffs</p>
-              <p>• Seeds 1-2 get first-round bye</p>
-              <p>• Week 9: Wildcard (4 games)</p>
-              <p>• Week 10: Divisional (4 games)</p>
-              <p>• Week 11: Semifinals (2 games)</p>
-              <p>• Week 12: Championship (1 game)</p>
+              <p>• Seeds 1-4: Division Leaders</p>
+              <p>• CC Winners → Seeds 1-2</p>
+              <p>• CC Losers → Seeds 3-4</p>
+              <p>• Seeds 5-10: League Standings</p>
             </div>
           </div>
         </div>

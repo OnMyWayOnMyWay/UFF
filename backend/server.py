@@ -810,6 +810,133 @@ async def get_team_standings():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/teams/standings/conference/{conference}")
+async def get_conference_standings(conference: str):
+    """Get standings for a specific conference"""
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        assignments = await _load_assignments()
+        
+        team_records = {}
+        
+        for game in games:
+            home = game['home_team']
+            away = game['away_team']
+            
+            # Initialize teams if not exists
+            if home not in team_records:
+                team_records[home] = {'wins': 0, 'losses': 0, 'points_for': 0, 'points_against': 0}
+            if away not in team_records:
+                team_records[away] = {'wins': 0, 'losses': 0, 'points_for': 0, 'points_against': 0}
+            
+            # Update records
+            if game['home_score'] > game['away_score']:
+                team_records[home]['wins'] += 1
+                team_records[away]['losses'] += 1
+            else:
+                team_records[away]['wins'] += 1
+                team_records[home]['losses'] += 1
+            
+            team_records[home]['points_for'] += game['home_score']
+            team_records[home]['points_against'] += game['away_score']
+            team_records[away]['points_for'] += game['away_score']
+            team_records[away]['points_against'] += game['home_score']
+        
+        # Filter by conference
+        conf_teams = {team: info for team, info in assignments.items() if info.get('conference') == conference}
+        
+        # Convert to list with calculated fields
+        standings = []
+        for team in conf_teams:
+            if team in team_records:
+                record = team_records[team]
+                games_played = record['wins'] + record['losses']
+                win_pct = record['wins'] / games_played if games_played > 0 else 0
+                standings.append({
+                    'team': team,
+                    'wins': record['wins'],
+                    'losses': record['losses'],
+                    'win_pct': round(win_pct, 3),
+                    'points_for': record['points_for'],
+                    'points_against': record['points_against'],
+                    'point_diff': record['points_for'] - record['points_against'],
+                    'division': conf_teams[team].get('division', 'Unknown')
+                })
+        
+        # Sort by wins desc, then point differential
+        standings.sort(key=lambda x: (x['wins'], x['point_diff']), reverse=True)
+        
+        return standings
+        
+    except Exception as e:
+        logger.error(f"Error getting conference standings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/teams/standings/division/{conference}/{division}")
+async def get_division_standings(conference: str, division: str):
+    """Get standings for a specific division"""
+    try:
+        games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        assignments = await _load_assignments()
+        
+        team_records = {}
+        
+        for game in games:
+            home = game['home_team']
+            away = game['away_team']
+            
+            # Initialize teams if not exists
+            if home not in team_records:
+                team_records[home] = {'wins': 0, 'losses': 0, 'points_for': 0, 'points_against': 0}
+            if away not in team_records:
+                team_records[away] = {'wins': 0, 'losses': 0, 'points_for': 0, 'points_against': 0}
+            
+            # Update records
+            if game['home_score'] > game['away_score']:
+                team_records[home]['wins'] += 1
+                team_records[away]['losses'] += 1
+            else:
+                team_records[away]['wins'] += 1
+                team_records[home]['losses'] += 1
+            
+            team_records[home]['points_for'] += game['home_score']
+            team_records[home]['points_against'] += game['away_score']
+            team_records[away]['points_for'] += game['away_score']
+            team_records[away]['points_against'] += game['home_score']
+        
+        # Filter by division
+        div_teams = {team: info for team, info in assignments.items() 
+                     if info.get('conference') == conference and info.get('division') == division}
+        
+        # Convert to list with calculated fields
+        standings = []
+        for team in div_teams:
+            if team in team_records:
+                record = team_records[team]
+                games_played = record['wins'] + record['losses']
+                win_pct = record['wins'] / games_played if games_played > 0 else 0
+                standings.append({
+                    'team': team,
+                    'wins': record['wins'],
+                    'losses': record['losses'],
+                    'win_pct': round(win_pct, 3),
+                    'points_for': record['points_for'],
+                    'points_against': record['points_against'],
+                    'point_diff': record['points_for'] - record['points_against'],
+                    'division': division
+                })
+        
+        # Sort by wins desc, then point differential
+        standings.sort(key=lambda x: (x['wins'], x['point_diff']), reverse=True)
+        
+        return standings
+        
+    except Exception as e:
+        logger.error(f"Error getting division standings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/player-names")
 async def get_public_player_names(query: Optional[str] = None, limit: int = 25):
     """Public endpoint: search player names for autocomplete."""
