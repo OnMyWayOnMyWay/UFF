@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Trophy, Calendar, ChevronRight, Medal, Crown, Star } from 'lucide-react';
 import { TeamLogoAvatar, loadTeamLogos } from '../lib/teamLogos';
+import AnimatedBracket from '../components/AnimatedBracket';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -402,6 +403,22 @@ const Playoffs = () => {
         </h1>
         <p className="text-gray-400 text-lg">Road to the Championship</p>
       </div>
+
+      {/* Animated Bracket Section */}
+      {games.length > 0 && playoffSeeds && (
+        <div className="max-w-7xl mx-auto mb-12 glass-card p-6 rounded-xl border border-white/10">
+          <h2 className="text-3xl font-bold mb-8 flex items-center gap-2">
+            <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              ✨ Animated Tournament
+            </span>
+          </h2>
+          <AnimatedBracket 
+            playoffSeeds={playoffSeeds}
+            games={games}
+            logoMap={logoMap}
+          />
+        </div>
+      )}
 
       {/* Playoff Seeds */}
       <div className="max-w-7xl mx-auto mb-8">
