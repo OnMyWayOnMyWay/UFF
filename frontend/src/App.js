@@ -13,6 +13,7 @@ import PlayerProfile from "@/pages/PlayerProfile";
 import PlayerComparison from "@/pages/PlayerComparison";
 import SeasonAwards from "@/pages/SeasonAwards";
 import TeamAnalysis from "@/pages/TeamAnalysis";
+import Playoffs from "@/pages/Playoffs";
 
 function App() {
   const [showAdmin, setShowAdmin] = useState(false);
@@ -31,6 +32,7 @@ function App() {
               <Route path="/stats-leaders" element={<StatsLeaders />} />
               <Route path="/standings" element={<Standings />} />
               <Route path="/schedule" element={<Schedule />} />
+              <Route path="/playoffs" element={<Playoffs />} />
               <Route path="/compare" element={<PlayerComparison />} />
               <Route path="/awards" element={<SeasonAwards />} />
               <Route path="/team/:teamName" element={<TeamAnalysis />} />

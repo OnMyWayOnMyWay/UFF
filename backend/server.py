@@ -127,6 +127,13 @@ class GameClone(BaseModel):
     new_week: int
     new_date: Optional[str] = None
 
+class GamePlayerStatEdit(BaseModel):
+    game_id: str
+    player_name: str
+    team_side: str  # 'home' or 'away'
+    category: str  # 'passing', 'rushing', 'receiving', 'defense'
+    stats: Dict[str, Any]  # Stats to update for this player
+
 
 async def send_to_discord(game: Game):
     """Send game results to Discord with embed and CSV file"""
@@ -2214,6 +2221,94 @@ async def fix_team_assignments(admin_key: str = Header(...)):
         logger.error(f"Error fixing team assignments: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.put("/admin/game/{game_id}/player-stats")
+async def edit_game_player_stats(game_id: str, edit: GamePlayerStatEdit, admin_key: str = Header(...)):
+    """Edit a specific player's stats in a specific game"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        # Validate team_side
+        if edit.team_side not in ['home', 'away']:
+            raise HTTPException(status_code=400, detail="team_side must be 'home' or 'away'")
+        
+        # Validate category
+        if edit.category not in ['passing', 'rushing', 'receiving', 'defense']:
+            raise HTTPException(status_code=400, detail="Invalid category")
+        
+        # Find the game
+        game = await db.games.find_one({"id": game_id}, {"_id": 0})
+        if not game:
+            raise HTTPException(status_code=404, detail="Game not found")
+        
+        # Determine which stats to edit
+        stats_key = f"{edit.team_side}_stats"
+        
+        # Find the player in the specified category
+        player_found = False
+        player_index = -1
+        
+        if edit.category in game[stats_key]:
+            for i, player in enumerate(game[stats_key][edit.category]):
+                if player['name'] == edit.player_name:
+                    player_found = True
+                    player_index = i
+                    break
+        
+        if not player_found:
+            # Player doesn't exist in this category, add them
+            if edit.category not in game[stats_key]:
+                game[stats_key][edit.category] = []
+            
+            team_name = game['home_team'] if edit.team_side == 'home' else game['away_team']
+            new_player = {
+                'name': edit.player_name,
+                'team': team_name,
+                'stats': edit.stats
+            }
+            game[stats_key][edit.category].append(new_player)
+            
+            # Update the game
+            await db.games.update_one(
+                {"id": game_id},
+                {"$set": {f"{stats_key}.{edit.category}": game[stats_key][edit.category]}}
+            )
+            
+            logger.info(f"Added new player {edit.player_name} to game {game_id} - Week {game['week']}")
+            
+            return {
+                "success": True,
+                "message": f"Player {edit.player_name} added to game",
+                "action": "added"
+            }
+        else:
+            # Player exists, update their stats
+            # Merge the new stats with existing stats
+            current_stats = game[stats_key][edit.category][player_index].get('stats', {})
+            current_stats.update(edit.stats)
+            
+            # Update the player's stats
+            game[stats_key][edit.category][player_index]['stats'] = current_stats
+            
+            # Update the game
+            await db.games.update_one(
+                {"id": game_id},
+                {"$set": {f"{stats_key}.{edit.category}": game[stats_key][edit.category]}}
+            )
+            
+            logger.info(f"Updated player {edit.player_name} in game {game_id} - Week {game['week']}")
+            
+            return {
+                "success": True,
+                "message": f"Player {edit.player_name} stats updated",
+                "action": "updated"
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error editing game player stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/admin/game/{game_id}/csv")
 async def get_game_csv(game_id: str, admin_key: str = Header(...)):
     """Get CSV export for a specific game"""
@@ -2234,6 +2329,38 @@ async def get_game_csv(game_id: str, admin_key: str = Header(...)):
         raise
     except Exception as e:
         logger.error(f"Error generating CSV: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/game/{game_id}")
+async def get_game_details(game_id: str, admin_key: str = Header(...)):
+    """Get detailed game info for admin editing"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        game = await db.games.find_one({"id": game_id}, {"_id": 0})
+        if not game:
+            raise HTTPException(status_code=404, detail="Game not found")
+        
+        return game
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting game details: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/weeks-with-games")
+async def get_weeks_with_games(admin_key: str = Header(...)):
+    """Get list of weeks that have games"""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        games = await db.games.find({}, {"_id": 0, "week": 1}).to_list(1000)
+        weeks = sorted(list(set([game['week'] for game in games if 'week' in game])))
+        return {"weeks": weeks}
+    except Exception as e:
+        logger.error(f"Error getting weeks: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/admin/2fa/request")

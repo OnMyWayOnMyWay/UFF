@@ -104,6 +104,21 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
+  // Game Stats Edit State
+  const [gameStatsEdit, setGameStatsEdit] = useState({
+    week: '',
+    gameId: '',
+    playerName: '',
+    teamSide: 'home',
+    category: 'passing',
+    stats: {}
+  });
+  const [weeksWithGames, setWeeksWithGames] = useState([]);
+  const [gamesInWeek, setGamesInWeek] = useState([]);
+  const [selectedGameForEdit, setSelectedGameForEdit] = useState(null);
+  const [gameStatKey, setGameStatKey] = useState('');
+  const [gameStatValue, setGameStatValue] = useState('');
+
   // Verify admin key
   const verifyAdmin = async () => {
     if (!adminKey.trim()) return;
@@ -151,6 +166,9 @@ const AdminPanel = ({ isOpen, onClose }) => {
       loadPlayerNames();
       loadTeams();
     }
+    if (isVerified && activeTab === 'gamestats') {
+      loadWeeksWithGames();
+    }
   }, [isVerified, activeTab]);
   
   // Load player names for autocomplete
@@ -174,6 +192,65 @@ const AdminPanel = ({ isOpen, onClose }) => {
       setAllTeams(response.data.teams || []);
     } catch (error) {
       console.error('Failed to load teams:', error);
+    }
+  };
+  
+  // Load weeks with games
+  const loadWeeksWithGames = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/weeks-with-games`, {
+        headers: { 'admin-key': adminKey }
+      });
+      setWeeksWithGames(response.data.weeks || []);
+    } catch (error) {
+      console.error('Failed to load weeks:', error);
+      toast.error('Failed to load weeks');
+    }
+  };
+  
+  // Load games for a specific week
+  const loadGamesForWeek = async (week) => {
+    try {
+      const response = await axios.get(`${API}/games`);
+      const allGames = Array.isArray(response.data) ? response.data : (response.data.games || []);
+      const weekGames = allGames.filter(g => g.week === parseInt(week));
+      setGamesInWeek(weekGames);
+    } catch (error) {
+      console.error('Failed to load games:', error);
+      toast.error('Failed to load games for week');
+    }
+  };
+  
+  // Handle game stats edit submission
+  const handleGameStatsEditSubmit = async () => {
+    if (!gameStatsEdit.gameId || !gameStatsEdit.playerName || Object.keys(gameStatsEdit.stats).length === 0) {
+      toast.error('Please fill in all required fields and add at least one stat');
+      return;
+    }
+    
+    try {
+      await axios.put(`${API}/admin/game/${gameStatsEdit.gameId}/player-stats`, {
+        game_id: gameStatsEdit.gameId,
+        player_name: gameStatsEdit.playerName,
+        team_side: gameStatsEdit.teamSide,
+        category: gameStatsEdit.category,
+        stats: gameStatsEdit.stats
+      }, {
+        headers: { 'admin-key': adminKey }
+      });
+      
+      toast.success('Player stats updated successfully!');
+      setGameStatsEdit({
+        week: gameStatsEdit.week,
+        gameId: '',
+        playerName: '',
+        teamSide: 'home',
+        category: 'passing',
+        stats: {}
+      });
+      setSelectedGameForEdit(null);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update player stats');
     }
   };
   
@@ -1032,6 +1109,17 @@ const AdminPanel = ({ isOpen, onClose }) => {
                 Week Stats Edit
               </button>
               <button
+                onClick={() => setActiveTab('gamestats')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  activeTab === 'gamestats' 
+                    ? 'bg-teal-500 text-white' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <Edit className="w-4 h-4 inline mr-2" />
+                Game Stats Edit
+              </button>
+              <button
                 onClick={() => setActiveTab('tools')}
                 className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
                   activeTab === 'tools' 
@@ -1809,6 +1897,179 @@ const AdminPanel = ({ isOpen, onClose }) => {
                     >
                       <Wand2 className="w-5 h-5" />
                       <span>Update Week Stats</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Game Stats Edit Tab */}
+              {activeTab === 'gamestats' && (
+                <div className="space-y-4">
+                  <div className="bg-teal-500/10 border border-teal-500/20 rounded-lg p-4 mb-4">
+                    <p className="text-teal-400 text-sm">
+                      <strong>Game Stats Editor:</strong> Edit a specific player's stats in a specific game. Select the week, game, and player to modify their statistics.
+                    </p>
+                  </div>
+
+                  <div className="bg-[#1a1a1b] border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-semibold mb-4 flex items-center">
+                      <Edit className="w-5 h-5 mr-2 text-teal-400" />
+                      Edit Player Stats in Game
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      {/* Week Selection */}
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-2">Week</label>
+                        <select
+                          value={gameStatsEdit.week}
+                          onChange={(e) => {
+                            setGameStatsEdit({...gameStatsEdit, week: e.target.value, gameId: ''});
+                            setSelectedGameForEdit(null);
+                            if (e.target.value) {
+                              loadGamesForWeek(e.target.value);
+                            }
+                          }}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-teal-500"
+                        >
+                          <option value="">Select Week</option>
+                          {weeksWithGames.map(week => (
+                            <option key={week} value={week}>Week {week}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Game Selection */}
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-2">Game</label>
+                        <select
+                          value={gameStatsEdit.gameId}
+                          onChange={(e) => {
+                            setGameStatsEdit({...gameStatsEdit, gameId: e.target.value});
+                            const game = gamesInWeek.find(g => g.id === e.target.value);
+                            setSelectedGameForEdit(game);
+                          }}
+                          disabled={!gameStatsEdit.week}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-teal-500 disabled:opacity-50"
+                        >
+                          <option value="">Select Game</option>
+                          {gamesInWeek.map(game => (
+                            <option key={game.id} value={game.id}>
+                              {game.home_team} vs {game.away_team} ({game.home_score}-{game.away_score})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Player Name */}
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-2">Player Name</label>
+                        <input
+                          type="text"
+                          value={gameStatsEdit.playerName}
+                          onChange={(e) => setGameStatsEdit({...gameStatsEdit, playerName: e.target.value})}
+                          placeholder="Enter player name"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-teal-500"
+                        />
+                      </div>
+
+                      {/* Team Side */}
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-2">Team Side</label>
+                        <select
+                          value={gameStatsEdit.teamSide}
+                          onChange={(e) => setGameStatsEdit({...gameStatsEdit, teamSide: e.target.value})}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-teal-500"
+                        >
+                          <option value="home">Home ({selectedGameForEdit?.home_team || 'Team'})</option>
+                          <option value="away">Away ({selectedGameForEdit?.away_team || 'Team'})</option>
+                        </select>
+                      </div>
+
+                      {/* Category */}
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-2">Category</label>
+                        <select
+                          value={gameStatsEdit.category}
+                          onChange={(e) => setGameStatsEdit({...gameStatsEdit, category: e.target.value})}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-teal-500"
+                        >
+                          <option value="passing">Passing</option>
+                          <option value="rushing">Rushing</option>
+                          <option value="receiving">Receiving</option>
+                          <option value="defense">Defense</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    {/* Stats Builder */}
+                    <div className="border border-gray-700 rounded-lg p-3 mb-3">
+                      <h4 className="text-white text-sm font-semibold mb-2">Build Stats</h4>
+                      <div className="flex space-x-2 mb-3">
+                        <input
+                          type="text"
+                          value={gameStatKey}
+                          onChange={(e) => setGameStatKey(e.target.value)}
+                          placeholder="Stat key (e.g., yards, td, comp, att)"
+                          className="flex-1 bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-500"
+                        />
+                        <input
+                          type="number"
+                          value={gameStatValue}
+                          onChange={(e) => setGameStatValue(e.target.value)}
+                          placeholder="Value"
+                          className="w-24 bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-500"
+                        />
+                        <button
+                          onClick={() => {
+                            if (gameStatKey && gameStatValue !== '') {
+                              setGameStatsEdit({
+                                ...gameStatsEdit,
+                                stats: {
+                                  ...gameStatsEdit.stats,
+                                  [gameStatKey.toLowerCase()]: parseFloat(gameStatValue)
+                                }
+                              });
+                              setGameStatKey('');
+                              setGameStatValue('');
+                            }
+                          }}
+                          className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded transition-all"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                      
+                      {/* Current Stats */}
+                      {Object.keys(gameStatsEdit.stats).length > 0 && (
+                        <div>
+                          <div className="text-xs text-gray-400 mb-2">Current Stats:</div>
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(gameStatsEdit.stats).map(([key, value]) => (
+                              <div key={key} className="bg-teal-500/20 border border-teal-500/30 rounded px-2 py-1 flex items-center space-x-2">
+                                <span className="text-white text-xs">{key}: {value}</span>
+                                <button
+                                  onClick={() => {
+                                    const newStats = {...gameStatsEdit.stats};
+                                    delete newStats[key];
+                                    setGameStatsEdit({...gameStatsEdit, stats: newStats});
+                                  }}
+                                  className="text-red-400 hover:text-red-300"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={handleGameStatsEditSubmit}
+                      className="w-full bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg font-medium transition-all"
+                    >
+                      Update Player Stats in Game
                     </button>
                   </div>
                 </div>
