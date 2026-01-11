@@ -1,8 +1,9 @@
 // Team logo configuration and utilities
-// Logos are fetched from the API and cached
+// Logos and colors are fetched from the API and cached
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 
 let logoCache = null;
+let colorCache = null;
 
 // Pre-configured team color schemes for fallback logo generation
 const TEAM_COLORS = {
@@ -44,6 +45,25 @@ export async function loadTeamLogos() {
   return logoCache;
 }
 
+export async function loadTeamColors() {
+  if (colorCache) return colorCache;
+  
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/teams/colors`);
+    if (response.ok) {
+      const data = await response.json();
+      colorCache = data.colors || {};
+    } else {
+      colorCache = {};
+    }
+  } catch (error) {
+    console.error('Error loading team colors:', error);
+    colorCache = {};
+  }
+  
+  return colorCache;
+}
+
 export function getTeamLogo(teamName, logoMap = {}) {
   // Return logo URL if available
   if (logoMap && logoMap[teamName]) {
@@ -55,8 +75,18 @@ export function getTeamLogo(teamName, logoMap = {}) {
   return null; // Will use initials instead
 }
 
-export function getTeamColors(teamName) {
-  return TEAM_COLORS[teamName] || { primary: '#64748B', secondary: '#FFFFFF' };
+export function getTeamColors(teamName, colorMap = {}, fallbackToDefault = true) {
+  // Return colors from API first
+  if (colorMap && colorMap[teamName]) {
+    return colorMap[teamName];
+  }
+  
+  // Fall back to hardcoded defaults
+  if (fallbackToDefault) {
+    return TEAM_COLORS[teamName] || { primary: '#64748B', secondary: '#FFFFFF' };
+  }
+  
+  return { primary: '#64748B', secondary: '#FFFFFF' };
 }
 
 export function getTeamInitials(teamName) {

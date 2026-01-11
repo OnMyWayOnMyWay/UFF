@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Trophy, TrendingUp, TrendingDown, Crown, Medal, Star, LayoutGrid } from 'lucide-react';
-import { TeamLogoAvatar, loadTeamLogos } from '../lib/teamLogos';
+import { TeamLogoAvatar, loadTeamLogos, loadTeamColors, getTeamColors } from '../lib/teamLogos';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -15,10 +15,12 @@ const Standings = () => {
   const [activeTab, setActiveTab] = useState('league');
   const [conferenceStandings, setConferenceStandings] = useState({ 'Grand Central': [], 'Ridge': [] });
   const [logoMap, setLogoMap] = useState({});
+  const [colorMap, setColorMap] = useState({});
 
   useEffect(() => {
     fetchStandings();
     loadTeamLogos().then(logos => setLogoMap(logos));
+    loadTeamColors().then(colors => setColorMap(colors));
   }, []);
 
   const fetchStandings = async () => {
@@ -132,6 +134,17 @@ const Standings = () => {
                             {playoffStatus.indicator}
                           </span>
                         )}
+                        {(() => {
+                          const colors = getTeamColors(team.team, colorMap);
+                          return (
+                            <div 
+                              className="w-1 h-6 rounded shrink-0" 
+                              style={{
+                                background: `linear-gradient(90deg, ${colors.primary}, ${colors.secondary})`
+                              }}
+                            />
+                          );
+                        })()}
                         <span className="font-bold text-white hover:text-emerald-400 transition-colors truncate">
                           {team.team}
                         </span>
