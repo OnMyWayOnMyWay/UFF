@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from '@/components/ui/sonner';
 import Sidebar from "@/components/Sidebar";
 import AdminPanel from "@/components/AdminPanel";
-import NewDashboard from "@/pages/NewDashboard";
+import Dashboard from "@/pages/Dashboard";
 import StatsLeaders from "@/pages/StatsLeaders";
 import Standings from "@/pages/Standings";
 import Schedule from "@/pages/Schedule";
@@ -28,7 +28,7 @@ function App() {
           {/* Main Content */}
           <div className="flex-1 lg:ml-64">
             <Routes>
-              <Route path="/" element={<NewDashboard />} />
+              <Route path="/" element={<Dashboard />} />
               <Route path="/stats-leaders" element={<StatsLeaders />} />
               <Route path="/standings" element={<Standings />} />
               <Route path="/schedule" element={<Schedule />} />
