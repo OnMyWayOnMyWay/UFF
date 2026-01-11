@@ -32,7 +32,7 @@ const Standings = () => {
   const getPlayoffStatus = (rank) => {
     if (rank === 0) return { indicator: 'x', label: 'Clinched Playoffs - 1st Seed', color: 'text-yellow-400', icon: Crown };
     if (rank === 1) return { indicator: 'y', label: 'Clinched Playoffs - 2nd Seed', color: 'text-emerald-400', icon: Star };
-    if (rank >= 2 && rank <= 7) return { indicator: 'z', label: `Clinched Playoffs - ${rank + 1}${['th', 'st', 'nd', 'rd'][rank + 1] || 'th'} Seed`, color: 'text-blue-400', icon: Medal };
+    if (rank >= 2 && rank <= 9) return { indicator: 'z', label: `Clinched Playoffs - ${rank + 1}${['th', 'st', 'nd', 'rd'][rank + 1] || 'th'} Seed`, color: 'text-blue-400', icon: Medal };
     return null;
   };
 
@@ -60,10 +60,10 @@ const Standings = () => {
         <div className="lg:col-span-2 glass-card p-4 border-2 border-emerald-500/30">
           <h3 className="text-lg font-bold text-white mb-3 flex items-center">
             <Crown className="w-5 h-5 mr-2 text-yellow-400" />
-            Playoff Seeding (Top 8)
+            Playoff Seeding (Top 10)
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {standings.slice(0, 8).map((team, idx) => {
+            {standings.slice(0, 10).map((team, idx) => {
               const status = getPlayoffStatus(idx);
               const StatusIcon = status?.icon;
               return (
@@ -94,7 +94,7 @@ const Standings = () => {
             </div>
             <div className="flex justify-between p-2 rounded bg-white/5">
               <span className="text-gray-400">Playoff Teams:</span>
-              <span className="text-emerald-400 font-semibold">8</span>
+              <span className="text-emerald-400 font-semibold">10</span>
             </div>
             <div className="flex justify-between p-2 rounded bg-white/5">
               <span className="text-gray-400">Regular Season:</span>
@@ -133,7 +133,7 @@ const Standings = () => {
             <tbody>
               {standings.map((team, idx) => {
                 const playoffStatus = getPlayoffStatus(idx);
-                const isPlayoffTeam = idx < 8;
+                const isPlayoffTeam = idx < 10;
                 const StatusIcon = playoffStatus?.icon;
                 
                 return (
@@ -155,7 +155,7 @@ const Standings = () => {
                           }`} />
                         )}
                         <span className="font-bold text-gray-400">{idx + 1}</span>
-                        {idx === 7 && (
+                        {idx === 9 && (
                           <div className="w-1 h-6 bg-emerald-500/50 ml-2"></div>
                         )}
                       </div>
@@ -267,18 +267,19 @@ const Standings = () => {
             <div className="flex items-center">
               <Medal className="w-4 h-4 text-blue-400 mr-2" />
               <span className="text-blue-400 font-bold mr-2">z -</span>
-              <span className="text-white">Clinched Playoffs (3rd-8th Seed)</span>
+              <span className="text-white">Clinched Playoffs (3rd-10th Seed)</span>
             </div>
           </div>
           
           <div className="space-y-2">
             <h4 className="text-purple-400 font-semibold mb-2">Playoff Format</h4>
             <div className="text-gray-300 space-y-1">
-              <p>• Top 8 teams make playoffs</p>
-              <p>• 8 weeks regular season</p>
-              <p>• Week 9: Quarterfinals (4 games)</p>
-              <p>• Week 10: Semifinals (2 games)</p>
-              <p>• Week 11: Championship (1 game)</p>
+              <p>• Top 10 teams make playoffs</p>
+              <p>• Seeds 1-2 get first-round bye</p>
+              <p>• Week 9: Wildcard (4 games)</p>
+              <p>• Week 10: Divisional (4 games)</p>
+              <p>• Week 11: Semifinals (2 games)</p>
+              <p>• Week 12: Championship (1 game)</p>
             </div>
           </div>
         </div>
