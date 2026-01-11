@@ -10,7 +10,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [adminKey, setAdminKey] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [activeTab, setActiveTab] = useState('reset'); // reset, edit, games, roblox, admins, merge, weekstats, tools, analytics
+  const [activeTab, setActiveTab] = useState('reset'); // reset, edit, games, roblox, admins, merge, weekstats, gamestats, creategame, tools, analytics
   const [isVerified, setIsVerified] = useState(false);
   const [adminInfo, setAdminInfo] = useState(null);
   
@@ -118,6 +118,27 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [selectedGameForEdit, setSelectedGameForEdit] = useState(null);
   const [gameStatKey, setGameStatKey] = useState('');
   const [gameStatValue, setGameStatValue] = useState('');
+
+  // Create Game State
+  const [createGame, setCreateGame] = useState({
+    week: '',
+    homeTeam: '',
+    awayTeam: '',
+    homeScore: 0,
+    awayScore: 0,
+    gameDate: '',
+    playerOfGame: '',
+    homeStats: {},
+    awayStats: {}
+  });
+  const [currentPlayer, setCurrentPlayer] = useState({
+    name: '',
+    team: 'home',
+    category: 'passing'
+  });
+  const [currentPlayerStats, setCurrentPlayerStats] = useState({});
+  const [tempCreateStatKey, setTempCreateStatKey] = useState('');
+  const [tempCreateStatValue, setTempCreateStatValue] = useState('');
 
   // Verify admin key
   const verifyAdmin = async () => {
@@ -856,6 +877,129 @@ const AdminPanel = ({ isOpen, onClose }) => {
     }
   };
   
+  // Create Game Functions
+  const handleAddPlayerToGame = () => {
+    if (!currentPlayer.name.trim()) {
+      toast.error('Please enter player name');
+      return;
+    }
+    
+    if (Object.keys(currentPlayerStats).length === 0) {
+      toast.error('Please add at least one stat');
+      return;
+    }
+    
+    const teamKey = currentPlayer.team === 'home' ? 'homeStats' : 'awayStats';
+    const updatedStats = { ...createGame[teamKey] };
+    
+    // Initialize category if it doesn't exist
+    if (!updatedStats[currentPlayer.category]) {
+      updatedStats[currentPlayer.category] = [];
+    }
+    
+    // Check if player already exists in this category
+    const existingIndex = updatedStats[currentPlayer.category].findIndex(
+      p => p.name.toLowerCase() === currentPlayer.name.toLowerCase()
+    );
+    
+    if (existingIndex >= 0) {
+      // Update existing player
+      updatedStats[currentPlayer.category][existingIndex] = {
+        name: currentPlayer.name,
+        stats: currentPlayerStats
+      };
+      toast.success('Player stats updated');
+    } else {
+      // Add new player
+      updatedStats[currentPlayer.category].push({
+        name: currentPlayer.name,
+        stats: currentPlayerStats
+      });
+      toast.success('Player added to game');
+    }
+    
+    setCreateGame({ ...createGame, [teamKey]: updatedStats });
+    setCurrentPlayer({ name: '', team: 'home', category: 'passing' });
+    setCurrentPlayerStats({});
+  };
+  
+  const handleRemovePlayerFromGame = (team, category, playerName) => {
+    const teamKey = team === 'home' ? 'homeStats' : 'awayStats';
+    const updatedStats = { ...createGame[teamKey] };
+    
+    if (updatedStats[category]) {
+      updatedStats[category] = updatedStats[category].filter(
+        p => p.name !== playerName
+      );
+      
+      // Remove empty categories
+      if (updatedStats[category].length === 0) {
+        delete updatedStats[category];
+      }
+    }
+    
+    setCreateGame({ ...createGame, [teamKey]: updatedStats });
+    toast.success('Player removed from game');
+  };
+  
+  const handleSubmitCreateGame = async () => {
+    // Validation
+    if (!createGame.week || !createGame.homeTeam || !createGame.awayTeam) {
+      toast.error('Please fill in week, home team, and away team');
+      return;
+    }
+    
+    if (!createGame.gameDate) {
+      toast.error('Please select a game date');
+      return;
+    }
+    
+    if (!createGame.playerOfGame) {
+      toast.error('Please enter player of the game');
+      return;
+    }
+    
+    try {
+      const response = await axios.post(`${API}/games`, {
+        week: parseInt(createGame.week),
+        home_team: createGame.homeTeam,
+        away_team: createGame.awayTeam,
+        home_score: parseInt(createGame.homeScore) || 0,
+        away_score: parseInt(createGame.awayScore) || 0,
+        home_stats: createGame.homeStats,
+        away_stats: createGame.awayStats,
+        player_of_game: createGame.playerOfGame,
+        game_date: createGame.gameDate
+      }, {
+        headers: { 'admin-key': adminKey }
+      });
+      
+      toast.success('Game created successfully!');
+      
+      // Reset form
+      setCreateGame({
+        week: '',
+        homeTeam: '',
+        awayTeam: '',
+        homeScore: 0,
+        awayScore: 0,
+        gameDate: '',
+        playerOfGame: '',
+        homeStats: {},
+        awayStats: {}
+      });
+      setCurrentPlayer({ name: '', team: 'home', category: 'passing' });
+      setCurrentPlayerStats({});
+      
+      // Refresh games list if on games tab
+      if (activeTab === 'games') {
+        loadGames();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to create game');
+    }
+  };
+
   // Advanced Tools Functions
   const handleBulkDeleteWeeks = async () => {
     if (!bulkDeleteWeeks.start || !bulkDeleteWeeks.end) {
@@ -1118,6 +1262,17 @@ const AdminPanel = ({ isOpen, onClose }) => {
               >
                 <Edit className="w-4 h-4 inline mr-2" />
                 Game Stats Edit
+              </button>
+              <button
+                onClick={() => setActiveTab('creategame')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  activeTab === 'creategame' 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <Plus className="w-4 h-4 inline mr-2" />
+                Create Game
               </button>
               <button
                 onClick={() => setActiveTab('tools')}
@@ -2072,6 +2227,297 @@ const AdminPanel = ({ isOpen, onClose }) => {
                       Update Player Stats in Game
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Create Game Tab */}
+              {activeTab === 'creategame' && (
+                <div className="space-y-4">
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 mb-4">
+                    <p className="text-green-400 text-sm">
+                      <strong>Create Game:</strong> Build a new game from scratch with custom stats for each player.
+                    </p>
+                  </div>
+
+                  {/* Game Info */}
+                  <div className="border border-gray-800 rounded-lg p-4 space-y-3">
+                    <h3 className="text-white font-semibold mb-3">Game Information</h3>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Week *</label>
+                        <input
+                          type="number"
+                          value={createGame.week}
+                          onChange={(e) => setCreateGame({...createGame, week: e.target.value})}
+                          placeholder="1"
+                          min="1"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Game Date *</label>
+                        <input
+                          type="date"
+                          value={createGame.gameDate}
+                          onChange={(e) => setCreateGame({...createGame, gameDate: e.target.value})}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Home Team *</label>
+                        <input
+                          type="text"
+                          value={createGame.homeTeam}
+                          onChange={(e) => setCreateGame({...createGame, homeTeam: e.target.value})}
+                          placeholder="Team Name"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Home Score</label>
+                        <input
+                          type="number"
+                          value={createGame.homeScore}
+                          onChange={(e) => setCreateGame({...createGame, homeScore: e.target.value})}
+                          placeholder="0"
+                          min="0"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Away Team *</label>
+                        <input
+                          type="text"
+                          value={createGame.awayTeam}
+                          onChange={(e) => setCreateGame({...createGame, awayTeam: e.target.value})}
+                          placeholder="Team Name"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Away Score</label>
+                        <input
+                          type="number"
+                          value={createGame.awayScore}
+                          onChange={(e) => setCreateGame({...createGame, awayScore: e.target.value})}
+                          placeholder="0"
+                          min="0"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-1">Player of the Game *</label>
+                      <input
+                        type="text"
+                        value={createGame.playerOfGame}
+                        onChange={(e) => setCreateGame({...createGame, playerOfGame: e.target.value})}
+                        placeholder="Player Name"
+                        className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Add Players */}
+                  <div className="border border-gray-800 rounded-lg p-4 space-y-3">
+                    <h3 className="text-white font-semibold mb-3">Add Players & Stats</h3>
+                    
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Player Name</label>
+                        <input
+                          type="text"
+                          value={currentPlayer.name}
+                          onChange={(e) => setCurrentPlayer({...currentPlayer, name: e.target.value})}
+                          placeholder="John Doe"
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Team</label>
+                        <select
+                          value={currentPlayer.team}
+                          onChange={(e) => setCurrentPlayer({...currentPlayer, team: e.target.value})}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
+                        >
+                          <option value="home">Home</option>
+                          <option value="away">Away</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Category</label>
+                        <select
+                          value={currentPlayer.category}
+                          onChange={(e) => {
+                            setCurrentPlayer({...currentPlayer, category: e.target.value});
+                            setCurrentPlayerStats({});
+                          }}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
+                        >
+                          <option value="passing">Passing</option>
+                          <option value="rushing">Rushing</option>
+                          <option value="receiving">Receiving</option>
+                          <option value="defense">Defense</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    {/* Stat Builder */}
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Stats for {currentPlayer.category}</label>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <select
+                          value={tempCreateStatKey}
+                          onChange={(e) => setTempCreateStatKey(e.target.value)}
+                          className="flex-1 bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500"
+                        >
+                          <option value="">Select stat...</option>
+                          {statOptions[currentPlayer.category]?.map(stat => (
+                            <option key={stat} value={stat.toLowerCase()}>{stat}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          value={tempCreateStatValue}
+                          onChange={(e) => setTempCreateStatValue(e.target.value)}
+                          placeholder="Value"
+                          className="w-24 bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500"
+                        />
+                        <button
+                          onClick={() => {
+                            if (tempCreateStatKey && tempCreateStatValue !== '') {
+                              setCurrentPlayerStats({
+                                ...currentPlayerStats,
+                                [tempCreateStatKey]: parseFloat(tempCreateStatValue)
+                              });
+                              setTempCreateStatKey('');
+                              setTempCreateStatValue('');
+                            }
+                          }}
+                          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-all"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                      
+                      {/* Current Player Stats */}
+                      {Object.keys(currentPlayerStats).length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {Object.entries(currentPlayerStats).map(([key, value]) => (
+                            <div key={key} className="bg-green-500/20 border border-green-500/30 rounded px-2 py-1 flex items-center space-x-2">
+                              <span className="text-white text-xs">{key}: {value}</span>
+                              <button
+                                onClick={() => {
+                                  const newStats = {...currentPlayerStats};
+                                  delete newStats[key];
+                                  setCurrentPlayerStats(newStats);
+                                }}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={handleAddPlayerToGame}
+                      className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-all"
+                    >
+                      Add Player to Game
+                    </button>
+                  </div>
+
+                  {/* Current Game Players */}
+                  {(Object.keys(createGame.homeStats).length > 0 || Object.keys(createGame.awayStats).length > 0) && (
+                    <div className="border border-gray-800 rounded-lg p-4">
+                      <h3 className="text-white font-semibold mb-3">Players in Game</h3>
+                      
+                      {/* Home Team Players */}
+                      {Object.keys(createGame.homeStats).length > 0 && (
+                        <div className="mb-4">
+                          <div className="text-sm text-blue-400 font-semibold mb-2">Home Team</div>
+                          {Object.entries(createGame.homeStats).map(([category, players]) => (
+                            <div key={category} className="mb-3">
+                              <div className="text-xs text-gray-400 mb-1 capitalize">{category}</div>
+                              <div className="space-y-1">
+                                {players.map((player, idx) => (
+                                  <div key={idx} className="bg-gray-800 rounded px-3 py-2 flex items-center justify-between">
+                                    <div>
+                                      <span className="text-white font-medium">{player.name}</span>
+                                      <span className="text-gray-400 text-xs ml-2">
+                                        {Object.entries(player.stats).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleRemovePlayerFromGame('home', category, player.name)}
+                                      className="text-red-400 hover:text-red-300"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Away Team Players */}
+                      {Object.keys(createGame.awayStats).length > 0 && (
+                        <div>
+                          <div className="text-sm text-purple-400 font-semibold mb-2">Away Team</div>
+                          {Object.entries(createGame.awayStats).map(([category, players]) => (
+                            <div key={category} className="mb-3">
+                              <div className="text-xs text-gray-400 mb-1 capitalize">{category}</div>
+                              <div className="space-y-1">
+                                {players.map((player, idx) => (
+                                  <div key={idx} className="bg-gray-800 rounded px-3 py-2 flex items-center justify-between">
+                                    <div>
+                                      <span className="text-white font-medium">{player.name}</span>
+                                      <span className="text-gray-400 text-xs ml-2">
+                                        {Object.entries(player.stats).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleRemovePlayerFromGame('away', category, player.name)}
+                                      className="text-red-400 hover:text-red-300"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Submit Button */}
+                  <button
+                    onClick={handleSubmitCreateGame}
+                    className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-semibold text-lg transition-all flex items-center justify-center space-x-2"
+                  >
+                    <Plus className="w-5 h-5" />
+                    <span>Create Game</span>
+                  </button>
                 </div>
               )}
               
