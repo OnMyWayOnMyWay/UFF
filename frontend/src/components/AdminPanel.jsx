@@ -189,6 +189,14 @@ const AdminPanel = ({ isOpen, onClose }) => {
     }
     if (isVerified && activeTab === 'gamestats') {
       loadWeeksWithGames();
+      loadPlayerNames();
+    }
+    if (isVerified && activeTab === 'creategame') {
+      loadPlayerNames();
+      loadTeams();
+    }
+    if (isVerified && activeTab === 'weekstats') {
+      loadPlayerNames();
     }
   }, [isVerified, activeTab]);
   
@@ -1421,31 +1429,20 @@ const AdminPanel = ({ isOpen, onClose }) => {
                     )}
                   </div>
                   
-                  <div className="relative">
+                  <div>
                     <label className="block text-gray-400 text-sm font-medium mb-2">
                       Player Name (Current)
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={playerEdit.oldName}
-                      onChange={(e) => handlePlayerSearchInput(e.target.value)}
-                      onFocus={() => playerEdit.oldName && setShowPlayerSuggestions(filteredPlayers.length > 0)}
-                      placeholder="Start typing player name..."
+                      onChange={(e) => setPlayerEdit({ ...playerEdit, oldName: e.target.value })}
                       className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
-                    />
-                    {showPlayerSuggestions && (
-                      <div className="absolute z-10 w-full mt-1 bg-[#1a1a1b] border border-gray-800 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {filteredPlayers.map((name, idx) => (
-                          <div
-                            key={idx}
-                            onClick={() => selectPlayer(name)}
-                            className="px-4 py-2 text-white hover:bg-gray-800 cursor-pointer"
-                          >
-                            {name}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    >
+                      <option value="">Select player...</option>
+                      {allPlayerNames.map((name, idx) => (
+                        <option key={idx} value={name}>{name}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1453,13 +1450,16 @@ const AdminPanel = ({ isOpen, onClose }) => {
                       <label className="block text-gray-400 text-sm font-medium mb-2">
                         New Name (Optional)
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={playerEdit.newName}
                         onChange={(e) => setPlayerEdit({ ...playerEdit, newName: e.target.value })}
-                        placeholder="Leave blank to keep current"
                         className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
-                      />
+                      >
+                        <option value="">Keep current name</option>
+                        {allPlayerNames.map((name, idx) => (
+                          <option key={idx} value={name}>{name}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-gray-400 text-sm font-medium mb-2">
@@ -1950,13 +1950,16 @@ const AdminPanel = ({ isOpen, onClose }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                       <div>
                         <label className="block text-gray-400 text-sm mb-1">Player Name</label>
-                        <input
-                          type="text"
+                        <select
                           value={weekStatEdit.playerName}
                           onChange={(e) => setWeekStatEdit({...weekStatEdit, playerName: e.target.value})}
-                          placeholder="Player name"
                           className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-pink-500"
-                        />
+                        >
+                          <option value="">Select player...</option>
+                          {allPlayerNames.map((name, idx) => (
+                            <option key={idx} value={name}>{name}</option>
+                          ))}
+                        </select>
                       </div>
                       
                       <div>
@@ -2002,13 +2005,16 @@ const AdminPanel = ({ isOpen, onClose }) => {
                     <div className="border border-gray-700 rounded-lg p-3 mb-3">
                       <h4 className="text-white text-sm font-semibold mb-2">Build Stats</h4>
                       <div className="flex space-x-2 mb-3">
-                        <input
-                          type="text"
+                        <select
                           value={tempStatKey}
                           onChange={(e) => setTempStatKey(e.target.value)}
-                          placeholder="Stat key (e.g., yards, td)"
                           className="flex-1 bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-pink-500"
-                        />
+                        >
+                          <option value="">Select stat...</option>
+                          {statOptions[weekStatEdit.category]?.map(stat => (
+                            <option key={stat} value={stat.toLowerCase()}>{stat}</option>
+                          ))}
+                        </select>
                         <input
                           type="number"
                           value={tempStatValue}
@@ -2119,13 +2125,16 @@ const AdminPanel = ({ isOpen, onClose }) => {
                       {/* Player Name */}
                       <div>
                         <label className="block text-gray-400 text-sm mb-2">Player Name</label>
-                        <input
-                          type="text"
+                        <select
                           value={gameStatsEdit.playerName}
                           onChange={(e) => setGameStatsEdit({...gameStatsEdit, playerName: e.target.value})}
-                          placeholder="Enter player name"
                           className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-teal-500"
-                        />
+                        >
+                          <option value="">Select player...</option>
+                          {allPlayerNames.map((name, idx) => (
+                            <option key={idx} value={name}>{name}</option>
+                          ))}
+                        </select>
                       </div>
 
                       {/* Team Side */}
@@ -2161,13 +2170,16 @@ const AdminPanel = ({ isOpen, onClose }) => {
                     <div className="border border-gray-700 rounded-lg p-3 mb-3">
                       <h4 className="text-white text-sm font-semibold mb-2">Build Stats</h4>
                       <div className="flex space-x-2 mb-3">
-                        <input
-                          type="text"
+                        <select
                           value={gameStatKey}
                           onChange={(e) => setGameStatKey(e.target.value)}
-                          placeholder="Stat key (e.g., yards, td, comp, att)"
                           className="flex-1 bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-500"
-                        />
+                        >
+                          <option value="">Select stat...</option>
+                          {statOptions[gameStatsEdit.category]?.map(stat => (
+                            <option key={stat} value={stat.toLowerCase()}>{stat}</option>
+                          ))}
+                        </select>
                         <input
                           type="number"
                           value={gameStatValue}
@@ -2270,13 +2282,16 @@ const AdminPanel = ({ isOpen, onClose }) => {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-gray-400 text-sm mb-1">Home Team *</label>
-                        <input
-                          type="text"
+                        <select
                           value={createGame.homeTeam}
                           onChange={(e) => setCreateGame({...createGame, homeTeam: e.target.value})}
-                          placeholder="Team Name"
                           className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
-                        />
+                        >
+                          <option value="">Select team...</option>
+                          {allTeams.map((team, idx) => (
+                            <option key={idx} value={team}>{team}</option>
+                          ))}
+                        </select>
                       </div>
                       
                       <div>
@@ -2295,13 +2310,16 @@ const AdminPanel = ({ isOpen, onClose }) => {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-gray-400 text-sm mb-1">Away Team *</label>
-                        <input
-                          type="text"
+                        <select
                           value={createGame.awayTeam}
                           onChange={(e) => setCreateGame({...createGame, awayTeam: e.target.value})}
-                          placeholder="Team Name"
                           className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
-                        />
+                        >
+                          <option value="">Select team...</option>
+                          {allTeams.map((team, idx) => (
+                            <option key={idx} value={team}>{team}</option>
+                          ))}
+                        </select>
                       </div>
                       
                       <div>
@@ -2319,13 +2337,16 @@ const AdminPanel = ({ isOpen, onClose }) => {
                     
                     <div>
                       <label className="block text-gray-400 text-sm mb-1">Player of the Game *</label>
-                      <input
-                        type="text"
+                      <select
                         value={createGame.playerOfGame}
                         onChange={(e) => setCreateGame({...createGame, playerOfGame: e.target.value})}
-                        placeholder="Player Name"
                         className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
-                      />
+                      >
+                        <option value="">Select player...</option>
+                        {allPlayerNames.map((name, idx) => (
+                          <option key={idx} value={name}>{name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -2336,13 +2357,16 @@ const AdminPanel = ({ isOpen, onClose }) => {
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <label className="block text-gray-400 text-sm mb-1">Player Name</label>
-                        <input
-                          type="text"
+                        <select
                           value={currentPlayer.name}
                           onChange={(e) => setCurrentPlayer({...currentPlayer, name: e.target.value})}
-                          placeholder="John Doe"
                           className="w-full bg-[#1a1a1b] border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500"
-                        />
+                        >
+                          <option value="">Select player...</option>
+                          {allPlayerNames.map((name, idx) => (
+                            <option key={idx} value={name}>{name}</option>
+                          ))}
+                        </select>
                       </div>
                       
                       <div>
@@ -2883,13 +2907,16 @@ const AdminPanel = ({ isOpen, onClose }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">Player Name</label>
-                <input
-                  type="text"
+                <select
                   value={tradeData.playerName}
                   onChange={(e) => setTradeData({...tradeData, playerName: e.target.value})}
-                  placeholder="Enter player name"
                   className="w-full bg-[#0d0d0e] border border-gray-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-cyan-500"
-                />
+                >
+                  <option value="">Select player...</option>
+                  {allPlayerNames.map((name, idx) => (
+                    <option key={idx} value={name}>{name}</option>
+                  ))}
+                </select>
               </div>
               
               <div className="grid grid-cols-2 gap-3">
