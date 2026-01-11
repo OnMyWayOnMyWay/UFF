@@ -2773,20 +2773,6 @@ async def get_playoff_seeds():
                 "bye": False
             })
             seed_num += 1
-            all_seeds.append({
-                "seed": seed_num,
-                "team": wildcard["team"],
-                "wins": wildcard["wins"],
-                "losses": wildcard["losses"],
-                "win_pct": wildcard.get("win_pct", 0),
-                "points_for": wildcard.get("points_for", 0),
-                "points_against": wildcard.get("points_against", 0),
-                "point_diff": wildcard.get("point_diff", 0),
-                "conference": wildcard["conference"],
-                "playoff_status": "wildcard",
-                "bye": False
-            })
-            seed_num += 1
         
         return {
             "seeds": all_seeds,
