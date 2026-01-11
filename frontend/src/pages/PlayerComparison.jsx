@@ -92,7 +92,7 @@ const PlayerComparison = () => {
   );
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
+    <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8">
       <button
         onClick={() => navigate(-1)}
         className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6 transition-colors animate-fadeIn"

@@ -88,7 +88,7 @@ const SeasonAwards = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
+    <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8">
       <div className="mb-8 animate-fadeInUp">
         <h1 className="text-4xl lg:text-5xl font-bold gradient-text mb-2 flex items-center">
           <Trophy className="w-10 h-10 mr-3" />

@@ -858,6 +858,8 @@ async def get_player_profile(player_name: str):
             game_stats = {'week': game['week'], 'date': game['game_date'], 'team': None}
             player_found = False
             player_team = None
+            # Track which stats we've already processed for this player in this game
+            stats_processed = set()
             
             # Check both teams
             for team_key in ['home_stats', 'away_stats']:
@@ -869,32 +871,37 @@ async def get_player_profile(player_name: str):
                     if category in stats:
                         for player in stats[category]:
                             if player['name'] == player_name:
-                                player_found = True
-                                player_team = player.get('team', current_team_name)
-                                game_stats[category] = player['stats']
-                                game_stats['team'] = player_team
-                                
-                                # Track team
-                                if player_team not in teams_played_for:
-                                    teams_played_for.append(player_team)
-                                
-                                # Initialize team stats if needed
-                                if player_team not in player_data['stats_by_team']:
-                                    player_data['stats_by_team'][player_team] = {
-                                        'games': 0,
-                                        'stats': {
-                                            'passing': {'yards': 0, 'tds': 0, 'ints': 0, 'comp': 0, 'att': 0, 'scked': 0},
-                                            'rushing': {'yards': 0, 'tds': 0, 'att': 0},
-                                            'receiving': {'rec': 0, 'yards': 0, 'tds': 0, 'drops': 0},
-                                            'defense': {'tak': 0, 'sacks': 0, 'ints': 0, 'tds': 0, 'tfl': 0, 'saf': 0, 'swat': 0, 'pbu': 0}
+                                # Only process once per game per player
+                                process_key = f"{category}"
+                                if process_key not in stats_processed:
+                                    player_found = True
+                                    player_team = player.get('team', current_team_name)
+                                    game_stats[category] = player['stats']
+                                    game_stats['team'] = player_team
+                                    
+                                    # Track team
+                                    if player_team not in teams_played_for:
+                                        teams_played_for.append(player_team)
+                                    
+                                    # Initialize team stats if needed
+                                    if player_team not in player_data['stats_by_team']:
+                                        player_data['stats_by_team'][player_team] = {
+                                            'games': 0,
+                                            'stats': {
+                                                'passing': {'yards': 0, 'tds': 0, 'ints': 0, 'comp': 0, 'att': 0, 'scked': 0},
+                                                'rushing': {'yards': 0, 'tds': 0, 'att': 0},
+                                                'receiving': {'rec': 0, 'yards': 0, 'tds': 0, 'drops': 0},
+                                                'defense': {'tak': 0, 'sacks': 0, 'ints': 0, 'tds': 0, 'tfl': 0, 'saf': 0, 'swat': 0, 'pbu': 0}
+                                            }
                                         }
-                                    }
-                                
-                                # Aggregate totals
-                                for stat_key, stat_value in player['stats'].items():
-                                    if stat_key in player_data['total_stats'][category]:
-                                        player_data['total_stats'][category][stat_key] += stat_value
-                                        player_data['stats_by_team'][player_team]['stats'][category][stat_key] += stat_value
+                                    
+                                    # Aggregate totals
+                                    for stat_key, stat_value in player['stats'].items():
+                                        if stat_key in player_data['total_stats'][category]:
+                                            player_data['total_stats'][category][stat_key] += stat_value
+                                            player_data['stats_by_team'][player_team]['stats'][category][stat_key] += stat_value
+                                    
+                                    stats_processed.add(process_key)
             
             if player_found:
                 player_data['games_played'] += 1
@@ -1012,6 +1019,8 @@ async def get_team_analysis(team_name: str):
         team_games = []
         streak_type = None
         streak_count = 0
+        # Track player games to avoid counting multiple times per game
+        player_games_in_game = {}
         
         for game in games:
             is_home = game['home_team'] == team_name
@@ -1080,8 +1089,10 @@ async def get_team_analysis(team_name: str):
             else:
                 team_data['head_to_head'][opponent]['losses'] += 1
             
+            # Track which players we've already counted for this game
+            player_games_in_game = {}
+            
             # Process player stats
-            players_counted_this_game: set[str] = set()
             for category in ['passing', 'defense', 'rushing', 'receiving']:
                 if category in stats:
                     for player in stats[category]:
@@ -1096,10 +1107,11 @@ async def get_team_analysis(team_name: str):
                                     'defense': {'tackles': 0, 'sacks': 0, 'ints': 0}
                                 }
                             }
-
-                        if player_name not in players_counted_this_game:
+                        
+                        # Only count the game once per player, even if they play multiple positions
+                        if player_name not in player_games_in_game:
                             team_data['roster'][player_name]['games'] += 1
-                            players_counted_this_game.add(player_name)
+                            player_games_in_game[player_name] = True
                         
                         # Aggregate team season stats
                         if category == 'passing':

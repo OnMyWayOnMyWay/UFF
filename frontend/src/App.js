@@ -22,12 +22,12 @@ function App() {
   return (
     <div className="App">
       <BrowserRouter>
-        <div className="flex min-h-screen w-full">
+        <div className="flex min-h-screen">
           {/* Sidebar */}
           <Sidebar onAdminOpen={() => setShowAdmin(true)} />
           
           {/* Main Content */}
-          <div className="flex-1 min-w-0 lg:ml-64">
+          <div className="flex-1 lg:ml-64">
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/stats-leaders" element={<StatsLeaders />} />

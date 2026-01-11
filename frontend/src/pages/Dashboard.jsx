@@ -71,15 +71,15 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
+    <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-8 animate-fadeInUp">
-        <h1 className="text-4xl lg:text-5xl font-bold gradient-text mb-2">Dashboard</h1>
-        <p className="text-gray-400">Season overview and recent activity</p>
+      <div className="mb-6 sm:mb-8 animate-fadeInUp">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold gradient-text mb-1 sm:mb-2">Dashboard</h1>
+        <p className="text-gray-400 text-sm sm:text-base">Season overview and recent activity</p>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
         <div className="stat-card-modern animate-fadeInUp" style={{ animationDelay: '0.1s' }} data-testid="total-games-stat">
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">

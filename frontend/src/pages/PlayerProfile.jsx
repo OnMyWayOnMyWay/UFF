@@ -113,11 +113,11 @@ const PlayerProfile = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
+    <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Back Button */}
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6 transition-colors animate-fadeIn"
+        className="flex items-center space-x-2 text-gray-400 hover:text-white mb-4 sm:mb-6 transition-colors animate-fadeIn text-sm sm:text-base"
         data-testid="back-button"
       >
         <ArrowLeft className="w-5 h-5" />
@@ -126,13 +126,13 @@ const PlayerProfile = () => {
 
       {/* Player Header */}
       <div className="glass-card mb-6 animate-fadeInUp">
-        <div className="flex items-center space-x-6">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-4xl font-bold text-white glow-emerald">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+          <div className="w-20 sm:w-24 h-20 sm:h-24 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-3xl sm:text-4xl font-bold text-white glow-emerald flex-shrink-0">
             {player.name.charAt(0)}
           </div>
           <div className="flex-1">
-            <div className="flex items-start justify-between gap-4">
-              <h1 className="text-4xl font-bold gradient-text mb-2">{player.name}</h1>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold gradient-text mb-1 sm:mb-2">{player.name}</h1>
               <button
                 onClick={() => {
                   const watching = isWatching(player.name);
@@ -144,7 +144,7 @@ const PlayerProfile = () => {
                     toast.success(`Added ${player.name} to Watchlist`);
                   }
                 }}
-                className={`px-4 py-2 rounded-xl border transition-all flex items-center gap-2 whitespace-nowrap ${
+                className={`px-3 py-2 sm:px-4 sm:py-2 rounded-xl border transition-all flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${
                   isWatching(player.name)
                     ? 'bg-yellow-500/15 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20'
                     : 'bg-white/5 border-white/10 text-gray-200 hover:bg-white/10'
@@ -155,9 +155,9 @@ const PlayerProfile = () => {
                 {isWatching(player.name) ? 'Watching' : 'Watch'}
               </button>
             </div>
-            <div className="flex items-center space-x-6 text-sm text-gray-400">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm text-gray-400 flex-wrap">
               <span>{player.games_played} Games Played</span>
-              <span className="text-yellow-500 font-bold text-lg">{player.fantasy_points.toFixed(1)} Fantasy Points</span>
+              <span className="text-yellow-500 font-bold">{player.fantasy_points.toFixed(1)} Fantasy Points</span>
               {player.current_team && (
                 <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full font-semibold">
                   Current: {player.current_team}
@@ -166,11 +166,11 @@ const PlayerProfile = () => {
             </div>
             {/* Team History */}
             {player.team_history && Array.isArray(player.team_history) && player.team_history.length > 1 && (
-              <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <div className="mt-3 sm:mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                 <p className="text-xs text-blue-400 uppercase tracking-wide mb-2">Team History (Trades)</p>
-                <div className="flex items-center space-x-2 flex-wrap gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {player.team_history.map((th, idx) => (
-                    <span key={idx} className="px-3 py-1 bg-white/5 text-white rounded-lg text-sm">
+                    <span key={idx} className="px-2 sm:px-3 py-1 bg-white/5 text-white rounded-lg text-xs sm:text-sm">
                       {th && th.team ? `${th.team} (${th.games || 0} games)` : 'Unknown'}
                     </span>
                   ))}
@@ -182,7 +182,7 @@ const PlayerProfile = () => {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6">
         {player.total_stats.passing.yards > 0 && (
           <div className="stat-card-modern animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
             <div className="flex items-center justify-between mb-3">
