@@ -110,6 +110,13 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [logoFile, setLogoFile] = useState(null);
   const [logoUploading, setLogoUploading] = useState(false);
 
+  // Team Colors State
+  const [teamColors, setTeamColors] = useState({});
+  const [colorTeam, setColorTeam] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#3B82F6');
+  const [secondaryColor, setSecondaryColor] = useState('#10B981');
+  const [colorSaving, setColorSaving] = useState(false);
+
   // League setup state
   const [leagueAssignments, setLeagueAssignments] = useState({});
   const [teamAssignment, setTeamAssignment] = useState({
@@ -215,6 +222,7 @@ const AdminPanel = ({ isOpen, onClose }) => {
     if (isVerified && activeTab === 'teamlogos') {
       loadTeams();
       loadTeamLogos();
+      loadTeamColors();
     }
     if (isVerified && activeTab === 'gamestats') {
       loadWeeksWithGames();
@@ -257,9 +265,21 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const loadTeamLogos = async () => {
     try {
       const response = await axios.get(`${API}/teams/logos`);
+      console.log('Loaded team logos:', response.data.logos);
       setTeamLogos(response.data.logos || {});
     } catch (error) {
       console.error('Failed to load team logos:', error);
+    }
+  };
+
+  // Load team colors (public)
+  const loadTeamColors = async () => {
+    try {
+      const response = await axios.get(`${API}/teams/colors`);
+      console.log('Loaded team colors:', response.data.colors);
+      setTeamColors(response.data.colors || {});
+    } catch (error) {
+      console.error('Failed to load team colors:', error);
     }
   };
 
@@ -281,14 +301,46 @@ const AdminPanel = ({ isOpen, onClose }) => {
       const response = await axios.post(`${API}/admin/team-logo`, form, {
         headers: { 'admin-key': adminKey }
       });
-      toast.success('Team logo uploaded');
+      console.log('Logo upload response:', response.data);
+      toast.success(`Team logo uploaded: ${response.data.logo_url}`);
       // Refresh logos map
       setLogoFile(null);
       await loadTeamLogos();
     } catch (error) {
+      console.error('Logo upload error:', error);
       toast.error(error.response?.data?.detail || 'Failed to upload logo');
     } finally {
       setLogoUploading(false);
+    }
+  };
+
+  const handleSaveTeamColors = async () => {
+    if (!colorTeam) {
+      toast.error('Please select a team');
+      return;
+    }
+    if (!primaryColor || !secondaryColor) {
+      toast.error('Please select both colors');
+      return;
+    }
+
+    try {
+      setColorSaving(true);
+      const response = await axios.post(`${API}/admin/team-colors`, {
+        team: colorTeam,
+        primary_color: primaryColor,
+        secondary_color: secondaryColor
+      }, {
+        headers: { 'admin-key': adminKey }
+      });
+      console.log('Colors save response:', response.data);
+      toast.success('Team colors saved');
+      await loadTeamColors();
+    } catch (error) {
+      console.error('Colors save error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to save colors');
+    } finally {
+      setColorSaving(false);
     }
   };
 
@@ -1571,6 +1623,131 @@ const AdminPanel = ({ isOpen, onClose }) => {
                             <div className="flex-1">
                               <p className="text-white text-sm font-medium">{team}</p>
                               <p className="text-gray-500 text-xs break-all">{url}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Team Colors Section */}
+                  <div className="border border-gray-800 rounded-lg p-4 mt-4">
+                    <h3 className="text-white font-semibold mb-3 flex items-center">
+                      <div className="w-4 h-4 mr-2 bg-gradient-to-r from-blue-500 to-green-500 rounded"></div>
+                      Team Colors
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Team</label>
+                        <select
+                          value={colorTeam}
+                          onChange={(e) => {
+                            const team = e.target.value;
+                            setColorTeam(team);
+                            // Load existing colors if available
+                            if (team && teamColors[team]) {
+                              setPrimaryColor(teamColors[team].primary || '#3B82F6');
+                              setSecondaryColor(teamColors[team].secondary || '#10B981');
+                            }
+                          }}
+                          className="w-full bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white"
+                        >
+                          <option value="">Select team...</option>
+                          {allTeams.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Primary Color</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={primaryColor}
+                            onChange={(e) => setPrimaryColor(e.target.value)}
+                            className="w-12 h-10 border border-gray-800 rounded cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={primaryColor}
+                            onChange={(e) => setPrimaryColor(e.target.value)}
+                            className="flex-1 bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-sm"
+                            placeholder="#3B82F6"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-1">Secondary Color</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={secondaryColor}
+                            onChange={(e) => setSecondaryColor(e.target.value)}
+                            className="w-12 h-10 border border-gray-800 rounded cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={secondaryColor}
+                            onChange={(e) => setSecondaryColor(e.target.value)}
+                            className="flex-1 bg-[#1a1a1b] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-sm"
+                            placeholder="#10B981"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Color Preview */}
+                    {colorTeam && (
+                      <div className="bg-[#0d0d0e] border border-gray-800 rounded-lg p-3 mb-3">
+                        <p className="text-gray-400 text-xs mb-2">Preview</p>
+                        <div className="flex items-center gap-3">
+                          <div className="w-24 h-24 rounded-lg overflow-hidden" style={{
+                            background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
+                          }}></div>
+                          <div className="text-sm text-gray-300">
+                            <p><strong>{colorTeam}</strong></p>
+                            <p className="text-xs text-gray-400 mt-1">Primary: {primaryColor}</p>
+                            <p className="text-xs text-gray-400">Secondary: {secondaryColor}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleSaveTeamColors}
+                      disabled={colorSaving}
+                      className="w-full bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 disabled:from-gray-700 disabled:to-gray-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center space-x-2"
+                    >
+                      {colorSaving ? (
+                        <>
+                          <RefreshCw className="w-5 h-5 animate-spin" />
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-5 h-5" />
+                          <span>Save Team Colors</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Current Colors */}
+                  <div className="border border-gray-800 rounded-lg p-4 mt-4">
+                    <h3 className="text-white font-semibold mb-3">Current Team Colors</h3>
+                    {Object.keys(teamColors).length === 0 ? (
+                      <p className="text-gray-400 text-sm">No team colors set yet.</p>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {Object.entries(teamColors).map(([team, colors]) => (
+                          <div key={team} className="bg-[#1a1a1b] rounded-lg p-3">
+                            <div className="w-full h-16 rounded mb-2" style={{
+                              background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%)`
+                            }}></div>
+                            <p className="text-white text-sm font-medium mb-1">{team}</p>
+                            <div className="text-xs text-gray-400">
+                              <p>Primary: {colors.primary}</p>
+                              <p>Secondary: {colors.secondary}</p>
                             </div>
                           </div>
                         ))}

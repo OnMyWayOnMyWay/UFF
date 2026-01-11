@@ -885,7 +885,7 @@ async def get_division_standings(conference: str, division: str):
                      if info.get('conference') == conference and info.get('division') == division}
         
         # Initialize all division teams with zero records
-        team_records = {}
+        team_records = defaultdict(lambda: {'wins': 0, 'losses': 0, 'points_for': 0, 'points_against': 0})
         for team in div_teams:
             team_records[team] = {'wins': 0, 'losses': 0, 'points_for': 0, 'points_against': 0}
         
@@ -895,7 +895,7 @@ async def get_division_standings(conference: str, division: str):
             away = game['away_team']
             
             # Only process if teams are in this division
-            if home in team_records:
+            if home in div_teams:
                 team_records[home]['points_for'] += game['home_score']
                 team_records[home]['points_against'] += game['away_score']
                 if game['home_score'] > game['away_score']:
@@ -903,7 +903,7 @@ async def get_division_standings(conference: str, division: str):
                 else:
                     team_records[home]['losses'] += 1
                     
-            if away in team_records:
+            if away in div_teams:
                 team_records[away]['points_for'] += game['away_score']
                 team_records[away]['points_against'] += game['home_score']
                 if game['away_score'] > game['home_score']:
@@ -916,6 +916,7 @@ async def get_division_standings(conference: str, division: str):
         for team, record in team_records.items():
             games_played = record['wins'] + record['losses']
             win_pct = record['wins'] / games_played if games_played > 0 else 0
+            conf_info = assignments.get(team, {})
             standings.append({
                 'team': team,
                 'wins': record['wins'],
@@ -924,7 +925,8 @@ async def get_division_standings(conference: str, division: str):
                 'points_for': record['points_for'],
                 'points_against': record['points_against'],
                 'point_diff': record['points_for'] - record['points_against'],
-                'division': division
+                'conference': conf_info.get('conference', conference),
+                'division': conf_info.get('division', division)
             })
         
         # Sort by wins desc, then point differential
@@ -2283,11 +2285,38 @@ async def _save_team_logo(team: str, logo_url: str):
     except Exception as e:
         logger.error(f"Error saving team logo: {str(e)}")
 
+async def _load_team_colors() -> Dict[str, Dict[str, str]]:
+    try:
+        doc = await db.assets.find_one({"_id": "team_colors"}, {"_id": 0})
+        if doc and isinstance(doc.get("colors"), dict):
+            return doc["colors"]
+    except Exception as e:
+        logger.error(f"Error loading team colors: {str(e)}")
+    return {}
+
+async def _save_team_colors(team: str, primary_color: str, secondary_color: str):
+    try:
+        colors = await _load_team_colors()
+        colors[team] = {"primary": primary_color, "secondary": secondary_color}
+        await db.assets.update_one(
+            {"_id": "team_colors"},
+            {"$set": {"colors": colors, "updated_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+    except Exception as e:
+        logger.error(f"Error saving team colors: {str(e)}")
+
 @api_router.get("/teams/logos")
 async def get_team_logos():
     """Public: return team -> logo URL mapping."""
     logos = await _load_team_logos()
     return {"logos": logos}
+
+@api_router.get("/teams/colors")
+async def get_team_colors():
+    """Public: return team -> colors mapping."""
+    colors = await _load_team_colors()
+    return {"colors": colors}
 
 @api_router.post("/admin/team-logo")
 async def upload_team_logo(
@@ -2335,7 +2364,35 @@ async def upload_team_logo(
         await _save_team_logo(team, logo_url)
 
         await log_admin_action(admin_key, "upload_team_logo", {"team": team, "logo_url": logo_url})
+        logger.info(f"Team logo saved for {team}: {logo_url}")
         return {"success": True, "team": team, "logo_url": logo_url}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading team logo: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/team-colors")
+async def save_team_colors(
+    team: str = Body(...),
+    primary_color: str = Body(...),
+    secondary_color: str = Body(...),
+    admin_key: str = Header(...),
+):
+    """Admin: set primary and secondary colors for a team."""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+
+    try:
+        if not team or not team.strip():
+            raise HTTPException(status_code=400, detail="Team is required")
+        if not primary_color or not secondary_color:
+            raise HTTPException(status_code=400, detail="Both primary and secondary colors are required")
+
+        await _save_team_colors(team, primary_color, secondary_color)
+        await log_admin_action(admin_key, "save_team_colors", {"team": team, "primary": primary_color, "secondary": secondary_color})
+        logger.info(f"Team colors saved for {team}: primary={primary_color}, secondary={secondary_color}")
+        return {"success": True, "team": team, "primary_color": primary_color, "secondary_color": secondary_color}
     except HTTPException:
         raise
     except Exception as e:
