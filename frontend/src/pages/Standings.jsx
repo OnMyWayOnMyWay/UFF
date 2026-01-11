@@ -470,8 +470,6 @@ const Standings = () => {
               <p>• Seeds 5-6: Wildcards (straight to Elite 8)</p>
               <p>• Seeds 7-10: Playins round</p>
               <p>• Elite 8 → Final 4 → United Flag Bowl</p>
-            </div>
-          </div>
               <p>• Conference champions meet in final</p>
             </div>
           </div>
