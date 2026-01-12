@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Trophy, Calendar, ChevronRight, Medal, Crown, Star } from 'lucide-react';
-import { TeamLogoAvatar, loadTeamLogos } from '../lib/teamLogos';
+import { TeamLogoAvatar, loadTeamLogos, loadTeamColors, getTeamColors } from '../lib/teamLogos';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -13,6 +13,7 @@ const Playoffs = () => {
   const [loading, setLoading] = useState(true);
   const [playoffSeeds, setPlayoffSeeds] = useState(null);
   const [logoMap, setLogoMap] = useState({});
+  const [colorMap, setColorMap] = useState({});
   const [assignments, setAssignments] = useState(null);
   const [playoffGames, setPlayoffGames] = useState({
     wildcard: [],
@@ -26,6 +27,7 @@ const Playoffs = () => {
   useEffect(() => {
     fetchData();
     loadTeamLogos().then(logos => setLogoMap(logos));
+    loadTeamColors().then(colors => setColorMap(colors));
   }, []);
 
   useEffect(() => {
@@ -413,7 +415,11 @@ const Playoffs = () => {
             <div className="h-16 flex items-center justify-center text-white/50 text-sm font-medium">TBD</div>
           ) : (
             <div className="space-y-2">
-              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${rows.top.win ? 'bg-emerald-500/15 border border-emerald-400/25' : 'bg-white/8 border border-white/15'}`}>
+              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${rows.top.win ? 'border' : 'bg-white/8 border border-white/15'}`}
+                style={rows.top.win && rows.top.name && rows.top.name !== 'TBD' ? {
+                  backgroundColor: `${getTeamColors(rows.top.name, colorMap).primary}20`,
+                  borderColor: `${getTeamColors(rows.top.name, colorMap).primary}50`
+                } : undefined}>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {seedChip(seedTop)}
                                     <TeamLogoAvatar teamName={rows.top.name} logoMap={logoMap} size="sm" />
@@ -427,7 +433,11 @@ const Playoffs = () => {
                 )}
               </div>
 
-              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${rows.bottom.win ? 'bg-emerald-500/15 border border-emerald-400/25' : 'bg-white/8 border border-white/15'}`}>
+              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${rows.bottom.win ? 'border' : 'bg-white/8 border border-white/15'}`}
+                style={rows.bottom.win && rows.bottom.name && rows.bottom.name !== 'TBD' ? {
+                  backgroundColor: `${getTeamColors(rows.bottom.name, colorMap).primary}20`,
+                  borderColor: `${getTeamColors(rows.bottom.name, colorMap).primary}50`
+                } : undefined}>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {seedChip(seedBottom)}
                                     <TeamLogoAvatar teamName={rows.bottom.name} logoMap={logoMap} size="sm" />

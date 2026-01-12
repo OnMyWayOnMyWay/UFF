@@ -4,6 +4,17 @@ import axios from 'axios';
 import { Trophy, TrendingUp, TrendingDown, Crown, Medal, Star, LayoutGrid } from 'lucide-react';
 import { TeamLogoAvatar, loadTeamLogos, loadTeamColors, getTeamColors } from '../lib/teamLogos';
 
+// Team colors for styling rows based on team identity
+const getTeamRowStyle = (team, colorMap = {}) => {
+  const colors = getTeamColors(team, colorMap);
+  if (!colors) return {};
+  return {
+    background: `linear-gradient(90deg, ${colors.primary}08, ${colors.secondary}05)`,
+    borderLeftColor: colors.primary,
+    borderLeftWidth: '4px'
+  };
+};
+
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
 
@@ -119,6 +130,7 @@ const Standings = () => {
                   }`}
                   onClick={() => navigate(`/team/${team.team}`)}
                   data-testid={`standing-${idx}`}
+                  style={getTeamRowStyle(team.team, colorMap)}
                 >
                   <td className="py-4 px-4">
                     <div className="flex items-center space-x-2">

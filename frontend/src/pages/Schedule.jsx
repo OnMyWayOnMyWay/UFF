@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Calendar, Trophy, ChevronRight, Award } from 'lucide-react';
-import { TeamLogoAvatar, loadTeamLogos } from '../lib/teamLogos';
+import { TeamLogoAvatar, loadTeamLogos, loadTeamColors, getTeamColors } from '../lib/teamLogos';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -13,11 +13,13 @@ const Schedule = () => {
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logoMap, setLogoMap] = useState({});
+  const [colorMap, setColorMap] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchData();
     loadTeamLogos().then(logos => setLogoMap(logos));
+    loadTeamColors().then(colors => setColorMap(colors));
   }, []);
 
   const fetchData = async () => {
@@ -107,9 +109,13 @@ const Schedule = () => {
                   {/* Away Team Section (Left) */}
                   <div className={`flex-1 flex items-center justify-between px-6 py-4 transition-all ${
                     awayWin 
-                      ? 'bg-gradient-to-r from-emerald-900/40 to-emerald-800/30 border-2 border-emerald-500/50' 
+                      ? 'border-2 border-emerald-500/50' 
                       : 'bg-slate-800/50 border-2 border-slate-700/50'
-                  }`}>
+                  }`}
+                  style={awayWin ? {
+                    background: `linear-gradient(90deg, ${getTeamColors(game.away_team, colorMap).primary}40, ${getTeamColors(game.away_team, colorMap).secondary}30)`
+                  } : undefined}
+                  >
                     <div className="flex items-center gap-4 min-w-0 flex-1">
                       <TeamLogoAvatar teamName={game.away_team} logoMap={logoMap} size="lg" />
                       <div className="min-w-0">
@@ -152,9 +158,13 @@ const Schedule = () => {
                   {/* Home Team Section (Right) */}
                   <div className={`flex-1 flex items-center justify-between px-6 py-4 transition-all ${
                     homeWin 
-                      ? 'bg-gradient-to-l from-red-900/40 to-red-800/30 border-2 border-red-500/50' 
+                      ? 'border-2 border-red-500/50' 
                       : 'bg-slate-800/50 border-2 border-slate-700/50'
-                  }`}>
+                  }`}
+                  style={homeWin ? {
+                    background: `linear-gradient(270deg, ${getTeamColors(game.home_team, colorMap).primary}40, ${getTeamColors(game.home_team, colorMap).secondary}30)`
+                  } : undefined}
+                  >
                     <div className={`text-5xl font-black tabular-nums ${
                       homeWin ? 'text-white' : 'text-gray-400'
                     }`}>
