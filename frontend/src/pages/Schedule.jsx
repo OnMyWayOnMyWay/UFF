@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Calendar, Trophy, ChevronRight } from 'lucide-react';
+import { Calendar, Trophy, ChevronRight, Award } from 'lucide-react';
+import { TeamLogoAvatar, loadTeamLogos } from '../lib/teamLogos';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -11,10 +12,12 @@ const Schedule = () => {
   const [weeks, setWeeks] = useState([]);
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [logoMap, setLogoMap] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchData();
+    loadTeamLogos().then(logos => setLogoMap(logos));
   }, []);
 
   const fetchData = async () => {
@@ -86,56 +89,100 @@ const Schedule = () => {
       {/* Games Grid */}
       {selectedWeek && (
         <div className="space-y-4">
-          {getGamesForWeek(selectedWeek).map((game, idx) => (
-            <div
-              key={game.id}
-              className="glass-card hover:border-emerald-500/30 transition-all cursor-pointer animate-fadeInUp"
-              style={{ animationDelay: `${0.2 + idx * 0.1}s` }}
-              onClick={() => navigate(`/week/${game.week}`)}
-              data-testid={`game-${game.id}`}
-            >
-              <div className="flex items-center justify-between flex-wrap gap-6">
-                {/* Date */}
-                <div className="flex items-center space-x-3">
-                  <Calendar className="w-6 h-6 text-emerald-500" />
-                  <div>
-                    <p className="text-sm text-gray-400">Game Date</p>
-                    <p className="font-semibold text-white">{game.game_date}</p>
+          {getGamesForWeek(selectedWeek).map((game, idx) => {
+            const homeWin = game.home_score > game.away_score;
+            const awayWin = game.away_score > game.home_score;
+            const gameDate = game.game_date ? new Date(game.game_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase() : '';
+            
+            return (
+              <div
+                key={game.id}
+                className="relative overflow-hidden rounded-2xl animate-fadeInUp cursor-pointer group"
+                style={{ animationDelay: `${0.2 + idx * 0.1}s` }}
+                onClick={() => navigate(`/week/${game.week}`)}
+                data-testid={`game-${game.id}`}
+              >
+                {/* Game Card Container */}
+                <div className="flex items-stretch min-h-[120px]">
+                  {/* Away Team Section (Left) */}
+                  <div className={`flex-1 flex items-center justify-between px-6 py-4 transition-all ${
+                    awayWin 
+                      ? 'bg-gradient-to-r from-emerald-900/40 to-emerald-800/30 border-2 border-emerald-500/50' 
+                      : 'bg-slate-800/50 border-2 border-slate-700/50'
+                  }`}>
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                      <TeamLogoAvatar teamName={game.away_team} logoMap={logoMap} size="lg" />
+                      <div className="min-w-0">
+                        <div className={`text-xs font-bold tracking-wider mb-1 ${
+                          awayWin ? 'text-emerald-400' : 'text-gray-400'
+                        }`}>
+                          {game.away_team.split(' ')[0].toUpperCase()}
+                        </div>
+                        <div className={`text-xl font-black uppercase tracking-tight ${
+                          awayWin ? 'text-white' : 'text-gray-300'
+                        }`}>
+                          {game.away_team.split(' ').slice(1).join(' ')}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`text-5xl font-black tabular-nums ${
+                      awayWin ? 'text-white' : 'text-gray-400'
+                    }`}>
+                      {game.away_score}
+                    </div>
+                  </div>
+
+                  {/* Center Info Section */}
+                  <div className="w-48 bg-white/10 backdrop-blur-sm flex flex-col items-center justify-center px-4 py-4 border-y-2 border-white/20">
+                    <div className="text-center space-y-1">
+                      <div className="text-xs font-bold text-white/90 tracking-widest">Final</div>
+                      <div className="text-lg font-black text-white">WEEK {game.week}</div>
+                      <div className="text-xs font-semibold text-white/70">{gameDate}</div>
+                    </div>
+                    {game.player_of_game && (
+                      <div className="mt-3 pt-3 border-t border-white/20 w-full">
+                        <div className="flex items-center justify-center gap-1 text-xs text-yellow-400">
+                          <Award className="w-3 h-3" />
+                          <span className="font-semibold truncate">{game.player_of_game}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Home Team Section (Right) */}
+                  <div className={`flex-1 flex items-center justify-between px-6 py-4 transition-all ${
+                    homeWin 
+                      ? 'bg-gradient-to-l from-red-900/40 to-red-800/30 border-2 border-red-500/50' 
+                      : 'bg-slate-800/50 border-2 border-slate-700/50'
+                  }`}>
+                    <div className={`text-5xl font-black tabular-nums ${
+                      homeWin ? 'text-white' : 'text-gray-400'
+                    }`}>
+                      {game.home_score}
+                    </div>
+                    <div className="flex items-center gap-4 min-w-0 flex-1 justify-end">
+                      <div className="min-w-0 text-right">
+                        <div className={`text-xs font-bold tracking-wider mb-1 ${
+                          homeWin ? 'text-red-400' : 'text-gray-400'
+                        }`}>
+                          {game.home_team.split(' ')[0].toUpperCase()}
+                        </div>
+                        <div className={`text-xl font-black uppercase tracking-tight ${
+                          homeWin ? 'text-white' : 'text-gray-300'
+                        }`}>
+                          {game.home_team.split(' ').slice(1).join(' ')}
+                        </div>
+                      </div>
+                      <TeamLogoAvatar teamName={game.home_team} logoMap={logoMap} size="lg" />
+                    </div>
                   </div>
                 </div>
 
-                {/* Teams & Score */}
-                <div className="flex items-center space-x-8 flex-1 justify-center">
-                  <div className="text-right">
-                    <p className="font-bold text-white text-lg mb-1">{game.home_team}</p>
-                    <p className="text-4xl font-bold text-emerald-400">{game.home_score}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-gray-500 font-bold text-sm mb-2">VS</p>
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500/20 to-blue-500/20 flex items-center justify-center">
-                      <Trophy className="w-6 h-6 text-emerald-500" />
-                    </div>
-                  </div>
-                  <div className="text-left">
-                    <p className="font-bold text-white text-lg mb-1">{game.away_team}</p>
-                    <p className="text-4xl font-bold text-blue-400">{game.away_score}</p>
-                  </div>
-                </div>
-
-                {/* Player of Game + Arrow */}
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="text-xs text-gray-400 mb-1">Player of Game</p>
-                    <div className="flex items-center space-x-2">
-                      <Trophy className="w-4 h-4 text-yellow-500" />
-                      <p className="text-yellow-500 font-semibold">{game.player_of_game}</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-6 h-6 text-gray-400" />
-                </div>
+                {/* Hover effect overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/0 to-emerald-500/0 group-hover:from-emerald-500/5 group-hover:via-emerald-500/10 group-hover:to-emerald-500/5 transition-all duration-300 pointer-events-none" />
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {getGamesForWeek(selectedWeek).length === 0 && (
             <div className="glass-card text-center py-12">
