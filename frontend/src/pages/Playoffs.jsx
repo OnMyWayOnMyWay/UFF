@@ -36,20 +36,27 @@ const Playoffs = () => {
   }, [loading, playoffSeeds]);
 
   const fetchData = async () => {
-    try {
-      const [gamesRes, seedsRes, assignRes] = await Promise.all([
+    try:
+      const [gamesRes, seedsRes, assignRes, gcStandingsRes, ridgeStandingsRes] = await Promise.all([
         axios.get(`${API}/games`),
         axios.get(`${API}/playoffs/seeds`),
-        axios.get(`${API}/league/assignments`)
+        axios.get(`${API}/league/assignments`),
+        axios.get(`${API}/teams/standings/conference/Grand Central`),
+        axios.get(`${API}/teams/standings/conference/Ridge`)
       ]);
       
       const gamesData = Array.isArray(gamesRes.data) ? gamesRes.data : (gamesRes.data.games || []);
       const seedsData = seedsRes.data || {};
       const assignmentsData = assignRes.data || {};
+      const gcStandings = Array.isArray(gcStandingsRes.data) ? gcStandingsRes.data : [];
+      const ridgeStandings = Array.isArray(ridgeStandingsRes.data) ? ridgeStandingsRes.data : [];
       
       setGames(gamesData);
       setPlayoffSeeds(seedsData);
-      setStandings(seedsData.standings || []);
+      setStandings([...gcStandings, ...ridgeStandings].sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        return (b.point_diff || 0) - (a.point_diff || 0);
+      }));
       setAssignments(assignmentsData);
       organizePlayoffGames(gamesData);
     } catch (error) {
@@ -512,6 +519,24 @@ const Playoffs = () => {
 
   const playoffTeamsByConference = getPlayoffTeams();
 
+  // Get division champions from standings
+  const getDivisionChampions = () => {
+    if (!standings || standings.length === 0) return {};
+    
+    const divisions = {};
+    standings.forEach(team => {
+      if (!team.division || !team.conference) return;
+      const key = `${team.conference}-${team.division}`;
+      if (!divisions[key] || (team.wins > divisions[key].wins || 
+         (team.wins === divisions[key].wins && (team.point_diff || 0) > (divisions[key].point_diff || 0)))) {
+        divisions[key] = team;
+      }
+    });
+    return divisions;
+  };
+
+  const divisionChampions = getDivisionChampions();
+
   return (
     <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Header */}
@@ -530,7 +555,52 @@ const Playoffs = () => {
       </div>
 
       {playoffSeeds && playoffSeeds.seeds && playoffSeeds.seeds.length > 0 ? (
-        <div className="max-w-7xl mx-auto mb-10 space-y-8">
+        <>
+          {/* Division Champions Section */}
+          {Object.keys(divisionChampions).length > 0 && (
+            <div className="max-w-7xl mx-auto mb-10">
+              <div className="glass-card p-4 md:p-6 rounded-2xl border border-white/10">
+                <div className="flex items-center gap-2 mb-4">
+                  <Crown className="w-5 h-5 text-yellow-400" />
+                  <h2 className="text-xl font-bold text-white">Division Champions</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {['Grand Central', 'Ridge'].map(conf => (
+                    <div key={conf} className="space-y-2">
+                      <h3 className="text-sm font-semibold text-white/70 mb-2">{conf} Conference</h3>
+                      {['North', 'South'].map(div => {
+                        const key = `${conf}-${div}`;
+                        const champ = divisionChampions[key];
+                        if (!champ) return null;
+                        return (
+                          <div 
+                            key={key}
+                            className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer"
+                            onClick={() => navigate(`/team/${champ.team}`)}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Crown className="w-4 h-4 text-yellow-400 shrink-0" />
+                              <TeamLogoAvatar teamName={champ.team} logoMap={logoMap} size="sm" />
+                              <div className="min-w-0">
+                                <div className="font-bold text-white text-sm truncate">{champ.team}</div>
+                                <div className="text-xs text-gray-400">{div} Division</div>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="font-bold text-emerald-400 text-sm">{champ.wins}-{champ.losses}</div>
+                              <div className="text-xs text-gray-400">{((champ.wins / (champ.wins + champ.losses)) * 100).toFixed(0)}%</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="max-w-7xl mx-auto mb-10 space-y-8">
           <div className="glass-card p-4 md:p-6 rounded-2xl border border-white/10">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -671,7 +741,7 @@ const Playoffs = () => {
               />
             </RoundColumn>
           </div>
-        </div>
+        </>
       ) : (
         <div className="max-w-7xl mx-auto mb-8">
           <div className="glass-card p-6 rounded-xl border border-white/10">

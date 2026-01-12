@@ -1173,9 +1173,12 @@ async def get_team_analysis(team_name: str):
     """Get comprehensive team analysis including franchise history and awards"""
     try:
         games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        assignments = await _load_assignments()
+        # Normalize the team name to match assignments
+        canonical_team_name = _normalize_team_name(team_name, assignments)
         
         team_data = {
-            'name': team_name,
+            'name': canonical_team_name,
             'all_time_record': {'wins': 0, 'losses': 0, 'win_pct': 0},
             'total_games': 0,
             'total_points_scored': 0,
@@ -1216,8 +1219,10 @@ async def get_team_analysis(team_name: str):
         player_games_in_game = {}
         
         for game in games:
-            is_home = game['home_team'] == team_name
-            is_away = game['away_team'] == team_name
+            home = _normalize_team_name(game['home_team'], assignments)
+            away = _normalize_team_name(game['away_team'], assignments)
+            is_home = home == canonical_team_name
+            is_away = away == canonical_team_name
             
             if not (is_home or is_away):
                 continue
