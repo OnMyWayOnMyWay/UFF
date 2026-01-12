@@ -123,9 +123,12 @@ export function getTeamLogo(teamName, logoMap = {}) {
     return logoMap[teamName];
   }
   
-  // Fallback to default avatar with team colors
-  const colors = TEAM_COLORS[teamName] || { primary: '#64748B', secondary: '#FFFFFF' };
-  return null; // Will use initials instead
+  // Debug: log when logo is not found
+  if (Object.keys(logoMap).length > 0) {
+    console.log(`Logo not found for "${teamName}". Available teams:`, Object.keys(logoMap));
+  }
+  
+  return null;
 }
 
 export function getTeamColors(teamName, colorMap = {}, fallbackToDefault = true) {
@@ -158,6 +161,7 @@ export function TeamLogoAvatar({ teamName, logoMap = {}, size = 'md', className 
     xl: 'w-16 h-16 text-2xl'
   };
   
+  // Always try to show the logo if we have a URL
   if (logoUrl) {
     return (
       <img 
@@ -172,7 +176,7 @@ export function TeamLogoAvatar({ teamName, logoMap = {}, size = 'md', className 
     );
   }
   
-  // If no logo, show a generic placeholder with team colors as border
+  // If no logo URL yet (still loading or not uploaded), show a generic placeholder
   return (
     <div
       className={`rounded-lg flex items-center justify-center ${sizeClasses[size]} ${className} border-2`}
@@ -180,7 +184,7 @@ export function TeamLogoAvatar({ teamName, logoMap = {}, size = 'md', className 
         borderColor: colors.primary,
         backgroundColor: 'transparent'
       }}
-      title={`${teamName} (Logo not uploaded)`}
+      title={teamName}
     >
       <svg className="w-1/2 h-1/2 opacity-50" fill="currentColor" style={{ color: colors.primary }} viewBox="0 0 20 20">
         <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
