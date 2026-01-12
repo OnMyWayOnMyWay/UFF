@@ -246,6 +246,7 @@ const Playoffs = () => {
             }`}>
               <div className="flex items-center gap-2 min-w-0">
                 {homeWin && <Trophy className="w-4 h-4 text-emerald-400" />}
+                                <TeamLogoAvatar teamName={game.home_team} logoMap={logoMap} size="sm" />
                 <span className={`font-semibold truncate ${homeWin ? 'text-emerald-400' : 'text-gray-300'}`} title={game.home_team}>
                   {game.home_team}
                 </span>
@@ -260,6 +261,7 @@ const Playoffs = () => {
             }`}>
               <div className="flex items-center gap-2 min-w-0">
                 {awayWin && <Trophy className="w-4 h-4 text-emerald-400" />}
+                                <TeamLogoAvatar teamName={game.away_team} logoMap={logoMap} size="sm" />
                 <span className={`font-semibold truncate ${awayWin ? 'text-emerald-400' : 'text-gray-300'}`} title={game.away_team}>
                   {game.away_team}
                 </span>
@@ -292,6 +294,7 @@ const Playoffs = () => {
                 'bg-gray-700 text-white'
               }`}>
                 {seed1}
+                          {team1 && team1 !== 'TBD' && <TeamLogoAvatar teamName={team1} logoMap={logoMap} size="sm" />}
               </div>
             )}
             <span className="font-semibold text-gray-300 truncate" title={team1 || 'TBD'}>{team1 || 'TBD'}</span>
@@ -308,6 +311,7 @@ const Playoffs = () => {
                 'bg-gray-700 text-white'
               }`}>
                 {seed2}
+                          {team2 && team2 !== 'TBD' && <TeamLogoAvatar teamName={team2} logoMap={logoMap} size="sm" />}
               </div>
             )}
             <span className="font-semibold text-gray-300 truncate" title={team2 || 'TBD'}>{team2 || 'TBD'}</span>
@@ -412,6 +416,7 @@ const Playoffs = () => {
               <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${rows.top.win ? 'bg-emerald-500/15 border border-emerald-400/25' : 'bg-white/8 border border-white/15'}`}>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {seedChip(seedTop)}
+                                    <TeamLogoAvatar teamName={rows.top.name} logoMap={logoMap} size="sm" />
                   <div className="min-w-0">
                     <TeamName name={rows.top.name} win={rows.top.win} compactName={compact} />
                     {recordTop && !game && <div className="text-[11px] text-white/55">{recordTop}</div>}
@@ -425,6 +430,7 @@ const Playoffs = () => {
               <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${rows.bottom.win ? 'bg-emerald-500/15 border border-emerald-400/25' : 'bg-white/8 border border-white/15'}`}>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {seedChip(seedBottom)}
+                                    <TeamLogoAvatar teamName={rows.bottom.name} logoMap={logoMap} size="sm" />
                   <div className="min-w-0">
                     <TeamName name={rows.bottom.name} win={rows.bottom.win} compactName={compact} />
                     {recordBottom && !game && <div className="text-[11px] text-white/55">{recordBottom}</div>}
