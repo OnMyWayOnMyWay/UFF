@@ -36,7 +36,7 @@ const Playoffs = () => {
   }, [loading, playoffSeeds]);
 
   const fetchData = async () => {
-    try:
+    try {
       const [gamesRes, seedsRes, assignRes, gcStandingsRes, ridgeStandingsRes] = await Promise.all([
         axios.get(`${API}/games`),
         axios.get(`${API}/playoffs/seeds`),
@@ -601,21 +601,21 @@ const Playoffs = () => {
           )}
 
           <div className="max-w-7xl mx-auto mb-10 space-y-8">
-          <div className="glass-card p-4 md:p-6 rounded-2xl border border-white/10">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-xs font-semibold text-white/60">Seeds 1-4</div>
-                <div className="text-sm text-white/90">Conference Champ = Seeds 1-2 · CC Runners-Up = Seeds 3-4</div>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-white/70">
-                <span className="bg-yellow-500/20 text-yellow-200 px-2 py-1 rounded-md border border-yellow-400/40">Elite 8 Entry</span>
-                <span className="bg-blue-500/20 text-blue-200 px-2 py-1 rounded-md border border-blue-400/40">Final 4</span>
-                <span className="bg-green-500/20 text-emerald-200 px-2 py-1 rounded-md border border-emerald-400/40">Play-Ins</span>
+            <div className="glass-card p-4 md:p-6 rounded-2xl border border-white/10">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs font-semibold text-white/60">Seeds 1-4</div>
+                  <div className="text-sm text-white/90">Conference Champ = Seeds 1-2 · CC Runners-Up = Seeds 3-4</div>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-white/70">
+                  <span className="bg-yellow-500/20 text-yellow-200 px-2 py-1 rounded-md border border-yellow-400/40">Elite 8 Entry</span>
+                  <span className="bg-blue-500/20 text-blue-200 px-2 py-1 rounded-md border border-blue-400/40">Final 4</span>
+                  <span className="bg-green-500/20 text-emerald-200 px-2 py-1 rounded-md border border-emerald-400/40">Play-Ins</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
             <RoundColumn title="Play-Ins" subtitle="Week 9 · 9 vs 8 · 10 vs 7">
               <BracketMatchCard
                 title="Play-In: #9 vs #8"
@@ -740,6 +740,7 @@ const Playoffs = () => {
                 accentClass="bg-red-400"
               />
             </RoundColumn>
+            </div>
           </div>
         </>
       ) : (
