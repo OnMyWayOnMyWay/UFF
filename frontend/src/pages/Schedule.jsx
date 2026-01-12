@@ -117,7 +117,7 @@ const Schedule = () => {
                   } : undefined}
                   >
                     <div className="flex items-center gap-4 min-w-0 flex-1">
-                      <TeamLogoAvatar teamName={game.away_team} logoMap={logoMap} size="lg" />
+                      <TeamLogoAvatar teamName={game.away_team} logoMap={logoMap} colorMap={colorMap} size="lg" />
                       <div className="min-w-0">
                         <div className={`text-xs font-bold tracking-wider mb-1 ${
                           awayWin ? 'text-emerald-400' : 'text-gray-400'
@@ -183,7 +183,7 @@ const Schedule = () => {
                           {game.home_team.split(' ').slice(1).join(' ')}
                         </div>
                       </div>
-                      <TeamLogoAvatar teamName={game.home_team} logoMap={logoMap} size="lg" />
+                      <TeamLogoAvatar teamName={game.home_team} logoMap={logoMap} colorMap={colorMap} size="lg" />
                     </div>
                   </div>
                 </div>

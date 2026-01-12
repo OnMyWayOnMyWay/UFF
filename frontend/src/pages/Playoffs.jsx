@@ -200,7 +200,7 @@ const Playoffs = () => {
               <div className="font-bold text-sm leading-tight">{seed}</div>
               <div className="text-xs opacity-90">{confLabel}</div>
             </div>
-            <TeamLogoAvatar teamName={team} logoMap={logoMap} size="sm" />
+            <TeamLogoAvatar teamName={team} logoMap={logoMap} colorMap={colorMap} size="sm" />
             <div className="min-w-0">
               <div className="font-bold text-white text-sm leading-tight truncate" title={team}>{team}</div>
               {record && <div className="text-gray-400 text-xs">{record}</div>}
@@ -248,7 +248,7 @@ const Playoffs = () => {
             }`}>
               <div className="flex items-center gap-2 min-w-0">
                 {homeWin && <Trophy className="w-4 h-4 text-emerald-400" />}
-                                <TeamLogoAvatar teamName={game.home_team} logoMap={logoMap} size="sm" />
+                                <TeamLogoAvatar teamName={game.home_team} logoMap={logoMap} colorMap={colorMap} size="sm" />
                 <span className={`font-semibold truncate ${homeWin ? 'text-emerald-400' : 'text-gray-300'}`} title={game.home_team}>
                   {game.home_team}
                 </span>
@@ -263,7 +263,7 @@ const Playoffs = () => {
             }`}>
               <div className="flex items-center gap-2 min-w-0">
                 {awayWin && <Trophy className="w-4 h-4 text-emerald-400" />}
-                                <TeamLogoAvatar teamName={game.away_team} logoMap={logoMap} size="sm" />
+                                <TeamLogoAvatar teamName={game.away_team} logoMap={logoMap} colorMap={colorMap} size="sm" />
                 <span className={`font-semibold truncate ${awayWin ? 'text-emerald-400' : 'text-gray-300'}`} title={game.away_team}>
                   {game.away_team}
                 </span>
@@ -296,7 +296,7 @@ const Playoffs = () => {
                 'bg-gray-700 text-white'
               }`}>
                 {seed1}
-                          {team1 && team1 !== 'TBD' && <TeamLogoAvatar teamName={team1} logoMap={logoMap} size="sm" />}
+                          {team1 && team1 !== 'TBD' && <TeamLogoAvatar teamName={team1} logoMap={logoMap} colorMap={colorMap} size="sm" />}
               </div>
             )}
             <span className="font-semibold text-gray-300 truncate" title={team1 || 'TBD'}>{team1 || 'TBD'}</span>
@@ -313,7 +313,7 @@ const Playoffs = () => {
                 'bg-gray-700 text-white'
               }`}>
                 {seed2}
-                          {team2 && team2 !== 'TBD' && <TeamLogoAvatar teamName={team2} logoMap={logoMap} size="sm" />}
+                          {team2 && team2 !== 'TBD' && <TeamLogoAvatar teamName={team2} logoMap={logoMap} colorMap={colorMap} size="sm" />}
               </div>
             )}
             <span className="font-semibold text-gray-300 truncate" title={team2 || 'TBD'}>{team2 || 'TBD'}</span>
@@ -422,7 +422,7 @@ const Playoffs = () => {
                 } : undefined}>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {seedChip(seedTop)}
-                                    <TeamLogoAvatar teamName={rows.top.name} logoMap={logoMap} size="sm" />
+                                    <TeamLogoAvatar teamName={rows.top.name} logoMap={logoMap} colorMap={colorMap} size="sm" />
                   <div className="min-w-0">
                     <TeamName name={rows.top.name} win={rows.top.win} compactName={compact} />
                     {recordTop && !game && <div className="text-[11px] text-white/55">{recordTop}</div>}
@@ -440,7 +440,7 @@ const Playoffs = () => {
                 } : undefined}>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {seedChip(seedBottom)}
-                                    <TeamLogoAvatar teamName={rows.bottom.name} logoMap={logoMap} size="sm" />
+                                    <TeamLogoAvatar teamName={rows.bottom.name} logoMap={logoMap} colorMap={colorMap} size="sm" />
                   <div className="min-w-0">
                     <TeamName name={rows.bottom.name} win={rows.bottom.win} compactName={compact} />
                     {recordBottom && !game && <div className="text-[11px] text-white/55">{recordBottom}</div>}
@@ -596,7 +596,7 @@ const Playoffs = () => {
                           >
                             <div className="flex items-center gap-3 min-w-0">
                               <Crown className="w-4 h-4 text-yellow-400 shrink-0" />
-                              <TeamLogoAvatar teamName={champ.team} logoMap={logoMap} size="sm" />
+                              <TeamLogoAvatar teamName={champ.team} logoMap={logoMap} colorMap={colorMap} size="sm" />
                               <div className="min-w-0">
                                 <div className="font-bold text-white text-sm truncate">{champ.team}</div>
                                 <div className="text-xs text-gray-400">{div} Division</div>

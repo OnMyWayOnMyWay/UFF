@@ -150,7 +150,7 @@ const Standings = () => {
                   <td className="py-4 px-4">
                     <div className="flex items-center space-x-3 min-w-0">
                       <div className="shrink-0">
-                        <TeamLogoAvatar teamName={team.team} logoMap={logoMap} size="md" />
+                        <TeamLogoAvatar teamName={team.team} logoMap={logoMap} colorMap={colorMap} size="md" />
                       </div>
                       <div className="flex items-center space-x-2 min-w-0">
                         {playoffStatus && StatusIcon && (

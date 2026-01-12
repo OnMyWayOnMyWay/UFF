@@ -119,9 +119,9 @@ export function getTeamInitials(teamName) {
   return teamName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
 }
 
-export function TeamLogoAvatar({ teamName, logoMap = {}, size = 'md', className = '' }) {
+export function TeamLogoAvatar({ teamName, logoMap = {}, size = 'md', className = '', colorMap = {} }) {
   const logoUrl = getTeamLogo(teamName, logoMap);
-  const colors = getTeamColors(teamName);
+  const colors = getTeamColors(teamName, colorMap);
   const initials = getTeamInitials(teamName);
   
   const sizeClasses = {

@@ -136,7 +136,7 @@ const TeamAnalysis = () => {
             backgroundColor: teamColors && teamColors[teamName] ? `${teamColors[teamName].primary}20` : 'rgba(16, 185, 129, 0.1)',
           }}
         >
-          <TeamLogoAvatar teamName={teamName} logoMap={logoMap} size="lg" />
+          <TeamLogoAvatar teamName={teamName} logoMap={logoMap} colorMap={teamColors} size="lg" />
         </div>
         <div className="mt-4 text-center">
           <h3 className="text-sm md:text-base font-bold text-gray-300 uppercase tracking-wide opacity-75">
