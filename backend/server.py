@@ -811,12 +811,13 @@ async def get_team_standings():
     """Get team win/loss records"""
     try:
         games = await db.games.find({}, {"_id": 0}).to_list(1000)
+        assignments = await _load_assignments()
         
         team_records = {}
         
         for game in games:
-            home = game['home_team']
-            away = game['away_team']
+            home = _normalize_team_name(game['home_team'], assignments)
+            away = _normalize_team_name(game['away_team'], assignments)
             
             # Initialize teams if not exists
             if home not in team_records:
@@ -879,8 +880,8 @@ async def get_conference_standings(conference: str):
         
         # Update records from games
         for game in games:
-            home = game['home_team']
-            away = game['away_team']
+            home = _normalize_team_name(game['home_team'], assignments)
+            away = _normalize_team_name(game['away_team'], assignments)
             
             # Only process if teams are in this conference
             if home in team_records:
@@ -943,8 +944,8 @@ async def get_division_standings(conference: str, division: str):
         
         # Update records from games
         for game in games:
-            home = game['home_team']
-            away = game['away_team']
+            home = _normalize_team_name(game['home_team'], assignments)
+            away = _normalize_team_name(game['away_team'], assignments)
             
             # Only process if teams are in this division
             if home in div_teams:
@@ -2494,6 +2495,31 @@ async def _save_assignment(team: str, conference: str, division: str):
         {"$set": {"teams": assignments}},
         upsert=True,
     )
+
+def _normalize_team_name(name: str, assignments: Dict[str, Dict[str, str]]) -> str:
+    """Return the canonical team name from assignments using robust matching.
+    Tries exact, case-insensitive, and simplified (alphanumeric-only) matches.
+    Falls back to trimmed input name if no match found.
+    """
+    if not name:
+        return name
+    # Exact match
+    if name in assignments:
+        return name
+    candidate = name.strip()
+    lower = candidate.lower()
+    # Case-insensitive match
+    for canonical in assignments.keys():
+        if canonical.lower() == lower:
+            return canonical
+    # Simplified match (remove non-alphanumerics)
+    def _simplify(s: str) -> str:
+        return re.sub(r"[^a-z0-9]", "", s.lower())
+    target_simple = _simplify(candidate)
+    for canonical in assignments.keys():
+        if _simplify(canonical) == target_simple:
+            return canonical
+    return candidate
 
 def _calculate_standings_from_games(games: List[Dict[str, Any]]):
     team_records: Dict[str, Dict[str, Any]] = defaultdict(lambda: {

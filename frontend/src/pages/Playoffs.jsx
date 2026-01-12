@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Trophy, Calendar, ChevronRight, Medal, Crown, Star } from 'lucide-react';
 import { TeamLogoAvatar, loadTeamLogos } from '../lib/teamLogos';
-import AnimatedBracket from '../components/AnimatedBracket';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
@@ -21,12 +20,20 @@ const Playoffs = () => {
     semifinals: [],
     championship: null
   });
+  const [animateLines, setAnimateLines] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchData();
     loadTeamLogos().then(logos => setLogoMap(logos));
   }, []);
+
+  useEffect(() => {
+    if (!loading && playoffSeeds) {
+      const timer = setTimeout(() => setAnimateLines(true), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, playoffSeeds]);
 
   const fetchData = async () => {
     try {
@@ -71,6 +78,63 @@ const Playoffs = () => {
       championship
     });
   };
+
+  const normalizeName = (name = '') => name.toLowerCase().trim();
+
+  const findGameByTeams = (week, teamA, teamB) => {
+    if (!teamA || !teamB) return null;
+    const target = new Set([normalizeName(teamA), normalizeName(teamB)]);
+    return games.find(g => g.week === week && target.has(normalizeName(g.home_team)) && target.has(normalizeName(g.away_team))) || null;
+  };
+
+  const findGameBySeeds = (week, seedA, seedB) => {
+    const teamA = playoffSeeds?.seeds?.find(s => s.seed === seedA)?.team;
+    const teamB = playoffSeeds?.seeds?.find(s => s.seed === seedB)?.team;
+    return findGameByTeams(week, teamA, teamB);
+  };
+
+  const getWinnerName = (game) => {
+    if (!game) return null;
+    if (typeof game.home_score !== 'number' || typeof game.away_score !== 'number') return null;
+    return game.home_score > game.away_score ? game.home_team : game.away_team;
+  };
+
+  const getTeamRecord = (team) => {
+    if (!team) return '';
+    const match = standings.find(s => normalizeName(s.team) === normalizeName(team));
+    if (match) {
+      return `${match.wins}-${match.losses}`;
+    }
+    const seed = playoffSeeds?.seeds?.find(s => normalizeName(s.team) === normalizeName(team));
+    if (seed && (seed.wins !== undefined || seed.losses !== undefined)) {
+      return `${seed.wins || 0}-${seed.losses || 0}`;
+    }
+    return '';
+  };
+
+  const Connector = ({ delay = 0 }) => (
+    <div
+      className="hidden lg:block h-[2px] rounded-full bg-gradient-to-r from-emerald-400 via-emerald-200 to-white/60 transition-all duration-700"
+      style={{ width: animateLines ? '100%' : '0%', transitionDelay: `${delay}ms` }}
+    />
+  );
+
+  const RoundColumn = ({ title, subtitle, children }) => (
+    <div className="space-y-4">
+      <div className="sticky top-2 z-10">
+        <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2 flex items-center justify-between">
+          <div>
+            <div className="text-xs font-bold text-white/90">{title}</div>
+            {subtitle && <div className="text-[11px] text-white/60">{subtitle}</div>}
+          </div>
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        </div>
+      </div>
+      <div className="space-y-4">
+        {children}
+      </div>
+    </div>
+  );
 
   // Get conference-based seed label (e.g., "GC-1" for Grand Central 1st seed)
   const getConferenceSeedLabel = (overallSeed) => {
@@ -388,6 +452,37 @@ const Playoffs = () => {
     );
   }
 
+  const seedsByNumber = new Map((playoffSeeds?.seeds || []).map(s => [s.seed, s]));
+  const teamForSeed = (n) => seedsByNumber.get(n)?.team || null;
+
+  // Play-Ins (Week 9)
+  const playIn98Game = findGameBySeeds(9, 9, 8);
+  const playIn107Game = findGameBySeeds(9, 10, 7);
+  const playIn98Winner = getWinnerName(playIn98Game) || (playIn98Game ? null : 'Winner 9/8');
+  const playIn107Winner = getWinnerName(playIn107Game) || (playIn107Game ? null : 'Winner 10/7');
+
+  // Elite 8 (Week 10)
+  const elite1Game = findGameByTeams(10, teamForSeed(1), playIn98Winner);
+  const elite2Game = findGameByTeams(10, teamForSeed(5), teamForSeed(4));
+  const elite3Game = findGameByTeams(10, teamForSeed(3), teamForSeed(6));
+  const elite4Game = findGameByTeams(10, teamForSeed(2), playIn107Winner);
+
+  const elite1Winner = getWinnerName(elite1Game) || (elite1Game ? null : 'Winner #1 / (9-8)');
+  const elite2Winner = getWinnerName(elite2Game) || (elite2Game ? null : 'Winner #5 / #4');
+  const elite3Winner = getWinnerName(elite3Game) || (elite3Game ? null : 'Winner #3 / #6');
+  const elite4Winner = getWinnerName(elite4Game) || (elite4Game ? null : 'Winner #2 / (10-7)');
+
+  // Final 4 (Week 11)
+  const finalLeftGame = findGameByTeams(11, elite1Winner, elite2Winner);
+  const finalRightGame = findGameByTeams(11, elite3Winner, elite4Winner);
+  const finalLeftWinner = getWinnerName(finalLeftGame) || (finalLeftGame ? null : 'Winner Left');
+  const finalRightWinner = getWinnerName(finalRightGame) || (finalRightGame ? null : 'Winner Right');
+
+  // Championship (Week 12)
+  const championshipGame = playoffGames.championship || findGameByTeams(12, finalLeftWinner, finalRightWinner);
+
+  const roundLabelClass = 'text-[11px] font-semibold tracking-[0.2em] uppercase text-white/70';
+
   // Get playoff seeded teams organized by conference
   const getPlayoffTeams = () => {
     if (!playoffSeeds || !playoffSeeds.seeds) return { 'Grand Central': [], 'Ridge': [] };
@@ -416,10 +511,6 @@ const Playoffs = () => {
   };
 
   const playoffTeamsByConference = getPlayoffTeams();
-  const getTeamRecord = (team) => {
-    const t = standings.find(s => s.team === team);
-    return t ? `${t.wins}-${t.losses}` : '';
-  };
 
   return (
     <div className="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8">
@@ -438,338 +529,147 @@ const Playoffs = () => {
         <p className="text-gray-400 text-lg">Road to the Championship</p>
       </div>
 
-      {/* Animated Bracket Section */}
-      {games.length > 0 && playoffSeeds && (
-        <div className="max-w-7xl mx-auto mb-12 glass-card p-6 rounded-xl border border-white/10">
-          <h2 className="text-3xl font-bold mb-8 flex items-center gap-2">
-            <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              ✨ Animated Tournament
-            </span>
-          </h2>
-          <AnimatedBracket 
-            playoffSeeds={playoffSeeds}
-            games={games}
-            logoMap={logoMap}
-          />
-        </div>
-      )}
-
-      {/* Playoff Bracket - 10 Teams Tournament Style */}
       {playoffSeeds && playoffSeeds.seeds && playoffSeeds.seeds.length > 0 ? (
-        <div className="max-w-7xl mx-auto mb-8">
-          {/* Playoff Structure Header */}
-          <div className="mb-8">
-            <div className="glass-card p-6 rounded-xl border border-white/10">
-              <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                <Crown className="w-6 h-6 text-yellow-400" />
-                UFB XXI Playoff Bracket
-              </h3>
-              <p className="text-gray-400 mb-4">10-team single-elimination tournament</p>
-              
-              {/* Seeds Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-                {/* Seeds 1-2 */}
-                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                  <h4 className="font-bold text-yellow-400 mb-3 text-sm">Bye to Elite 8</h4>
-                  <div className="space-y-2">
-                    {playoffSeeds.seeds.filter(s => s.seed <= 2).map(seed => (
-                      <div key={seed.seed} className="text-sm text-gray-300">
-                        <div className="font-semibold">{seed.seed}. {seed.team}</div>
-                        <div className="text-xs text-gray-400">{seed.wins}W-{seed.losses}L • {getConferenceSeedLabel(seed.seed)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Seeds 3-6 */}
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                  <h4 className="font-bold text-blue-400 mb-3 text-sm">Elite 8 Entry</h4>
-                  <div className="space-y-2">
-                    {playoffSeeds.seeds.filter(s => s.seed >= 3 && s.seed <= 6).map(seed => (
-                      <div key={seed.seed} className="text-sm text-gray-300">
-                        <div className="font-semibold">{seed.seed}. {seed.team}</div>
-                        <div className="text-xs text-gray-400">{seed.wins}W-{seed.losses}L • {getConferenceSeedLabel(seed.seed)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Seeds 7-10 */}
-                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                  <h4 className="font-bold text-green-400 mb-3 text-sm">Play-In Round</h4>
-                  <div className="space-y-2">
-                    {playoffSeeds.seeds.filter(s => s.seed >= 7 && s.seed <= 10).map(seed => (
-                      <div key={seed.seed} className="text-sm text-gray-300">
-                        <div className="font-semibold">{seed.seed}. {seed.team}</div>
-                        <div className="text-xs text-gray-400">{seed.wins}W-{seed.losses}L • {getConferenceSeedLabel(seed.seed)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Structure Info */}
-                <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
-                  <h4 className="font-bold text-purple-400 mb-3 text-sm">Tournament Structure</h4>
-                  <div className="space-y-1 text-xs text-gray-300">
-                    <div>📍 <strong>Play-Ins:</strong> Seeds 7-10</div>
-                    <div>📍 <strong>Elite 8:</strong> Seeds 1-6</div>
-                    <div>📍 <strong>Final 4:</strong> Conference Champs</div>
-                    <div>🏆 <strong>Championship:</strong> UFB XXI</div>
-                  </div>
-                </div>
+        <div className="max-w-7xl mx-auto mb-10 space-y-8">
+          <div className="glass-card p-4 md:p-6 rounded-2xl border border-white/10">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold text-white/60">Seeds 1-4</div>
+                <div className="text-sm text-white/90">Conference Champ = Seeds 1-2 · CC Runners-Up = Seeds 3-4</div>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-white/70">
+                <span className="bg-yellow-500/20 text-yellow-200 px-2 py-1 rounded-md border border-yellow-400/40">Elite 8 Entry</span>
+                <span className="bg-blue-500/20 text-blue-200 px-2 py-1 rounded-md border border-blue-400/40">Final 4</span>
+                <span className="bg-green-500/20 text-emerald-200 px-2 py-1 rounded-md border border-emerald-400/40">Play-Ins</span>
               </div>
             </div>
           </div>
 
-          {/* Play-In Round (Seeds 7-10) */}
-          <div className="mb-8">
-            <div className="glass-card p-6 rounded-xl border border-green-500/30">
-              <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-green-400">
-                <Trophy className="w-5 h-5" />
-                Play-In Round (Seeds 7-10)
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 10 vs 7 */}
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">Matchup 1: #10 vs #7</div>
-                  <div className="space-y-2">
-                    {playoffSeeds?.seeds && [10, 7].map(seedNum => {
-                      const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
-                      return seed ? (
-                        <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <TeamLogoAvatar teamName={seed.team} logoMap={logoMap} size="xs" />
-                            <div className="w-6 h-6 bg-green-500 text-black rounded flex items-center justify-center font-bold text-xs shrink-0">
-                              {seedNum}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-gray-200 truncate">{seed.team}</div>
-                              <div className="text-xs text-gray-400">{getConferenceSeedLabel(seedNum)}</div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-400 ml-2">{seed.wins}-{seed.losses}</div>
-                        </div>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+            <RoundColumn title="Play-Ins" subtitle="Week 9 · 9 vs 8 · 10 vs 7">
+              <BracketMatchCard
+                title="Play-In: #9 vs #8"
+                game={playIn98Game}
+                seedTop={9}
+                seedBottom={8}
+                teamTop={teamForSeed(9)}
+                teamBottom={teamForSeed(8)}
+                recordTop={getTeamRecord(teamForSeed(9))}
+                recordBottom={getTeamRecord(teamForSeed(8))}
+                compact
+                accentClass="bg-green-400"
+              />
+              <Connector delay={120} />
+              <BracketMatchCard
+                title="Play-In: #10 vs #7"
+                game={playIn107Game}
+                seedTop={10}
+                seedBottom={7}
+                teamTop={teamForSeed(10)}
+                teamBottom={teamForSeed(7)}
+                recordTop={getTeamRecord(teamForSeed(10))}
+                recordBottom={getTeamRecord(teamForSeed(7))}
+                compact
+                accentClass="bg-green-400"
+              />
+            </RoundColumn>
 
-                {/* 9 vs 8 */}
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">Matchup 2: #9 vs #8</div>
-                  <div className="space-y-2">
-                    {playoffSeeds?.seeds && [9, 8].map(seedNum => {
-                      const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
-                      return seed ? (
-                        <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <TeamLogoAvatar teamName={seed.team} logoMap={logoMap} size="xs" />
-                            <div className="w-6 h-6 bg-green-500 text-black rounded flex items-center justify-center font-bold text-xs shrink-0">
-                              {seedNum}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-gray-200 truncate">{seed.team}</div>
-                              <div className="text-xs text-gray-400">{getConferenceSeedLabel(seedNum)}</div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-400 ml-2">{seed.wins}-{seed.losses}</div>
-                        </div>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+            <RoundColumn title="Elite 8 Entry" subtitle="Week 10 · NFL-style pairings">
+              <BracketMatchCard
+                title="Elite 8: #1 vs Winner (9/8)"
+                game={elite1Game}
+                seedTop={1}
+                seedBottom={null}
+                teamTop={teamForSeed(1)}
+                teamBottom={playIn98Winner || 'Winner 9/8'}
+                recordTop={getTeamRecord(teamForSeed(1))}
+                recordBottom={getTeamRecord(playIn98Winner)}
+                compact
+                accentClass="bg-yellow-400"
+              />
+              <Connector delay={160} />
+              <BracketMatchCard
+                title="Elite 8: #5 vs #4"
+                game={elite2Game}
+                seedTop={5}
+                seedBottom={4}
+                teamTop={teamForSeed(5)}
+                teamBottom={teamForSeed(4)}
+                recordTop={getTeamRecord(teamForSeed(5))}
+                recordBottom={getTeamRecord(teamForSeed(4))}
+                compact
+                accentClass="bg-yellow-400"
+              />
+              <Connector delay={200} />
+              <BracketMatchCard
+                title="Elite 8: #3 vs #6"
+                game={elite3Game}
+                seedTop={3}
+                seedBottom={6}
+                teamTop={teamForSeed(3)}
+                teamBottom={teamForSeed(6)}
+                recordTop={getTeamRecord(teamForSeed(3))}
+                recordBottom={getTeamRecord(teamForSeed(6))}
+                compact
+                accentClass="bg-yellow-400"
+              />
+              <Connector delay={240} />
+              <BracketMatchCard
+                title="Elite 8: #2 vs Winner (10/7)"
+                game={elite4Game}
+                seedTop={2}
+                seedBottom={null}
+                teamTop={teamForSeed(2)}
+                teamBottom={playIn107Winner || 'Winner 10/7'}
+                recordTop={getTeamRecord(teamForSeed(2))}
+                recordBottom={getTeamRecord(playIn107Winner)}
+                compact
+                accentClass="bg-yellow-400"
+              />
+            </RoundColumn>
 
-          {/* Elite 8 Round (Seeds 1-6) */}
-          <div className="mb-8">
-            <div className="glass-card p-6 rounded-xl border border-blue-500/30">
-              <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-blue-400">
-                <Trophy className="w-5 h-5" />
-                Elite 8 (Seeds 1-6 + Play-In Winners)
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 1 vs Winner of 9 vs 8 */}
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#1 vs Winner (9/8)</div>
-                  <div className="space-y-2">
-                    {playoffSeeds?.seeds && [1].map(seedNum => {
-                      const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
-                      return seed ? (
-                        <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <TeamLogoAvatar teamName={seed.team} logoMap={logoMap} size="xs" />
-                            <div className="w-6 h-6 bg-yellow-500 text-black rounded flex items-center justify-center font-bold text-xs shrink-0">
-                              {seedNum}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-gray-200 truncate">{seed.team}</div>
-                              <div className="text-xs text-gray-400">{getConferenceSeedLabel(seedNum)}</div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-400 ml-2">{seed.wins}-{seed.losses}</div>
-                        </div>
-                      ) : null;
-                    })}
-                    <div className="text-center text-xs text-gray-500 py-1">vs</div>
-                    <div className="flex items-center justify-center bg-white/5 border border-white/10 rounded p-2">
-                      <div className="text-xs text-gray-400 text-center">Winner of (9 vs 8)</div>
-                    </div>
-                  </div>
-                </div>
+            <RoundColumn title="Final 4" subtitle="Week 11 · Conference Champs">
+              <BracketMatchCard
+                title="Final 4"
+                game={finalLeftGame}
+                seedTop={null}
+                seedBottom={null}
+                teamTop={elite1Winner || 'Winner #1/(9-8)'}
+                teamBottom={elite2Winner || 'Winner #5/#4'}
+                recordTop={getTeamRecord(elite1Winner)}
+                recordBottom={getTeamRecord(elite2Winner)}
+                compact
+                accentClass="bg-blue-400"
+              />
+              <Connector delay={280} />
+              <BracketMatchCard
+                title="Final 4"
+                game={finalRightGame}
+                seedTop={null}
+                seedBottom={null}
+                teamTop={elite3Winner || 'Winner #3/#6'}
+                teamBottom={elite4Winner || 'Winner #2/(10-7)'}
+                recordTop={getTeamRecord(elite3Winner)}
+                recordBottom={getTeamRecord(elite4Winner)}
+                compact
+                accentClass="bg-blue-400"
+              />
+            </RoundColumn>
 
-                {/* 2 vs Winner of 10 vs 7 */}
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#2 vs Winner (10/7)</div>
-                  <div className="space-y-2">
-                    {playoffSeeds?.seeds && [2].map(seedNum => {
-                      const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
-                      return seed ? (
-                        <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <TeamLogoAvatar teamName={seed.team} logoMap={logoMap} size="xs" />
-                            <div className="w-6 h-6 bg-yellow-500 text-black rounded flex items-center justify-center font-bold text-xs shrink-0">
-                              {seedNum}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-gray-200 truncate">{seed.team}</div>
-                              <div className="text-xs text-gray-400">{getConferenceSeedLabel(seedNum)}</div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-400 ml-2">{seed.wins}-{seed.losses}</div>
-                        </div>
-                      ) : null;
-                    })}
-                    <div className="text-center text-xs text-gray-500 py-1">vs</div>
-                    <div className="flex items-center justify-center bg-white/5 border border-white/10 rounded p-2">
-                      <div className="text-xs text-gray-400 text-center">Winner of (10 vs 7)</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 5 vs 4 */}
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#5 vs #4</div>
-                  <div className="space-y-2">
-                    {playoffSeeds?.seeds && [5, 4].map(seedNum => {
-                      const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
-                      return seed ? (
-                        <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <TeamLogoAvatar teamName={seed.team} logoMap={logoMap} size="xs" />
-                            <div className="w-6 h-6 bg-blue-500 text-white rounded flex items-center justify-center font-bold text-xs shrink-0">
-                              {seedNum}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-gray-200 truncate">{seed.team}</div>
-                              <div className="text-xs text-gray-400">{getConferenceSeedLabel(seedNum)}</div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-400 ml-2">{seed.wins}-{seed.losses}</div>
-                        </div>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-
-                {/* 3 vs 6 */}
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#3 vs #6</div>
-                  <div className="space-y-2">
-                    {playoffSeeds?.seeds && [3, 6].map(seedNum => {
-                      const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
-                      return seed ? (
-                        <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <TeamLogoAvatar teamName={seed.team} logoMap={logoMap} size="xs" />
-                            <div className="w-6 h-6 bg-blue-500 text-white rounded flex items-center justify-center font-bold text-xs shrink-0">
-                              {seedNum}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-gray-200 truncate">{seed.team}</div>
-                              <div className="text-xs text-gray-400">{getConferenceSeedLabel(seedNum)}</div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-400 ml-2">{seed.wins}-{seed.losses}</div>
-                        </div>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-
-                {/* 4 vs Play-In Winner - This would be the alternate bracket */}
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#4 vs #7 (if applicable)</div>
-                  <div className="space-y-2">
-                    {playoffSeeds?.seeds && [4].map(seedNum => {
-                      const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
-                      return seed ? (
-                        <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <TeamLogoAvatar teamName={seed.team} logoMap={logoMap} size="xs" />
-                            <div className="w-6 h-6 bg-blue-500 text-white rounded flex items-center justify-center font-bold text-xs shrink-0">
-                              {seedNum}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-gray-200 truncate">{seed.team}</div>
-                              <div className="text-xs text-gray-400">{getConferenceSeedLabel(seedNum)}</div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-400 ml-2">{seed.wins}-{seed.losses}</div>
-                        </div>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Final 4 - Conference Championships */}
-          <div className="mb-8">
-            <div className="glass-card p-6 rounded-xl border border-purple-500/30">
-              <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-purple-400">
-                <Crown className="w-5 h-5" />
-                Final 4 (Conference Championships)
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">Grand Central Championship</div>
-                  <div className="text-center text-sm text-gray-300">
-                    <p className="mb-2">Top seed from</p>
-                    <p className="text-purple-400 font-semibold">Elite 8 Winners</p>
-                  </div>
-                </div>
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">Ridge Championship</div>
-                  <div className="text-center text-sm text-gray-300">
-                    <p className="mb-2">Top seed from</p>
-                    <p className="text-purple-400 font-semibold">Elite 8 Winners</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Championship - United Flag Bowl */}
-          <div className="mb-8">
-            <div className="rounded-3xl bg-gradient-to-br from-yellow-500 via-orange-500 to-red-500 shadow-2xl p-1">
-              <div className="bg-gray-900 rounded-3xl p-8">
-                <div className="text-center">
-                  <Trophy className="w-16 h-16 mx-auto text-yellow-400 mb-4" />
-                  <h2 className="text-4xl font-bold bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 bg-clip-text text-transparent mb-4">
-                    UFB XXI
-                  </h2>
-                  <p className="text-xl text-gray-300 mb-2">
-                    Championship Game
-                  </p>
-                  <p className="text-gray-400">
-                    Grand Central Champion vs Ridge Champion
-                  </p>
-                </div>
-              </div>
-            </div>
+            <RoundColumn title="Championship" subtitle="Week 12 · Trophy Game">
+              <BracketMatchCard
+                title="United Flag Bowl"
+                game={championshipGame}
+                seedTop={null}
+                seedBottom={null}
+                teamTop={finalLeftWinner || 'Final 4 Winner'}
+                teamBottom={finalRightWinner || 'Final 4 Winner'}
+                recordTop={getTeamRecord(finalLeftWinner)}
+                recordBottom={getTeamRecord(finalRightWinner)}
+                variant="final"
+                accentClass="bg-red-400"
+              />
+            </RoundColumn>
           </div>
         </div>
       ) : (

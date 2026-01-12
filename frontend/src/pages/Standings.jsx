@@ -32,16 +32,21 @@ const Standings = () => {
         axios.get(`${API}/teams/standings/conference/Ridge`),
       ]);
       const standingsData = standingsRes.data || [];
-      setStandings(Array.isArray(standingsData) ? standingsData : []);
+      const overall = Array.isArray(standingsData) ? standingsData : [];
+      setStandings(overall);
       const s = structureRes.data?.structure;
       if (s && typeof s === 'object') {
         setStructure(s);
       }
-      const gcData = grandCentralRes.data || [];
-      const rData = ridgeRes.data || [];
+      const gcData = Array.isArray(grandCentralRes.data) ? grandCentralRes.data : [];
+      const rData = Array.isArray(ridgeRes.data) ? ridgeRes.data : [];
+      const mergeRecords = (confList) => confList.map(t => {
+        const rec = overall.find(s => s.team === t.team);
+        return rec ? { ...t, ...rec } : t;
+      });
       setConferenceStandings({
-        'Grand Central': Array.isArray(gcData) ? gcData : [],
-        'Ridge': Array.isArray(rData) ? rData : []
+        'Grand Central': mergeRecords(gcData),
+        'Ridge': mergeRecords(rData)
       });
     } catch (error) {
       console.error('Error fetching standings/structure:', error);
@@ -168,7 +173,17 @@ const Standings = () => {
                     <span className="text-red-400 font-bold">{team.losses}</span>
                   </td>
                   <td className="text-center py-4 px-2">
-                    <span className="font-semibold text-white">{(team.win_pct * 100).toFixed(1)}%</span>
+                    {(() => {
+                      const wins = Number(team.wins || 0);
+                      const losses = Number(team.losses || 0);
+                      const gp = wins + losses;
+                      const pct = gp > 0
+                        ? (typeof team.win_pct === 'number' ? team.win_pct : wins / gp)
+                        : 0;
+                      return (
+                        <span className="font-semibold text-white">{(pct * 100).toFixed(1)}%</span>
+                      );
+                    })()}
                   </td>
                   <td className="text-center py-4 px-2">
                     <span className="text-blue-400 font-semibold">{team.points_for}</span>
