@@ -14,6 +14,7 @@ const Playoffs = () => {
   const [loading, setLoading] = useState(true);
   const [playoffSeeds, setPlayoffSeeds] = useState(null);
   const [logoMap, setLogoMap] = useState({});
+  const [assignments, setAssignments] = useState(null);
   const [playoffGames, setPlayoffGames] = useState({
     wildcard: [],
     divisional: [],
@@ -29,17 +30,20 @@ const Playoffs = () => {
 
   const fetchData = async () => {
     try {
-      const [gamesRes, seedsRes] = await Promise.all([
+      const [gamesRes, seedsRes, assignRes] = await Promise.all([
         axios.get(`${API}/games`),
-        axios.get(`${API}/playoffs/seeds`)
+        axios.get(`${API}/playoffs/seeds`),
+        axios.get(`${API}/league/assignments`)
       ]);
       
       const gamesData = Array.isArray(gamesRes.data) ? gamesRes.data : (gamesRes.data.games || []);
       const seedsData = seedsRes.data || {};
+      const assignmentsData = assignRes.data || {};
       
       setGames(gamesData);
       setPlayoffSeeds(seedsData);
       setStandings(seedsData.standings || []);
+      setAssignments(assignmentsData);
       organizePlayoffGames(gamesData);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -74,15 +78,25 @@ const Playoffs = () => {
     
     const seed = playoffSeeds.seeds.find(s => s.seed === overallSeed);
     if (!seed) return `#${overallSeed}`;
-    
-    const confAbbrev = seed.conference === 'Grand Central' ? 'GC' : 'Ridge';
+    // Resolve conference with fallback to assignments mapping
+    const assignedTeams = assignments?.teams || assignments;
+    const assignedConf = assignedTeams && seed?.team
+      ? (assignedTeams[seed.team]?.conference || Object.entries(assignedTeams).find(([k]) => k.toLowerCase() === String(seed.team).toLowerCase())?.[1]?.conference)
+      : null;
+    const conferenceName = seed.conference || assignedConf || null;
+    const confAbbrev = conferenceName === 'Grand Central' ? 'GC' : (conferenceName === 'Ridge' ? 'Ridge' : '');
     // Count how many seeds from this conference are ranked equal or better
     const conferenceSeeds = playoffSeeds.seeds
-      .filter(s => s.conference === seed.conference)
+      .filter(s => {
+        const sAssignedConf = assignedTeams && s?.team
+          ? (assignedTeams[s.team]?.conference || Object.entries(assignedTeams).find(([k]) => k.toLowerCase() === String(s.team).toLowerCase())?.[1]?.conference)
+          : null;
+        return (s.conference || sAssignedConf) === conferenceName;
+      })
       .sort((a, b) => a.seed - b.seed);
     
     const confRank = conferenceSeeds.findIndex(s => s.seed === overallSeed) + 1;
-    return `${confAbbrev}-${confRank}`;
+    return confAbbrev ? `${confAbbrev}-${confRank}` : `#${overallSeed}`;
   };
 
   const SeedCard = ({ seed, team, record, isBye = false }) => {
@@ -576,11 +590,40 @@ const Playoffs = () => {
                 Elite 8 (Seeds 1-6 + Play-In Winners)
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 1 vs Play-In Winner */}
+                {/* 1 vs Winner of 9 vs 8 */}
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#1 vs Win (10/7)</div>
+                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#1 vs Winner (9/8)</div>
                   <div className="space-y-2">
                     {playoffSeeds?.seeds && [1].map(seedNum => {
+                      const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
+                      return seed ? (
+                        <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <TeamLogoAvatar teamName={seed.team} logoMap={logoMap} size="xs" />
+                            <div className="w-6 h-6 bg-yellow-500 text-black rounded flex items-center justify-center font-bold text-xs shrink-0">
+                              {seedNum}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-gray-200 truncate">{seed.team}</div>
+                              <div className="text-xs text-gray-400">{getConferenceSeedLabel(seedNum)}</div>
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-400 ml-2">{seed.wins}-{seed.losses}</div>
+                        </div>
+                      ) : null;
+                    })}
+                    <div className="text-center text-xs text-gray-500 py-1">vs</div>
+                    <div className="flex items-center justify-center bg-white/5 border border-white/10 rounded p-2">
+                      <div className="text-xs text-gray-400 text-center">Winner of (9 vs 8)</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2 vs Winner of 10 vs 7 */}
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#2 vs Winner (10/7)</div>
+                  <div className="space-y-2">
+                    {playoffSeeds?.seeds && [2].map(seedNum => {
                       const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
                       return seed ? (
                         <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
@@ -605,11 +648,11 @@ const Playoffs = () => {
                   </div>
                 </div>
 
-                {/* 8 vs Play-In Winner */}
+                {/* 5 vs 4 */}
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#8 vs Win (9/8)</div>
+                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#5 vs #4</div>
                   <div className="space-y-2">
-                    {playoffSeeds?.seeds && [8].map(seedNum => {
+                    {playoffSeeds?.seeds && [5, 4].map(seedNum => {
                       const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
                       return seed ? (
                         <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
@@ -627,45 +670,14 @@ const Playoffs = () => {
                         </div>
                       ) : null;
                     })}
-                    <div className="text-center text-xs text-gray-500 py-1">vs</div>
-                    <div className="flex items-center justify-center bg-white/5 border border-white/10 rounded p-2">
-                      <div className="text-xs text-gray-400 text-center">Winner of (9 vs 8)</div>
-                    </div>
                   </div>
                 </div>
 
-                {/* 2 vs 6 */}
+                {/* 3 vs 6 */}
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#2 vs #6</div>
+                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#3 vs #6</div>
                   <div className="space-y-2">
-                    {playoffSeeds?.seeds && [2, 6].map(seedNum => {
-                      const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
-                      return seed ? (
-                        <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <TeamLogoAvatar teamName={seed.team} logoMap={logoMap} size="xs" />
-                            <div className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs shrink-0 ${
-                              seedNum === 2 ? 'bg-yellow-500 text-black' : 'bg-blue-500 text-white'
-                            }`}>
-                              {seedNum}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-gray-200 truncate">{seed.team}</div>
-                              <div className="text-xs text-gray-400">{getConferenceSeedLabel(seedNum)}</div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-400 ml-2">{seed.wins}-{seed.losses}</div>
-                        </div>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-
-                {/* 3 vs 5 */}
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-center text-xs text-gray-400 mb-3 font-semibold uppercase">#3 vs #5</div>
-                  <div className="space-y-2">
-                    {playoffSeeds?.seeds && [3, 5].map(seedNum => {
+                    {playoffSeeds?.seeds && [3, 6].map(seedNum => {
                       const seed = playoffSeeds.seeds.find(s => s.seed === seedNum);
                       return seed ? (
                         <div key={seedNum} className="flex items-center justify-between bg-white/5 border border-white/10 rounded p-2">
