@@ -2382,7 +2382,7 @@ async def upload_team_logo(
     file: UploadFile = File(...),
     admin_key: str = Header(...),
 ):
-    """Admin: upload a logo image for a team. Stores under /static/team-logos and records mapping."""
+    """Admin: upload a logo image for a team. Stores as base64 data URI in MongoDB."""
     if not await verify_admin(admin_key):
         raise HTTPException(status_code=403, detail="Invalid admin key")
 
@@ -2391,38 +2391,35 @@ async def upload_team_logo(
             raise HTTPException(status_code=400, detail="Team is required")
 
         content_type = (file.content_type or "").lower()
-        allowed_types = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
+        allowed_types = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
+        
         # Fallback to extension from filename if content-type is missing
-        ext = None
-        if content_type in allowed_types:
-            ext = allowed_types[content_type]
-        else:
+        if content_type not in allowed_types:
             name = (file.filename or "").lower()
-            for e in [".png", ".jpg", ".jpeg", ".webp"]:
-                if name.endswith(e):
-                    ext = ".jpg" if e == ".jpeg" else e
-                    break
-        if not ext:
-            raise HTTPException(status_code=400, detail="Unsupported image type. Use PNG/JPG/WebP.")
+            if name.endswith(".png"):
+                content_type = "image/png"
+            elif name.endswith((".jpg", ".jpeg")):
+                content_type = "image/jpeg"
+            elif name.endswith(".webp"):
+                content_type = "image/webp"
+            else:
+                raise HTTPException(status_code=400, detail="Unsupported image type. Use PNG/JPG/WebP.")
 
-        # Ensure directory exists
-        logos_dir = Path("static") / "team-logos"
-        logos_dir.mkdir(parents=True, exist_ok=True)
-
-        # Build file path
-        slug = _slugify_team(team)
-        dest_path = logos_dir / f"{slug}{ext}"
-
-        # Save file
+        # Read file data and convert to base64
         data = await file.read()
-        with open(dest_path, "wb") as f:
-            f.write(data)
-
-        logo_url = f"/static/team-logos/{dest_path.name}"
+        
+        # Limit file size to 2MB
+        if len(data) > 2 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File too large. Maximum size is 2MB.")
+        
+        import base64
+        base64_data = base64.b64encode(data).decode('utf-8')
+        logo_url = f"data:{content_type};base64,{base64_data}"
+        
         await _save_team_logo(team, logo_url)
 
-        await log_admin_action(admin_key, "upload_team_logo", {"team": team, "logo_url": logo_url})
-        logger.info(f"Team logo saved for {team}: {logo_url}")
+        await log_admin_action(admin_key, "upload_team_logo", {"team": team})
+        logger.info(f"Team logo saved for {team} as base64 data URI")
         return {"success": True, "team": team, "logo_url": logo_url}
     except HTTPException:
         raise
