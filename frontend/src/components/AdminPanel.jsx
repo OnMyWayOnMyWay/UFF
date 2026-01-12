@@ -1598,7 +1598,9 @@ const AdminPanel = ({ isOpen, onClose }) => {
                           </div>
                           <div className="text-xs text-gray-400">
                             {teamLogos[logoTeam] ? (
-                              <p>Current: {teamLogos[logoTeam]}</p>
+                              <p className="truncate max-w-xs" title={teamLogos[logoTeam]}>
+                                Current: {teamLogos[logoTeam].startsWith('data:') ? 'Base64 Image' : teamLogos[logoTeam]}
+                              </p>
                             ) : (
                               <p>No logo set for this team yet.</p>
                             )}
@@ -1638,9 +1640,11 @@ const AdminPanel = ({ isOpen, onClose }) => {
                             <div className="w-12 h-12 bg-black/30 border border-gray-800 rounded overflow-hidden">
                               <img src={`${BACKEND_URL}${url}`} alt={`${team} logo`} className="w-full h-full object-contain" />
                             </div>
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                               <p className="text-white text-sm font-medium">{team}</p>
-                              <p className="text-gray-500 text-xs break-all">{url}</p>
+                              <p className="text-gray-500 text-xs truncate" title={url}>
+                                {url.startsWith('data:') ? 'Base64 Image' : url}
+                              </p>
                             </div>
                           </div>
                         ))}
