@@ -149,7 +149,6 @@ export function getTeamInitials(teamName) {
 export function TeamLogoAvatar({ teamName, logoMap = {}, size = 'md', className = '', colorMap = {} }) {
   const logoUrl = getTeamLogo(teamName, logoMap);
   const colors = getTeamColors(teamName, colorMap);
-  const initials = getTeamInitials(teamName);
   
   const sizeClasses = {
     xs: 'w-6 h-6 text-xs',
@@ -168,28 +167,24 @@ export function TeamLogoAvatar({ teamName, logoMap = {}, size = 'md', className 
         title={teamName}
         onError={(e) => {
           console.error(`Failed to load logo for ${teamName}:`, logoUrl);
-          // Hide the broken image and show initials instead
-          e.target.style.display = 'none';
-          // Create a fallback div
-          const fallback = document.createElement('div');
-          fallback.className = `rounded-lg flex items-center justify-center font-bold text-white ${sizeClasses[size]} ${className}`;
-          fallback.style.backgroundColor = colors.primary;
-          fallback.style.color = colors.secondary;
-          fallback.title = teamName;
-          fallback.textContent = initials;
-          e.target.parentNode.insertBefore(fallback, e.target);
         }}
       />
     );
   }
   
+  // If no logo, show a generic placeholder with team colors as border
   return (
     <div
-      className={`rounded-lg flex items-center justify-center font-bold text-white ${sizeClasses[size]} ${className}`}
-      style={{ backgroundColor: colors.primary, color: colors.secondary }}
-      title={teamName}
+      className={`rounded-lg flex items-center justify-center ${sizeClasses[size]} ${className} border-2`}
+      style={{ 
+        borderColor: colors.primary,
+        backgroundColor: 'transparent'
+      }}
+      title={`${teamName} (Logo not uploaded)`}
     >
-      {initials}
+      <svg className="w-1/2 h-1/2 opacity-50" fill="currentColor" style={{ color: colors.primary }} viewBox="0 0 20 20">
+        <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+      </svg>
     </div>
   );
 }
