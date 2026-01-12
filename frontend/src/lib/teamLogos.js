@@ -123,6 +123,12 @@ export function getTeamLogo(teamName, logoMap = {}) {
     return logoMap[teamName];
   }
   
+  // Try case-insensitive match for teams with different casing
+  const matchedKey = Object.keys(logoMap).find(key => key.toLowerCase() === teamName?.toLowerCase());
+  if (matchedKey) {
+    return logoMap[matchedKey];
+  }
+  
   // Debug: log when logo is not found
   if (Object.keys(logoMap).length > 0) {
     console.log(`Logo not found for "${teamName}". Available teams:`, Object.keys(logoMap));
@@ -135,6 +141,12 @@ export function getTeamColors(teamName, colorMap = {}, fallbackToDefault = true)
   // Return colors from API first
   if (colorMap && colorMap[teamName]) {
     return colorMap[teamName];
+  }
+  
+  // Try case-insensitive match for teams with different casing
+  const matchedKey = Object.keys(colorMap).find(key => key.toLowerCase() === teamName?.toLowerCase());
+  if (matchedKey) {
+    return colorMap[matchedKey];
   }
   
   // Fall back to hardcoded defaults
