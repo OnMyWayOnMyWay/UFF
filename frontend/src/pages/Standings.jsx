@@ -73,6 +73,16 @@ const Standings = () => {
     );
   }
 
+  // Get top N teams per conference sorted by wins then point diff
+  const getTop5ByConference = (confName) => {
+    const list = Array.isArray(conferenceStandings[confName]) ? conferenceStandings[confName] : [];
+    const sorted = [...list].sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      return (b.point_diff || 0) - (a.point_diff || 0);
+    });
+    return sorted.slice(0, 5);
+  };
+
   const StandingsTable = ({ standings, getPlayoffStatus, compact = false, showDivision = false }) => {
     return (
       <div className="overflow-x-auto">
@@ -220,7 +230,7 @@ const Standings = () => {
             <div>
               <p className="text-xs text-emerald-400 font-semibold mb-2">Grand Central</p>
               <div className="space-y-1">
-                {standings.slice(0, 5).map((team, idx) => {
+                {getTop5ByConference('Grand Central').map((team, idx) => {
                   const status = getPlayoffStatus(idx);
                   const StatusIcon = status?.icon;
                   return (
@@ -239,7 +249,7 @@ const Standings = () => {
             <div>
               <p className="text-xs text-blue-400 font-semibold mb-2">Ridge</p>
               <div className="space-y-1">
-                {standings.slice(0, 5).map((team, idx) => {
+                {getTop5ByConference('Ridge').map((team, idx) => {
                   const status = getPlayoffStatus(idx);
                   const StatusIcon = status?.icon;
                   return (
