@@ -1,0 +1,1028 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                   FLAG FOOTBALL STATS API - COMPLETE GUIDE                ║
+║                          How the API Works                                ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════
+                            TABLE OF CONTENTS
+═══════════════════════════════════════════════════════════════════════════
+1. API Overview
+2. Base URL & Authentication
+3. Game Submission Endpoints
+4. Stats Retrieval Endpoints
+5. Player Endpoints
+6. Team Endpoints
+7. Admin Endpoints
+8. Data Structure & Models
+9. Error Handling
+10. Example Requests
+
+
+═══════════════════════════════════════════════════════════════════════════
+1. API OVERVIEW
+═══════════════════════════════════════════════════════════════════════════
+
+The Flag Football Stats API is a FastAPI-based REST API that handles:
+- Game data submission from Roblox
+- Player statistics aggregation and calculation
+- Team standings and records
+- Season-long stat leaders
+- Player profiles and history
+- Administrative operations (editing, deleting, merging)
+
+Technology Stack:
+- FastAPI (Python web framework)
+- MongoDB (AsyncIOMotorClient for async operations)
+- Pydantic (data validation and models)
+- CORS enabled for cross-origin requests
+
+Base Router: All endpoints use the /api prefix
+
+
+═══════════════════════════════════════════════════════════════════════════
+2. BASE URL & AUTHENTICATION
+═══════════════════════════════════════════════════════════════════════════
+
+Base URL:
+    Production: https://your-domain.com/api
+    Local Dev: http://localhost:8000/api
+
+Authentication:
+    Public Endpoints: No authentication required
+    Admin Endpoints: Require admin_key in request header
+        Header: admin_key: <your-admin-key>
+    
+Admin key is verified against MongoDB admins collection
+
+
+═══════════════════════════════════════════════════════════════════════════
+3. GAME SUBMISSION ENDPOINTS
+═══════════════════════════════════════════════════════════════════════════
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ POST /api/game                                                            │
+│ Submit game data from Roblox (PRIMARY ENDPOINT FOR ROBLOX)               │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Submit new game results with player statistics
+
+Authentication: None required
+
+Request Body (JSON):
+{
+    "week": 1,                           // Integer, required
+    "home_team": "Eagles",               // String, required
+    "away_team": "Hawks",                // String, required
+    "home_score": 28,                    // Integer, required
+    "away_score": 21,                    // Integer, required
+    "player_of_game": "Baccon_o",        // String, required
+    "game_date": "2025-01-15",          // String, optional (YYYY-MM-DD)
+    "home_stats": {                      // Object, required
+        "PlayerName": {
+            "Passing": {
+                "Comp": 15,
+                "Att": 25,
+                "Yards": 250,
+                "TD": 3,
+                "Int": 1,
+                "SCKED": 2
+            },
+            "Rushing": {
+                "Att": 5,
+                "Yards": 45,
+                "TD": 0
+            },
+            "Receiving": {
+                "Rec": 6,
+                "Yards": 80,
+                "TD": 1,
+                "Drops": 1
+            },
+            "Defense": {
+                "TAK": 3,
+                "TFL": 1,
+                "SCK": 0,
+                "SAF": 0,
+                "SWAT": 0,
+                "INT": 0,
+                "PBU": 2,
+                "TD": 0
+            }
+        }
+    },
+    "away_stats": {                      // Same structure as home_stats
+        "PlayerName": { ... }
+    }
+}
+
+Data Transformation:
+- Input: Player-organized stats 
+  {PlayerName: {Passing: {...}, Defense: {...}}}
+- Output: Category-organized stats
+  {passing: [{name, team, stats}], defense: [...]}
+
+Process Flow:
+1. Receive game data from Roblox
+2. Transform stats from player-organized to category-organized
+3. Create Game object with UUID
+4. Add timestamp (UTC)
+5. Save to MongoDB games collection
+6. Send notification to Discord webhook (if configured)
+7. Return Game object
+
+Response (200 OK):
+{
+    "id": "uuid-string",
+    "week": 1,
+    "home_team": "Eagles",
+    "away_team": "Hawks",
+    "home_score": 28,
+    "away_score": 21,
+    "home_stats": {...},                 // Transformed format
+    "away_stats": {...},                 // Transformed format
+    "player_of_game": "Baccon_o",
+    "game_date": "2025-01-15",
+    "timestamp": "2025-01-15T20:30:00Z"
+}
+
+Errors:
+- 500: Server error (database connection, validation failure)
+
+
+═══════════════════════════════════════════════════════════════════════════
+4. STATS RETRIEVAL ENDPOINTS
+═══════════════════════════════════════════════════════════════════════════
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/stats/leaders                                                    │
+│ Get season-long statistical leaders                                       │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Retrieve top 10 players in various statistical categories
+
+Authentication: None required
+
+Process:
+1. Fetch all games from MongoDB
+2. Aggregate stats by player across all games
+3. Calculate fantasy points using scoring formula
+4. Calculate derived stats (passer rating, YPC, completion %)
+5. Sort and return top 10 in each category
+
+Response (200 OK):
+{
+    "points": [
+        {
+            "name": "Baccon_o",
+            "value": 125.5,
+            "games": 8
+        },
+        ...
+    ],
+    "passing_yards": [
+        {
+            "name": "QB_Name",
+            "value": 2450,
+            "tds": 25,
+            "comp": 180,
+            "att": 250,
+            "ints": 5,
+            "rating": 112.5,
+            "completion_pct": 72.0,
+            "games": 10
+        },
+        ...
+    ],
+    "passer_rating": [              // Minimum 50 attempts
+        {
+            "name": "QB_Name",
+            "value": 112.5,
+            "att": 250,
+            "comp": 180,
+            "completion_pct": 72.0,
+            "tds": 25,
+            "games": 10
+        },
+        ...
+    ],
+    "rushing_yards": [
+        {
+            "name": "RB_Name",
+            "value": 850,
+            "tds": 8,
+            "att": 120,
+            "ypc": 7.08,
+            "games": 9
+        },
+        ...
+    ],
+    "yards_per_carry": [            // Minimum 20 attempts
+        {
+            "name": "RB_Name",
+            "value": 8.5,
+            "yards": 340,
+            "att": 40,
+            "attempts": 40,
+            "games": 6
+        },
+        ...
+    ],
+    "receiving_yards": [
+        {
+            "name": "WR_Name",
+            "value": 1200,
+            "tds": 12,
+            "receptions": 85,
+            "drops": 3,
+            "games": 10
+        },
+        ...
+    ],
+    "tackles": [...],
+    "tackles_for_loss": [...],
+    "sacks": [...],
+    "interceptions": [...]
+}
+
+Key Features:
+- Prevents double-counting (tracks players per game)
+- Calculates complex stats (passer rating, YPC)
+- Minimum attempt thresholds for efficiency stats
+- Includes games played for context
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/games                                                            │
+│ Retrieve all games                                                        │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Get complete list of all games in the database
+
+Authentication: None required
+
+Response: Array of Game objects (up to 1000)
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/games/week/{week}                                                │
+│ Retrieve games for a specific week                                        │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Parameters:
+    week (path): Week number (integer)
+
+Response: Array of Game objects for that week
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/weeks                                                            │
+│ Get list of available weeks                                               │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Return all weeks that have games (sorted descending)
+
+Response:
+{
+    "weeks": [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+}
+
+
+═══════════════════════════════════════════════════════════════════════════
+5. PLAYER ENDPOINTS
+═══════════════════════════════════════════════════════════════════════════
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/players/{player_name}                                            │
+│ Get detailed player profile                                               │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Retrieve comprehensive player statistics and history
+
+Parameters:
+    player_name (path): URL-encoded player name
+
+Process:
+1. Search all games for the player
+2. Aggregate stats across all categories
+3. Track team history
+4. Build game-by-game log
+5. Calculate career totals and derived stats
+6. Calculate fantasy points
+
+Response (200 OK):
+{
+    "name": "Baccon_o",
+    "games_played": 8,
+    "current_team": "Eagles",
+    "team_history": [
+        {"team": "Eagles", "games": 6},
+        {"team": "Hawks", "games": 2}
+    ],
+    "total_stats": {
+        "passing": {
+            "yards": 1850,
+            "tds": 18,
+            "ints": 4,
+            "comp": 145,
+            "att": 220,
+            "scked": 8,
+            "rating": 108.5,
+            "completion_pct": 65.9,
+            "avg": 8.4
+        },
+        "rushing": {
+            "yards": 280,
+            "tds": 3,
+            "att": 45,
+            "ypc": 6.22
+        },
+        "receiving": {
+            "rec": 52,
+            "yards": 680,
+            "tds": 7,
+            "drops": 2
+        },
+        "defense": {
+            "tak": 18,
+            "sacks": 2,
+            "ints": 1,
+            "tds": 0,
+            "tfl": 4,
+            "saf": 0,
+            "swat": 3,
+            "pbu": 8
+        }
+    },
+    "stats_by_team": {
+        "Eagles": {
+            "games": 6,
+            "stats": {
+                "passing": {...},
+                "rushing": {...},
+                "receiving": {...},
+                "defense": {...}
+            }
+        },
+        "Hawks": {
+            "games": 2,
+            "stats": {...}
+        }
+    },
+    "game_log": [
+        {
+            "week": 1,
+            "date": "2025-01-15",
+            "team": "Eagles",
+            "passing": {"comp": 18, "att": 28, "yards": 235, "td": 2, "int": 1, "scked": 1},
+            "rushing": {"att": 6, "yards": 42, "td": 0},
+            "receiving": {"rec": 0, "yards": 0, "td": 0, "drops": 0},
+            "defense": {"tak": 2, "sacks": 0, "ints": 0, "tds": 0, "tfl": 0, ...}
+        },
+        ...
+    ],
+    "fantasy_points": 125.5
+}
+
+Errors:
+- 404: Player not found
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/player-names                                                     │
+│ Get list of all player names                                              │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Return unique player names across all games
+
+Response:
+{
+    "players": ["Baccon_o", "Player2", "Player3", ...]
+}
+
+
+═══════════════════════════════════════════════════════════════════════════
+6. TEAM ENDPOINTS
+═══════════════════════════════════════════════════════════════════════════
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/teams/standings                                                  │
+│ Get overall team standings                                                │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Calculate win/loss records and point differentials
+
+Process:
+1. Fetch all games
+2. Load team assignments (conference/division)
+3. Calculate wins, losses, points for/against
+4. Sort by wins (desc) then point differential (desc)
+
+Response (200 OK):
+[
+    {
+        "team": "Eagles",
+        "wins": 8,
+        "losses": 2,
+        "win_pct": 0.800,
+        "points_for": 280,
+        "points_against": 210,
+        "point_diff": 70
+    },
+    ...
+]
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/teams/standings/conference/{conference}                          │
+│ Get conference-specific standings                                         │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Parameters:
+    conference (path): Conference name (e.g., "Grand Central", "Ridge")
+
+Response: Same format as overall standings, filtered by conference
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/teams/standings/division/{conference}/{division}                 │
+│ Get division-specific standings                                           │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Parameters:
+    conference (path): Conference name
+    division (path): Division name (e.g., "North", "South")
+
+Response: Same format as overall standings, filtered by division
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/teams/{team_name}/analysis                                       │
+│ Get detailed team analysis                                                │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Provide comprehensive team statistics and player breakdowns
+
+Response includes:
+- Team record
+- Offensive stats (total yards, TDs, PPG)
+- Defensive stats (sacks, INTs, points allowed)
+- Top performers by category
+- Game-by-game results
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/teams/logos                                                      │
+│ Get team logo URLs                                                        │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Response:
+{
+    "Eagles": "https://example.com/eagles-logo.png",
+    "Hawks": "https://example.com/hawks-logo.png"
+}
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/teams/colors                                                     │
+│ Get team color schemes                                                    │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Response:
+{
+    "Eagles": {"primary": "#004C54", "secondary": "#A5ACAF"},
+    "Hawks": {"primary": "#A71930", "secondary": "#000000"}
+}
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/league/assignments                                               │
+│ Get team conference/division assignments                                  │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Response:
+{
+    "Eagles": {"conference": "Grand Central", "division": "North"},
+    "Hawks": {"conference": "Ridge", "division": "South"}
+}
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/league/structure                                                 │
+│ Get league organizational structure                                       │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Response:
+{
+    "Grand Central": {
+        "North": ["Team1", "Team2"],
+        "South": ["Team3", "Team4"]
+    },
+    "Ridge": {
+        "North": ["Team5", "Team6"],
+        "South": ["Team7", "Team8"]
+    }
+}
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/playoffs/seeds                                                   │
+│ Get playoff seeding based on standings                                    │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Calculate playoff seeds using complex tiebreaker rules
+
+Tiebreaker Order:
+1. Win percentage
+2. Head-to-head record
+3. Division record
+4. Conference record
+5. Point differential
+6. Points scored
+
+Response:
+{
+    "Grand Central": [
+        {"seed": 1, "team": "Eagles", "wins": 8, "losses": 2, ...},
+        {"seed": 2, "team": "Falcons", "wins": 7, "losses": 3, ...},
+        ...
+    ],
+    "Ridge": [...]
+}
+
+
+═══════════════════════════════════════════════════════════════════════════
+7. ADMIN ENDPOINTS (REQUIRE AUTHENTICATION)
+═══════════════════════════════════════════════════════════════════════════
+
+All admin endpoints require:
+    Header: admin_key: <your-admin-key>
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/admin/verify                                                     │
+│ Verify admin key validity                                                 │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Response: {"valid": true} or 403 error
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ PUT /api/admin/game/{game_id}                                             │
+│ Edit game data                                                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Modify game details (scores, teams, player stats)
+
+Request Body (partial updates allowed):
+{
+    "week": 2,
+    "home_score": 30,
+    "away_score": 28,
+    "player_of_game": "NewPlayer",
+    "home_stats": {...},
+    "away_stats": {...}
+}
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ DELETE /api/admin/game/{game_id}                                          │
+│ Delete a game                                                             │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Requires 2FA verification (temporary code sent to admin)
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ PUT /api/admin/player/edit                                                │
+│ Edit player information                                                   │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Request Body:
+{
+    "old_name": "Player1",
+    "new_name": "UpdatedName",          // Optional
+    "new_team": "NewTeam",              // Optional
+    "stats_to_add": {                   // Optional
+        "passing": {"yards": 100, "td": 1}
+    },
+    "stats_to_remove": {                // Optional
+        "passing": ["int", "scked"]
+    }
+}
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ POST /api/admin/player/merge                                              │
+│ Merge multiple player names into one                                      │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Combine stats from multiple misspelled names
+
+Request Body:
+{
+    "old_names": ["Player1", "Plyer1", "Player_1"],
+    "new_name": "Player1"
+}
+
+Process:
+1. Find all games with old names
+2. Rename players to new_name
+3. Update all references
+4. Send notification to Discord (merge webhook)
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ DELETE /api/admin/player/{player_name}                                    │
+│ Delete all stats for a player                                             │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Warning: Removes player from ALL games
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ POST /api/admin/bulk-delete-weeks                                         │
+│ Delete games in a week range                                              │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Request Body:
+{
+    "week_start": 1,
+    "week_end": 5
+}
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ POST /api/admin/reset-season                                              │
+│ Delete all games (reset entire season)                                    │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Warning: Irreversible operation
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ POST /api/admin/clone-game                                                │
+│ Duplicate a game to a different week                                      │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Request Body:
+{
+    "game_id": "uuid-string",
+    "new_week": 11,
+    "new_date": "2025-03-20"            // Optional
+}
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ POST /api/admin/trade                                                     │
+│ Execute player trade between teams                                        │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Request Body:
+{
+    "player1": "PlayerA",
+    "team1": "Eagles",
+    "player2": "PlayerB",
+    "team2": "Hawks",
+    "effective_week": 6
+}
+
+Process:
+1. Validates players exist
+2. Updates team affiliations for future games
+3. Logs trade in trades collection
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/admin/export-all-csv                                             │
+│ Export all game data as CSV                                               │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Response: CSV file download
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/admin/analytics                                                  │
+│ Get system analytics                                                      │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Response:
+{
+    "total_games": 120,
+    "total_players": 156,
+    "total_teams": 16,
+    "weeks_played": 10,
+    "avg_score": 24.5,
+    "total_passing_yards": 45000,
+    "total_rushing_yards": 12000,
+    "total_receiving_yards": 38000
+}
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ GET /api/admin/validate-data                                              │
+│ Validate data integrity                                                   │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Purpose: Check for inconsistencies, missing data, or errors
+
+Response:
+{
+    "errors": [],
+    "warnings": [
+        "Player 'XYZ' has negative rushing yards in week 3"
+    ]
+}
+
+
+═══════════════════════════════════════════════════════════════════════════
+8. DATA STRUCTURE & MODELS
+═══════════════════════════════════════════════════════════════════════════
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ Game Model                                                                │
+└───────────────────────────────────────────────────────────────────────────┘
+
+{
+    "id": "uuid-string",
+    "week": 1,
+    "home_team": "Eagles",
+    "away_team": "Hawks",
+    "home_score": 28,
+    "away_score": 21,
+    "home_stats": {
+        "passing": [
+            {
+                "name": "PlayerName",
+                "team": "Eagles",
+                "stats": {
+                    "comp": 15,
+                    "att": 25,
+                    "yards": 250,
+                    "td": 3,
+                    "int": 1,
+                    "scked": 2
+                }
+            }
+        ],
+        "rushing": [...],
+        "receiving": [...],
+        "defense": [...]
+    },
+    "away_stats": {...},
+    "player_of_game": "PlayerName",
+    "game_date": "2025-01-15",
+    "timestamp": "2025-01-15T20:30:00Z"
+}
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ Stat Categories & Fields                                                  │
+└───────────────────────────────────────────────────────────────────────────┘
+
+PASSING STATS:
+    comp        : Completions
+    att         : Attempts
+    yards       : Passing yards
+    td          : Touchdowns
+    int         : Interceptions
+    scked       : Times sacked
+    rating      : Passer rating (calculated)
+    completion_pct : Completion percentage (calculated)
+    avg         : Yards per attempt (calculated)
+
+RUSHING STATS:
+    att         : Attempts
+    yards       : Rushing yards
+    td          : Touchdowns
+    ypc         : Yards per carry (calculated)
+
+RECEIVING STATS:
+    rec         : Receptions
+    yards       : Receiving yards
+    td          : Touchdowns
+    drops       : Dropped passes
+
+DEFENSE STATS:
+    tak         : Tackles
+    tfl         : Tackles for loss
+    sck         : Sacks
+    saf         : Safeties
+    swat        : Pass deflections/swats
+    int         : Interceptions
+    pbu         : Pass breakups
+    td          : Defensive touchdowns
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ Calculated Stats Formulas                                                 │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Passer Rating (NFL formula):
+    A = ((Comp/Att) - 0.3) * 5
+    B = ((Yards/Att) - 3) * 0.25
+    C = (TD/Att) * 20
+    D = 2.375 - ((Int/Att) * 25)
+    Rating = ((A + B + C + D) / 6) * 100
+    (Each component capped at 2.375)
+
+Completion Percentage:
+    (Completions / Attempts) * 100
+
+Yards Per Carry:
+    Rushing Yards / Rushing Attempts
+
+Yards Per Attempt:
+    Passing Yards / Passing Attempts
+
+Fantasy Points (Custom Scoring):
+    Passing TD: 4 points
+    Passing Yards: 0.04 per yard
+    Interception: -2 points
+    Rushing TD: 6 points
+    Rushing Yards: 0.1 per yard
+    Receiving TD: 6 points
+    Receiving Yards: 0.1 per yard
+    Reception: 0.5 points (PPR)
+    Defensive TD: 6 points
+    Interception: 2 points
+    Sack: 1 point
+    Tackle: 0.5 points
+    TFL: 1 point
+    Safety: 2 points
+
+
+═══════════════════════════════════════════════════════════════════════════
+9. ERROR HANDLING
+═══════════════════════════════════════════════════════════════════════════
+
+HTTP Status Codes:
+    200: Success
+    400: Bad Request (invalid data)
+    403: Forbidden (invalid admin key)
+    404: Not Found (player/game not found)
+    500: Internal Server Error
+
+Error Response Format:
+{
+    "detail": "Error message description"
+}
+
+Common Errors:
+- Missing required fields in game submission
+- Invalid stat values (negative numbers where not allowed)
+- Player not found in database
+- Game not found for edit/delete
+- Admin key verification failure
+- Database connection issues
+
+
+═══════════════════════════════════════════════════════════════════════════
+10. EXAMPLE REQUESTS
+═══════════════════════════════════════════════════════════════════════════
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ Example 1: Submit Game from Roblox                                        │
+└───────────────────────────────────────────────────────────────────────────┘
+
+POST /api/game
+Content-Type: application/json
+
+{
+    "week": 1,
+    "home_team": "Eagles",
+    "away_team": "Hawks",
+    "home_score": 28,
+    "away_score": 21,
+    "player_of_game": "Baccon_o",
+    "game_date": "2025-01-15",
+    "home_stats": {
+        "Baccon_o": {
+            "Passing": {
+                "Comp": 18,
+                "Att": 28,
+                "Yards": 235,
+                "TD": 2,
+                "Int": 1,
+                "SCKED": 1
+            },
+            "Rushing": {
+                "Att": 6,
+                "Yards": 42,
+                "TD": 1
+            }
+        },
+        "WR_Player": {
+            "Receiving": {
+                "Rec": 8,
+                "Yards": 120,
+                "TD": 1,
+                "Drops": 0
+            },
+            "Defense": {
+                "TAK": 4,
+                "TFL": 1,
+                "SCK": 0,
+                "SAF": 0,
+                "SWAT": 1,
+                "INT": 0,
+                "PBU": 2,
+                "TD": 0
+            }
+        }
+    },
+    "away_stats": {
+        "QB_Away": {
+            "Passing": {
+                "Comp": 15,
+                "Att": 30,
+                "Yards": 180,
+                "TD": 1,
+                "Int": 2,
+                "SCKED": 3
+            }
+        }
+    }
+}
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ Example 2: Get Player Profile                                             │
+└───────────────────────────────────────────────────────────────────────────┘
+
+GET /api/players/Baccon_o
+
+Response: (See Player Endpoints section for full response structure)
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ Example 3: Admin - Edit Game                                              │
+└───────────────────────────────────────────────────────────────────────────┘
+
+PUT /api/admin/game/abc-123-def-456
+Headers:
+    admin_key: your-admin-key-here
+Content-Type: application/json
+
+{
+    "home_score": 30,
+    "away_score": 28
+}
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ Example 4: Get Stats Leaders                                              │
+└───────────────────────────────────────────────────────────────────────────┘
+
+GET /api/stats/leaders
+
+Response: (See Stats Retrieval Endpoints section)
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ Example 5: Admin - Merge Players                                          │
+└───────────────────────────────────────────────────────────────────────────┘
+
+POST /api/admin/player/merge
+Headers:
+    admin_key: your-admin-key-here
+Content-Type: application/json
+
+{
+    "old_names": ["Baccon_o", "Baccon_O", "baccon_o"],
+    "new_name": "Baccon_o"
+}
+
+
+═══════════════════════════════════════════════════════════════════════════
+                          ADDITIONAL NOTES
+═══════════════════════════════════════════════════════════════════════════
+
+Data Persistence:
+- All data stored in MongoDB
+- Timestamps in UTC ISO format
+- UUIDs for unique game identification
+
+Performance Considerations:
+- Games limited to 1000 per query (pagination not yet implemented)
+- Async operations for database queries
+- Indexes recommended on: week, timestamp, player names
+
+Discord Integration:
+- Automatic webhook notifications for new games
+- Separate webhook for merge operations
+- CSV file attachments included
+
+Security:
+- Admin endpoints protected by key authentication
+- 2FA for destructive operations (delete game)
+- CORS enabled for cross-origin requests
+
+Future Enhancements:
+- Pagination for large datasets
+- Real-time WebSocket updates
+- Advanced analytics endpoints
+- Player comparison tools
+- Historical trend analysis
+
+═══════════════════════════════════════════════════════════════════════════
+                          END OF REFERENCE
+═══════════════════════════════════════════════════════════════════════════
