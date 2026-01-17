@@ -4096,3 +4096,5 @@ const AdminPanel = ({ isOpen, onClose }) => {
 };
 
 export default AdminPanel;
+
+export default AdminPanel;
