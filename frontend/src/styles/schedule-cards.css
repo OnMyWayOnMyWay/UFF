@@ -18,12 +18,15 @@
 
 .game-card-3d {
   width: 100%;
-  max-width: 520px;
-  height: 360px;
+  max-width: 800px;
+  height: 520px;
   margin: 0 auto;
   border-radius: 28px;
   color: #fff;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   background: radial-gradient(circle at top left, rgba(20, 40, 120, 0.35), transparent 45%),
               radial-gradient(circle at top right, rgba(200, 150, 60, 0.35), transparent 45%),
               rgba(12, 12, 12, 0.7);
@@ -31,7 +34,7 @@
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6),
               inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   transform-style: preserve-3d;
-  overflow: hidden;
+  overflow: visible;
   transition: box-shadow 0.3s ease;
   cursor: pointer;
 }
@@ -81,17 +84,20 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
-  gap: 16px;
+  padding: 24px 32px;
+  gap: 20px;
+  flex-shrink: 0;
 }
 
 .card-bottom {
   display: flex;
   justify-content: space-around;
   align-items: flex-start;
-  padding: 0 24px 24px;
-  margin-top: auto;
-  min-height: 140px;
+  padding: 24px 32px 32px;
+  min-height: 220px;
+  gap: 24px;
+  flex-shrink: 0;
+  z-index: 5;
 }
 
 /* Team Section */
@@ -162,25 +168,32 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   transition: transform 0.2s ease;
   flex: 1;
   max-width: 45%;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .player-name {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   letter-spacing: 0.3px;
   text-align: center;
+  color: #fff;
 }
 
 .stat-line {
-  font-size: 15px;
-  opacity: 0.75;
+  font-size: 17px;
+  opacity: 1;
   text-align: center;
   letter-spacing: 0.3px;
   font-weight: 500;
+  color: #f0f0f0;
+  line-height: 1.5;
 }
 
 /* Magnetic elements */
@@ -215,7 +228,7 @@
 /* Responsive adjustments */
 @media (max-width: 640px) {
   .game-card-3d {
-    height: 340px;
+    height: 460px;
     max-width: 100%;
   }
 
@@ -227,17 +240,24 @@
     font-size: 12px;
   }
 
-  .potg-name,
-  .player-name {
+  .potg-name {
     font-size: 14px;
   }
 
-  .stat-line {
-    font-size: 12px;
+  .player-name {
+    font-size: 16px;
   }
 
-  .card-top,
+  .stat-line {
+    font-size: 15px;
+  }
+
+  .card-top {
+    padding: 20px 24px;
+  }
+
   .card-bottom {
-    padding: 16px 20px;
+    padding: 20px 24px 24px;
+    min-height: 200px;
   }
 }

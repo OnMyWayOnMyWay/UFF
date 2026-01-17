@@ -1,11 +1,121 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { AlertTriangle, RefreshCw, X, Edit, UserPlus, Users, Search, Trash2, Plus, Minus, Database, BarChart3, Download, ArrowRightLeft, Wand2, FileText, Copy, AlertCircle, CheckCircle, Image as ImageIcon } from 'lucide-react';
+import { AlertTriangle, RefreshCw, X, Edit, UserPlus, Users, Search, Trash2, Plus, Minus, Database, BarChart3, Download, ArrowRightLeft, Wand2, FileText, Copy, AlertCircle, CheckCircle, Image as ImageIcon, Trophy, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { loadTeamLogos as loadTeamLogosLib, loadTeamColors as loadTeamColorsLib } from '../lib/teamLogos';
+import '../styles/playoff-editor.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API = `${BACKEND_URL}/api`;
+
+// Matchup Slot Component for Drag and Drop
+const MatchupSlot = ({ week, matchupId, roundName, team1, team2, draggedTeam, onDrop, onClear }) => {
+  const [dragOver, setDragOver] = useState({ slot1: false, slot2: false });
+
+  const handleDragOver = (e, slot) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (slot === 1) {
+      setDragOver({ slot1: true, slot2: false });
+    } else {
+      setDragOver({ slot1: false, slot2: true });
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver({ slot1: false, slot2: false });
+  };
+
+  const handleDrop = (e, slot) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver({ slot1: false, slot2: false });
+    if (draggedTeam) {
+      onDrop(draggedTeam, slot);
+    }
+  };
+
+  return (
+    <div className="matchup-slot bg-[#2a2a2b] border border-gray-700 rounded-lg p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs text-gray-400 font-medium uppercase tracking-wider">{matchupId.replace(/_/g, ' ')}</div>
+        {(team1 || team2) && (
+          <button
+            onClick={onClear}
+            className="text-xs text-red-400 hover:text-red-300 transition-colors"
+            title="Clear matchup"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+      <div className="space-y-2">
+        {/* Team 1 Slot */}
+        <div
+          onDragOver={(e) => handleDragOver(e, 1)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, 1)}
+          className={`matchup-team-slot min-h-[60px] border-2 border-dashed rounded-lg p-3 transition-all ${
+            dragOver.slot1
+              ? 'drag-over border-amber-500 bg-amber-500/10'
+              : team1
+              ? 'filled border-emerald-500 bg-emerald-500/5'
+              : 'empty-slot border-gray-600 bg-gray-800/50'
+          }`}
+        >
+          {team1 ? (
+            <div className="matchup-enter flex items-center justify-between">
+              <div className="text-white font-medium text-sm">{team1}</div>
+              <button
+                onClick={() => onDrop(null, 1)}
+                className="text-red-400 hover:text-red-300 transition-colors"
+                title="Remove team"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="text-gray-500 text-xs text-center font-medium">Drop Team 1 Here</div>
+          )}
+        </div>
+
+        {/* VS Divider */}
+        <div className="text-center text-xs text-gray-500 font-bold tracking-wider">VS</div>
+
+        {/* Team 2 Slot */}
+        <div
+          onDragOver={(e) => handleDragOver(e, 2)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, 2)}
+          className={`matchup-team-slot min-h-[60px] border-2 border-dashed rounded-lg p-3 transition-all ${
+            dragOver.slot2
+              ? 'drag-over border-amber-500 bg-amber-500/10'
+              : team2
+              ? 'filled border-emerald-500 bg-emerald-500/5'
+              : 'empty-slot border-gray-600 bg-gray-800/50'
+          }`}
+        >
+          {team2 ? (
+            <div className="matchup-enter flex items-center justify-between">
+              <div className="text-white font-medium text-sm">{team2}</div>
+              <button
+                onClick={() => onDrop(null, 2)}
+                className="text-red-400 hover:text-red-300 transition-colors"
+                title="Remove team"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="text-gray-500 text-xs text-center font-medium">Drop Team 2 Here</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AdminPanel = ({ isOpen, onClose }) => {
   const [adminKey, setAdminKey] = useState('');
@@ -126,11 +236,25 @@ const AdminPanel = ({ isOpen, onClose }) => {
     division: 'North'
   });
 
+  // Playoffs Editor State
+  const [playoffMatchups, setPlayoffMatchups] = useState({});
+  const [playoffSeeds, setPlayoffSeeds] = useState([]);
+  const [playoffLoading, setPlayoffLoading] = useState(false);
+  const [draggedTeam, setDraggedTeam] = useState(null);
+  const [editingMatchup, setEditingMatchup] = useState(null);
+
   // Admin Audit Log State
   const [auditLogs, setAuditLogs] = useState([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditActionFilter, setAuditActionFilter] = useState('');
   const [auditLimit, setAuditLimit] = useState(100);
+
+  // Load playoff data when playoffs tab is active
+  useEffect(() => {
+    if (activeTab === 'playoffs' && isVerified) {
+      loadPlayoffData();
+    }
+  }, [activeTab, isVerified]);
 
   // Game Stats Edit State
   const [gameStatsEdit, setGameStatsEdit] = useState({
@@ -168,6 +292,78 @@ const AdminPanel = ({ isOpen, onClose }) => {
   const [currentPlayerStats, setCurrentPlayerStats] = useState({});
   const [tempCreateStatKey, setTempCreateStatKey] = useState('');
   const [tempCreateStatValue, setTempCreateStatValue] = useState('');
+
+  // Load playoff data
+  const loadPlayoffData = async () => {
+    setPlayoffLoading(true);
+    try {
+      const [matchupsRes, gcSeedsRes, ridgeSeedsRes] = await Promise.all([
+        axios.get(`${API}/playoffs/matchups`),
+        axios.get(`${API}/playoffs/seeds/Grand Central`),
+        axios.get(`${API}/playoffs/seeds/Ridge`)
+      ]);
+      
+      setPlayoffMatchups(matchupsRes.data?.matchups || {});
+      
+      const gcSeeds = Array.isArray(gcSeedsRes.data?.seeds) ? gcSeedsRes.data.seeds : [];
+      const ridgeSeeds = Array.isArray(ridgeSeedsRes.data?.seeds) ? ridgeSeedsRes.data.seeds : [];
+      const allSeeds = [...gcSeeds, ...ridgeSeeds];
+      
+      allSeeds.sort((a, b) => {
+        const aWinPct = a.win_pct || (a.wins / (a.wins + a.losses));
+        const bWinPct = b.win_pct || (b.wins / (b.wins + b.losses));
+        if (aWinPct !== bWinPct) return bWinPct - aWinPct;
+        return (b.point_diff || 0) - (a.point_diff || 0);
+      });
+      
+      setPlayoffSeeds(allSeeds.map((seed, idx) => ({
+        ...seed,
+        seed: idx + 1
+      })));
+    } catch (error) {
+      console.error('Error loading playoff data:', error);
+      toast.error('Failed to load playoff data');
+    } finally {
+      setPlayoffLoading(false);
+    }
+  };
+
+  // Save playoff matchup
+  const savePlayoffMatchup = async (week, matchupId, team1, team2, roundName) => {
+    try {
+      await axios.post(
+        `${API}/admin/playoffs/set-matchup`,
+        {
+          week: parseInt(week),
+          matchup_id: matchupId,
+          team1,
+          team2,
+          round_name: roundName,
+          description: `${team1} vs ${team2}`
+        },
+        { headers: { 'admin-key': adminKey } }
+      );
+      toast.success('Matchup saved!');
+      loadPlayoffData();
+    } catch (error) {
+      console.error('Error saving matchup:', error);
+      toast.error('Failed to save matchup');
+    }
+  };
+
+  // Clear all matchups
+  const clearAllMatchups = async () => {
+    try {
+      await axios.delete(`${API}/admin/playoffs/clear-matchups`, {
+        headers: { 'admin-key': adminKey }
+      });
+      toast.success('All matchups cleared!');
+      loadPlayoffData();
+    } catch (error) {
+      console.error('Error clearing matchups:', error);
+      toast.error('Failed to clear matchups');
+    }
+  };
 
   // Verify admin key
   const verifyAdmin = async () => {
@@ -1540,6 +1736,17 @@ const AdminPanel = ({ isOpen, onClose }) => {
               >
                 <BarChart3 className="w-4 h-4 inline mr-2" />
                 Analytics
+              </button>
+              <button
+                onClick={() => setActiveTab('playoffs')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  activeTab === 'playoffs' 
+                    ? 'bg-amber-500 text-white' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <Trophy className="w-4 h-4 inline mr-2" />
+                Playoffs Editor
               </button>
             </div>
 
@@ -3573,6 +3780,218 @@ const AdminPanel = ({ isOpen, onClose }) => {
         </div>
       )}
       
+      {/* Playoffs Editor Tab */}
+      {activeTab === 'playoffs' && (
+        <div className="space-y-6">
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
+            <p className="text-amber-400 text-sm">
+              <strong>Playoffs Editor:</strong> Drag and drop teams to create custom playoff matchups. Teams are seeded based on regular season standings.
+            </p>
+          </div>
+
+          {playoffLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Seeded Teams Pool */}
+              <div className="bg-[#1a1a1b] border border-gray-800 rounded-lg p-6">
+                <h3 className="text-white font-semibold mb-4 flex items-center">
+                  <Trophy className="w-5 h-5 mr-2 text-amber-400" />
+                  Playoff Seeds
+                </h3>
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                  {playoffSeeds.map((seed) => (
+                    <div
+                      key={seed.seed}
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggedTeam(seed.team);
+                        e.dataTransfer.effectAllowed = 'move';
+                        document.body.classList.add('dragging-active');
+                      }}
+                      onDragEnd={() => {
+                        setDraggedTeam(null);
+                        document.body.classList.remove('dragging-active');
+                      }}
+                      className={`playoff-seed-item bg-[#2a2a2b] border border-gray-700 rounded-lg p-4 cursor-grab active:cursor-grabbing hover:border-amber-500 transition-all ${
+                        draggedTeam === seed.team ? 'dragging opacity-50 scale-95' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="seed-badge text-white text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center">
+                            #{seed.seed}
+                          </div>
+                          <div>
+                            <div className="text-white font-semibold">{seed.team}</div>
+                            <div className="text-gray-400 text-xs">
+                              {seed.wins}-{seed.losses} • {seed.conference || 'Conference'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-gray-400 text-xs">
+                          {seed.point_diff >= 0 ? '+' : ''}{seed.point_diff || 0} PD
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Matchups Editor */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-white font-semibold flex items-center">
+                    <Calendar className="w-5 h-5 mr-2 text-amber-400" />
+                    Playoff Matchups
+                  </h3>
+                  <button
+                    onClick={clearAllMatchups}
+                    className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1 rounded text-sm transition-all"
+                  >
+                    Clear All
+                  </button>
+                </div>
+
+                {/* Week 9 - Wildcard */}
+                <div className="bg-[#1a1a1b] border border-gray-800 rounded-lg overflow-hidden">
+                  <h4 className="playoff-round-header text-amber-400 font-bold px-4 py-3 text-sm uppercase tracking-wider">Week 9 - Wildcard Round</h4>
+                  <div className="space-y-2 p-4">
+                    {[1, 2, 3, 4].map((matchupNum) => (
+                      <MatchupSlot
+                        key={`wc-${matchupNum}`}
+                        week={9}
+                        matchupId={`wildcard_${matchupNum}`}
+                        roundName="Wildcard"
+                        team1={playoffMatchups['9']?.[`wildcard_${matchupNum}`]?.team1}
+                        team2={playoffMatchups['9']?.[`wildcard_${matchupNum}`]?.team2}
+                        draggedTeam={draggedTeam}
+                        onDrop={(team, slot) => {
+                          const current = playoffMatchups['9']?.[`wildcard_${matchupNum}`] || {};
+                          const team1 = slot === 1 ? team : current.team1;
+                          const team2 = slot === 2 ? team : current.team2;
+                          if (team1 && team2) {
+                            savePlayoffMatchup(9, `wildcard_${matchupNum}`, team1, team2, 'Wildcard');
+                          }
+                        }}
+                        onClear={() => {
+                          // Clear this matchup by setting empty teams
+                          const matchups = { ...playoffMatchups };
+                          if (matchups['9']) {
+                            delete matchups['9'][`wildcard_${matchupNum}`];
+                            setPlayoffMatchups(matchups);
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Week 10 - Divisional */}
+                <div className="bg-[#1a1a1b] border border-gray-800 rounded-lg overflow-hidden">
+                  <h4 className="playoff-round-header text-amber-400 font-bold px-4 py-3 text-sm uppercase tracking-wider">Week 10 - Divisional Round</h4>
+                  <div className="space-y-2 p-4">
+                    {[1, 2, 3, 4].map((matchupNum) => (
+                      <MatchupSlot
+                        key={`div-${matchupNum}`}
+                        week={10}
+                        matchupId={`divisional_${matchupNum}`}
+                        roundName="Divisional"
+                        team1={playoffMatchups['10']?.[`divisional_${matchupNum}`]?.team1}
+                        team2={playoffMatchups['10']?.[`divisional_${matchupNum}`]?.team2}
+                        draggedTeam={draggedTeam}
+                        onDrop={(team, slot) => {
+                          const current = playoffMatchups['10']?.[`divisional_${matchupNum}`] || {};
+                          const team1 = slot === 1 ? team : current.team1;
+                          const team2 = slot === 2 ? team : current.team2;
+                          if (team1 && team2) {
+                            savePlayoffMatchup(10, `divisional_${matchupNum}`, team1, team2, 'Divisional');
+                          }
+                        }}
+                        onClear={() => {
+                          const matchups = { ...playoffMatchups };
+                          if (matchups['10']) {
+                            delete matchups['10'][`divisional_${matchupNum}`];
+                            setPlayoffMatchups(matchups);
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Week 11 - Conference Championships */}
+                <div className="bg-[#1a1a1b] border border-gray-800 rounded-lg overflow-hidden">
+                  <h4 className="playoff-round-header text-amber-400 font-bold px-4 py-3 text-sm uppercase tracking-wider">Week 11 - Conference Championships</h4>
+                  <div className="space-y-2 p-4">
+                    {[1, 2].map((matchupNum) => (
+                      <MatchupSlot
+                        key={`conf-${matchupNum}`}
+                        week={11}
+                        matchupId={`conference_${matchupNum}`}
+                        roundName="Conference Championship"
+                        team1={playoffMatchups['11']?.[`conference_${matchupNum}`]?.team1}
+                        team2={playoffMatchups['11']?.[`conference_${matchupNum}`]?.team2}
+                        draggedTeam={draggedTeam}
+                        onDrop={(team, slot) => {
+                          const current = playoffMatchups['11']?.[`conference_${matchupNum}`] || {};
+                          const team1 = slot === 1 ? team : current.team1;
+                          const team2 = slot === 2 ? team : current.team2;
+                          if (team1 && team2) {
+                            savePlayoffMatchup(11, `conference_${matchupNum}`, team1, team2, 'Conference Championship');
+                          }
+                        }}
+                        onClear={() => {
+                          const matchups = { ...playoffMatchups };
+                          if (matchups['11']) {
+                            delete matchups['11'][`conference_${matchupNum}`];
+                            setPlayoffMatchups(matchups);
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Week 12 - Championship */}
+                <div className="bg-[#1a1a1b] border border-gray-800 rounded-lg overflow-hidden">
+                  <h4 className="playoff-round-header text-amber-400 font-bold px-4 py-3 text-sm uppercase tracking-wider flex items-center">
+                    <Trophy className="w-4 h-4 mr-2" />
+                    Week 12 - Championship Game
+                  </h4>
+                  <div className="p-4">
+                  <MatchupSlot
+                    week={12}
+                    matchupId="championship"
+                    roundName="Championship"
+                    team1={playoffMatchups['12']?.['championship']?.team1}
+                    team2={playoffMatchups['12']?.['championship']?.team2}
+                    draggedTeam={draggedTeam}
+                    onDrop={(team, slot) => {
+                      const current = playoffMatchups['12']?.['championship'] || {};
+                      const team1 = slot === 1 ? team : current.team1;
+                      const team2 = slot === 2 ? team : current.team2;
+                      if (team1 && team2) {
+                        savePlayoffMatchup(12, 'championship', team1, team2, 'Championship');
+                      }
+                    }}
+                    onClear={() => {
+                      const matchups = { ...playoffMatchups };
+                      if (matchups['12']) {
+                        delete matchups['12']['championship'];
+                        setPlayoffMatchups(matchups);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Trade Modal */}
       {showTradeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onClick={() => setShowTradeModal(false)}>
