@@ -489,13 +489,13 @@ const Playoffs = () => {
   const seedsByNumber = new Map((playoffSeeds?.seeds || []).map(s => [s.seed, s]));
   const teamForSeed = (n) => seedsByNumber.get(n)?.team || null;
 
-  // Conference Championships (Week 10) - 1v4 and 2v3 per conference
+  // Conference Championships (Week 9) - 1v4 and 2v3 per conference
   const confChamp1v4Game = playoffGames.conference_championships?.[0] || null;
   const confChamp2v3Game = playoffGames.conference_championships?.[1] || null;
   const confChamp1v4Winner = getWinnerName(confChamp1v4Game) || (confChamp1v4Game ? null : 'Winner #1 vs #4');
   const confChamp2v3Winner = getWinnerName(confChamp2v3Game) || (confChamp2v3Game ? null : 'Winner #2 vs #3');
 
-  // Wildcard (Week 11) - 5v12, 6v11, 7v10, 8v9
+  // Wildcard (Week 10) - 5v12, 6v11, 7v10, 8v9
   const wildcard5v12Game = playoffGames.wildcard?.[0] || null;
   const wildcard6v11Game = playoffGames.wildcard?.[1] || null;
   const wildcard7v10Game = playoffGames.wildcard?.[2] || null;
@@ -505,7 +505,7 @@ const Playoffs = () => {
   const wildcard7v10Winner = getWinnerName(wildcard7v10Game) || (wildcard7v10Game ? null : 'Winner #7 vs #10');
   const wildcard8v9Winner = getWinnerName(wildcard8v9Game) || (wildcard8v9Game ? null : 'Winner #8 vs #9');
 
-  // Divisional (Week 12) - Conference champs play wildcard winners
+  // Divisional (Week 11) - Conference champs play wildcard winners
   const divisional1Game = playoffGames.divisional?.[0] || null;
   const divisional2Game = playoffGames.divisional?.[1] || null;
   const divisional3Game = playoffGames.divisional?.[2] || null;
@@ -515,13 +515,13 @@ const Playoffs = () => {
   const divisional3Winner = getWinnerName(divisional3Game) || null;
   const divisional4Winner = getWinnerName(divisional4Game) || null;
 
-  // Semifinals (Week 13) - Conference Finals
+  // Semifinals (Week 12) - Conference Finals
   const semifinal1Game = playoffGames.semifinals?.[0] || null;
   const semifinal2Game = playoffGames.semifinals?.[1] || null;
   const semifinal1Winner = getWinnerName(semifinal1Game) || (semifinal1Game ? null : 'Winner #1');
   const semifinal2Winner = getWinnerName(semifinal2Game) || (semifinal2Game ? null : 'Winner #2');
 
-  // Championship (Week 14)
+  // Championship (Week 13)
   const championshipGame = playoffGames.championship || null;
 
   const roundLabelClass = 'text-[11px] font-semibold tracking-[0.2em] uppercase text-white/70';
@@ -653,7 +653,7 @@ const Playoffs = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
             {/* Conference Championships */}
-            <RoundColumn title="Conference Championships" subtitle="Week 10 · Seeds 1v4, 2v3">
+            <RoundColumn title="Conference Championships" subtitle="Week 9 · Seeds 1v4, 2v3">
               <BracketMatchCard
                 title="Conf Champ: #1 vs #4"
                 game={confChamp1v4Game}
@@ -682,7 +682,7 @@ const Playoffs = () => {
             </RoundColumn>
 
             {/* Wildcard */}
-            <RoundColumn title="Wildcard" subtitle="Week 11 · Seeds 5-12">
+            <RoundColumn title="Wildcard" subtitle="Week 10 · Seeds 5-12">
               <BracketMatchCard
                 title="WC: #5 vs #12"
                 game={wildcard5v12Game}
@@ -737,7 +737,7 @@ const Playoffs = () => {
             </RoundColumn>
 
             {/* Divisional */}
-            <RoundColumn title="Divisional" subtitle="Week 12 · Playoff Round">
+            <RoundColumn title="Divisional" subtitle="Week 11 · Playoff Round">
               <BracketMatchCard
                 title="Divisional"
                 game={divisional1Game}
@@ -792,7 +792,7 @@ const Playoffs = () => {
             </RoundColumn>
 
             {/* Semifinals (Conference Finals) */}
-            <RoundColumn title="Semifinals" subtitle="Week 13 · Conference Finals">
+            <RoundColumn title="Semifinals" subtitle="Week 12 · Conference Finals">
               <BracketMatchCard
                 title="Conf Final #1"
                 game={semifinal1Game}
@@ -821,7 +821,7 @@ const Playoffs = () => {
             </RoundColumn>
 
             {/* Championship */}
-            <RoundColumn title="Championship" subtitle="Week 14 · The Final">
+            <RoundColumn title="Championship" subtitle="Week 13 · The Final">
               <BracketMatchCard
                 title="Championship Game"
                 game={championshipGame}
