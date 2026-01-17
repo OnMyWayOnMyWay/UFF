@@ -608,9 +608,12 @@ async def get_playoff_seeds(conference: str):
             team['seed'] = i
             seeds[i] = team
         
+        # Convert seeds dict to array for frontend compatibility
+        seeds_array = [seeds[i] for i in sorted(seeds.keys())]
+        
         return {
             'conference': conference,
-            'seeds': seeds,
+            'seeds': seeds_array,
             'division_winners': [t for t in division_winners],
             'wildcards': wildcards[:8]
         }

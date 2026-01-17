@@ -50,13 +50,13 @@ const Playoffs = () => {
       ]);
       
       const gamesData = Array.isArray(gamesRes.data) ? gamesRes.data : (gamesRes.data.games || []);
-      const gcSeeds = gcSeedsRes.data?.seeds || {};
-      const ridgeSeeds = ridgeSeedsRes.data?.seeds || {};
+      const gcSeeds = Array.isArray(gcSeedsRes.data?.seeds) ? gcSeedsRes.data.seeds : [];
+      const ridgeSeeds = Array.isArray(ridgeSeedsRes.data?.seeds) ? ridgeSeedsRes.data.seeds : [];
       const assignmentsData = assignRes.data || {};
       const playoffGamesData = Array.isArray(playoffGamesRes.data) ? playoffGamesRes.data : [];
       
-      // Combine both conferences' seeds
-      const combinedSeeds = { ...gcSeeds, ...ridgeSeeds };
+      // Combine both conferences' seeds into a single array
+      const combinedSeeds = [...gcSeeds, ...ridgeSeeds];
       
       setGames(gamesData);
       setPlayoffSeeds({
