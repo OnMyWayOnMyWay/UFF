@@ -169,13 +169,31 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   flex: 1;
   max-width: 45%;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.05);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.player-stats::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.player-stats:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
 }
 
 .player-name {
@@ -184,6 +202,8 @@
   letter-spacing: 0.3px;
   text-align: center;
   color: #fff;
+  position: relative;
+  z-index: 10;
 }
 
 .stat-line {
@@ -194,7 +214,15 @@
   font-weight: 500;
   color: #f0f0f0;
   line-height: 1.5;
+  position: relative;
+  z-index: 10;
 }
+
+.player-stats svg {
+  position: relative;
+  z-index: 10;
+}
+
 
 /* Magnetic elements */
 .magnet {
