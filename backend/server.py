@@ -515,7 +515,11 @@ async def get_available_weeks():
 async def get_playoff_seeds(conference: str):
     """
     Get playoff seeding for a conference based on regular season standings.
-    Returns division winners (seeds 1-4) and wildcard teams (seeds 5-12).
+    Returns division winners (seeds 1-4 per conference) and wildcard teams (seeds 5-12 per conference).
+    
+    Global seed numbering:
+    - Grand Central: Seeds 1-12
+    - Ridge: Seeds 1-12
     """
     try:
         # Get games from regular season weeks only (1-8)
@@ -596,16 +600,18 @@ async def get_playoff_seeds(conference: str):
         wildcards = [t for t in standings if not t.get('division_winner')]
         wildcards.sort(key=lambda x: (x['win_pct'], x['point_diff']), reverse=True)
         
-        # Seed division winners 1-4 by win percentage
+        # Seed division winners 1-4 by win percentage (within conference)
         division_winners.sort(key=lambda x: (x['win_pct'], x['point_diff']), reverse=True)
         seeds = {}
         for i, team in enumerate(division_winners, 1):
             team['seed'] = i
+            team['conference'] = conference
             seeds[i] = team
         
-        # Seed wildcards 5-12 by win percentage
+        # Seed wildcards 5-12 by win percentage (within conference)
         for i, team in enumerate(wildcards[:8], 5):
             team['seed'] = i
+            team['conference'] = conference
             seeds[i] = team
         
         # Convert seeds dict to array for frontend compatibility

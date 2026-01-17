@@ -55,12 +55,35 @@ const Playoffs = () => {
       const assignmentsData = assignRes.data || {};
       const playoffGamesData = Array.isArray(playoffGamesRes.data) ? playoffGamesRes.data : [];
       
-      // Combine both conferences' seeds into a single array
-      const combinedSeeds = [...gcSeeds, ...ridgeSeeds];
+      // Combine and re-seed across both conferences
+      // Both conferences return seeds 1-12, so we need to create a global seeding
+      // Seeds 1-4 are the top division winners from both conferences
+      // Seeds 5-12 are wildcards
+      
+      // Extract division winners (seeds 1-4) and wildcards (seeds 5-12) from each conference
+      const gcDivisionWinners = gcSeeds.filter(s => s.seed <= 4);
+      const ridgeDivisionWinners = ridgeSeeds.filter(s => s.seed <= 4);
+      const gcWildcards = gcSeeds.filter(s => s.seed > 4);
+      const ridgeWildcards = ridgeSeeds.filter(s => s.seed > 4);
+      
+      // Create global seeds array with proper numbering
+      // Top division winners from both conferences (seeds 1-4)
+      // Then top wildcard teams from both conferences (seeds 5-12)
+      const allDivisionWinners = [...gcDivisionWinners, ...ridgeDivisionWinners];
+      const allWildcards = [...gcWildcards, ...ridgeWildcards];
+      
+      // Re-number all seeds globally 1-12
+      const globalSeeds = [];
+      allDivisionWinners.forEach((seed, idx) => {
+        globalSeeds.push({ ...seed, seed: idx + 1 });
+      });
+      allWildcards.forEach((seed, idx) => {
+        globalSeeds.push({ ...seed, seed: idx + 5 });
+      });
       
       setGames(gamesData);
       setPlayoffSeeds({
-        seeds: combinedSeeds,
+        seeds: globalSeeds,
         gc: gcSeeds,
         ridge: ridgeSeeds
       });
