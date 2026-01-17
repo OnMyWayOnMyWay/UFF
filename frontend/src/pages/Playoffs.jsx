@@ -697,36 +697,7 @@ const Playoffs = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
-            {/* Conference Championships */}
-            <RoundColumn title="Conference Championships" subtitle="Week 9 · Top Seeds Battle">
-              <BracketMatchCard
-                title="Ridge Championship"
-                game={ridgeConfChampGame}
-                seedTop={null}
-                seedBottom={null}
-                teamTop={playoffSeeds?.ridge?.[0]?.team || 'Ridge #1'}
-                teamBottom={playoffSeeds?.ridge?.[1]?.team || 'Ridge #2'}
-                recordTop={getTeamRecord(playoffSeeds?.ridge?.[0]?.team)}
-                recordBottom={getTeamRecord(playoffSeeds?.ridge?.[1]?.team)}
-                compact
-                accentClass="bg-purple-400"
-              />
-              <Connector delay={100} />
-              <BracketMatchCard
-                title="Grand Central Championship"
-                game={gcConfChampGame}
-                seedTop={null}
-                seedBottom={null}
-                teamTop={playoffSeeds?.gc?.[0]?.team || 'GC #1'}
-                teamBottom={playoffSeeds?.gc?.[1]?.team || 'GC #2'}
-                recordTop={getTeamRecord(playoffSeeds?.gc?.[0]?.team)}
-                recordBottom={getTeamRecord(playoffSeeds?.gc?.[1]?.team)}
-                compact
-                accentClass="bg-purple-400"
-              />
-            </RoundColumn>
-
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
             {/* Wildcard */}
             <RoundColumn title="Wildcard" subtitle="Week 10 · Seeds 3-10">
               <BracketMatchCard
