@@ -56,30 +56,26 @@ const Playoffs = () => {
       const playoffGamesData = Array.isArray(playoffGamesRes.data) ? playoffGamesRes.data : [];
       
       // Combine and re-seed across both conferences
-      // Both conferences return seeds 1-12, so we need to create a global seeding
-      // Seeds 1-4 are the top division winners from both conferences
-      // Seeds 5-12 are wildcards
+      // Each conference returns its own seeds 1-N (division winners first, then wildcards)
+      // We need to merge them into a single global seeding 1-12
       
-      // Extract division winners (seeds 1-4) and wildcards (seeds 5-12) from each conference
-      const gcDivisionWinners = gcSeeds.filter(s => s.seed <= 4);
-      const ridgeDivisionWinners = ridgeSeeds.filter(s => s.seed <= 4);
-      const gcWildcards = gcSeeds.filter(s => s.seed > 4);
-      const ridgeWildcards = ridgeSeeds.filter(s => s.seed > 4);
+      // Combine all seeds from both conferences
+      const allSeeds = [...gcSeeds, ...ridgeSeeds];
       
-      // Create global seeds array with proper numbering
-      // Top division winners from both conferences (seeds 1-4)
-      // Then top wildcard teams from both conferences (seeds 5-12)
-      const allDivisionWinners = [...gcDivisionWinners, ...ridgeDivisionWinners];
-      const allWildcards = [...gcWildcards, ...ridgeWildcards];
-      
-      // Re-number all seeds globally 1-12
-      const globalSeeds = [];
-      allDivisionWinners.forEach((seed, idx) => {
-        globalSeeds.push({ ...seed, seed: idx + 1 });
+      // Sort all teams by win percentage and point differential
+      allSeeds.sort((a, b) => {
+        const aWinPct = a.win_pct || (a.wins / (a.wins + a.losses));
+        const bWinPct = b.win_pct || (b.wins / (b.wins + b.losses));
+        if (aWinPct !== bWinPct) return bWinPct - aWinPct;
+        return (b.point_diff || 0) - (a.point_diff || 0);
       });
-      allWildcards.forEach((seed, idx) => {
-        globalSeeds.push({ ...seed, seed: idx + 5 });
-      });
+      
+      // Re-number all seeds globally 1-12 (or however many teams we have)
+      const globalSeeds = allSeeds.map((seed, idx) => ({
+        ...seed,
+        seed: idx + 1,
+        global_seed: idx + 1
+      }));
       
       setGames(gamesData);
       setPlayoffSeeds({
