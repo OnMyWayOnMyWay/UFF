@@ -1,0 +1,239 @@
+/* 3D Game Card Styles */
+.perspective-container {
+  perspective: 1600px;
+  animation: fadeInUp 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.game-card-3d {
+  width: 100%;
+  max-width: 520px;
+  height: 300px;
+  margin: 0 auto;
+  border-radius: 28px;
+  color: #fff;
+  position: relative;
+  background: radial-gradient(circle at top left, rgba(20, 40, 120, 0.35), transparent 45%),
+              radial-gradient(circle at top right, rgba(200, 150, 60, 0.35), transparent 45%),
+              rgba(12, 12, 12, 0.7);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6),
+              inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transform-style: preserve-3d;
+  overflow: hidden;
+  transition: box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.game-card-3d:hover {
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.8),
+              inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* Light streak effect */
+.light-streak {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    400px circle at var(--light-x, 50%) var(--light-y, 50%),
+    rgba(255, 255, 255, 0.15),
+    transparent 40%
+  );
+  mix-blend-mode: overlay;
+  transition: background 0.05s;
+}
+
+/* 3D Layers */
+.layer-deep {
+  position: relative;
+  z-index: 30;
+  transform: translateZ(30px);
+}
+
+.layer-mid {
+  position: relative;
+  z-index: 20;
+  transform: translateZ(20px);
+}
+
+.layer-shallow {
+  position: relative;
+  z-index: 10;
+  transform: translateZ(10px);
+}
+
+/* Card Layout */
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  gap: 16px;
+}
+
+.card-bottom {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  padding: 0 24px 20px;
+  margin-top: auto;
+}
+
+/* Team Section */
+.team-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: transform 0.2s ease;
+}
+
+.score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.score {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.team-abbr {
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.7;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+/* POTG Section */
+.potg-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform 0.2s ease, background 0.3s ease;
+}
+
+.potg-section:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.potg-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-bottom: 4px;
+}
+
+.potg-name {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Player Stats */
+.player-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.2s ease;
+}
+
+.player-name {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-align: center;
+}
+
+.stat-line {
+  font-size: 14px;
+  opacity: 0.65;
+  text-align: center;
+  letter-spacing: 0.2px;
+}
+
+/* Magnetic elements */
+.magnet {
+  transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Logo shake animation on POTG hover */
+.potg-section:hover ~ .team-section img,
+.potg-section:hover img {
+  animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .game-card-3d {
+    height: 280px;
+    max-width: 100%;
+  }
+
+  .score {
+    font-size: 40px;
+  }
+
+  .team-abbr {
+    font-size: 12px;
+  }
+
+  .potg-name,
+  .player-name {
+    font-size: 14px;
+  }
+
+  .stat-line {
+    font-size: 12px;
+  }
+
+  .card-top,
+  .card-bottom {
+    padding: 16px 20px;
+  }
+}
