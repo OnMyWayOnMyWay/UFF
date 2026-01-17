@@ -145,6 +145,30 @@ class GamePlayerStatEdit(BaseModel):
     category: str  # 'passing', 'rushing', 'receiving', 'defense'
     stats: Dict[str, Any]  # Stats to update for this player
 
+class PlayoffMatchup(BaseModel):
+    """Represents a single playoff matchup"""
+    week: int
+    round_name: str  # 'conference_championships', 'wildcard', 'divisional', 'semifinals', 'championship'
+    matchup_id: str
+    team1: str
+    team2: str
+    description: Optional[str] = None
+    seed1: Optional[int] = None
+    seed2: Optional[int] = None
+
+class SetPlayoffMatchupRequest(BaseModel):
+    """Request to set a single playoff matchup"""
+    week: int
+    round_name: str
+    matchup_id: str
+    team1: str
+    team2: str
+    description: Optional[str] = None
+
+class BulkSetPlayoffMatchups(BaseModel):
+    """Request to set multiple playoff matchups at once"""
+    matchups: List[SetPlayoffMatchupRequest]
+
 
 async def send_to_discord(game: Game, webhook_type: str = 'default'):
     """Send game results to Discord with embed and CSV file.
@@ -2668,10 +2692,13 @@ def _apply_tiebreakers(games: List[Dict[str, Any]], team_a: Dict[str, Any], team
 
 @api_router.get("/playoffs/seeds")
 async def get_playoff_seeds():
-    """Compute playoff seeds based on conference championship results.
-    Seeds 1-2: Conference champions (better record gets 1)
-    Seeds 3-4: Conference championship losers (better record gets 3)
-    Seeds 5+: Wildcards from remaining teams (guaranteed only seeds 1-4 for conf champs)"""
+    """Compute playoff seeds based on conference standings with bracket structure.
+    
+    Returns seeds organized by conference for bracket display:
+    - Conference 1: Top 4 seeds showing 1v4, 2v3 matchups
+    - Conference 2: Top 4 seeds showing 1v4, 2v3 matchups
+    - Wildcard seeds 5-10 for later rounds
+    """
     try:
         games = await db.games.find({}, {"_id": 0}).to_list(1000)
         assignments = await _load_assignments()
@@ -2683,137 +2710,218 @@ async def get_playoff_seeds():
         for team, info in assignments.items():
             conf_teams[info["conference"]].append(team)
 
-        # Find conference championship winners and losers (week 11 games)
-        conf_champ_games = [g for g in games if g["week"] == 11]
-        conf_winners = {}
-        conf_losers = {}
-        
-        for game in conf_champ_games:
-            home_team = game["home_team"]
-            away_team = game["away_team"]
-            home_conf = assignments.get(home_team, {}).get("conference")
-            away_conf = assignments.get(away_team, {}).get("conference")
-            
-            # Only count if both teams are in the same conference
-            if home_conf == away_conf and home_conf:
-                if game["home_score"] > game["away_score"]:
-                    conf_winners[home_conf] = home_team
-                    conf_losers[home_conf] = away_team
-                else:
-                    conf_winners[away_conf] = away_team
-                    conf_losers[away_conf] = home_team
-
-        # Build seeds
+        # Get top 4 seeds per conference for bracket structure
         all_seeds = []
         seed_num = 1
         
-        # Seeds 1-2: Conference champions (better record gets seed 1)
-        champ_teams = []
+        # Process each conference separately for bracket display
         for conf in ["Grand Central", "Ridge"]:
-            if conf in conf_winners:
-                team = conf_winners[conf]
-                if team in standings_by_team:
-                    team_data = standings_by_team[team].copy()
-                    team_data["conference"] = conf
-                    team_data["playoff_status"] = "conference_champion"
-                    champ_teams.append(team_data)
+            # Get all teams in this conference sorted by standings
+            conf_team_standings = [s for s in standings if s["team"] in conf_teams[conf]]
+            conf_team_standings.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
+            
+            # Top 4 seeds from this conference
+            for idx, team_data in enumerate(conf_team_standings[:4]):
+                seed_data = {
+                    "seed": seed_num,
+                    "team": team_data["team"],
+                    "wins": team_data["wins"],
+                    "losses": team_data["losses"],
+                    "win_pct": team_data.get("win_pct", 0),
+                    "points_for": team_data.get("points_for", 0),
+                    "points_against": team_data.get("points_against", 0),
+                    "point_diff": team_data.get("point_diff", 0),
+                    "conference": conf,
+                    "conference_seed": idx + 1,  # 1-4 within conference
+                    "playoff_status": "conference_seed",
+                    "bye": idx < 2  # Seeds 1-2 get first round byes
+                }
+                all_seeds.append(seed_data)
+                seed_num += 1
         
-        # Sort champions by wins and tiebreakers
-        if len(champ_teams) >= 2:
-            champ_teams.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
-        
-        for champ in champ_teams:
-            all_seeds.append({
-                "seed": seed_num,
-                "team": champ["team"],
-                "wins": champ["wins"],
-                "losses": champ["losses"],
-                "win_pct": champ.get("win_pct", 0),
-                "points_for": champ.get("points_for", 0),
-                "points_against": champ.get("points_against", 0),
-                "point_diff": champ.get("point_diff", 0),
-                "conference": champ["conference"],
-                "playoff_status": "conference_champion",
-                "bye": True  # Seeds 1-2 get byes
-            })
-            seed_num += 1
-        
-        # Seeds 3-4: Conference championship losers (better record gets seed 3)
-        loser_teams = []
-        for conf in ["Grand Central", "Ridge"]:
-            if conf in conf_losers:
-                team = conf_losers[conf]
-                if team in standings_by_team:
-                    team_data = standings_by_team[team].copy()
-                    team_data["conference"] = conf
-                    team_data["playoff_status"] = "conference_finalist"
-                    loser_teams.append(team_data)
-        
-        # Sort losers by wins and tiebreakers
-        if len(loser_teams) >= 2:
-            loser_teams.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
-        
-        for loser in loser_teams:
-            all_seeds.append({
-                "seed": seed_num,
-                "team": loser["team"],
-                "wins": loser["wins"],
-                "losses": loser["losses"],
-                "win_pct": loser.get("win_pct", 0),
-                "points_for": loser.get("points_for", 0),
-                "points_against": loser.get("points_against", 0),
-                "point_diff": loser.get("point_diff", 0),
-                "conference": loser["conference"],
-                "playoff_status": "conference_finalist",
-                "bye": False
-            })
-            seed_num += 1
-        
-        # Seeds 5+: Wildcards from remaining teams
-        champ_and_loser_teams = set()
-        champ_and_loser_teams.update(conf_winners.values())
-        champ_and_loser_teams.update(conf_losers.values())
-        
-        wildcard_teams = []
-        for team in standings:
-            if team["team"] not in champ_and_loser_teams:
-                team_data = team.copy()
-                team_data["conference"] = assignments.get(team["team"], {}).get("conference")
-                team_data["playoff_status"] = "wildcard"
-                wildcard_teams.append(team_data)
-        
-        # Sort wildcards by wins and tiebreakers
+        # Add remaining teams as wildcard seeds (5-10)
+        top_8_teams = set(s["team"] for s in all_seeds)
+        wildcard_teams = [s for s in standings if s["team"] not in top_8_teams]
         wildcard_teams.sort(key=lambda x: (x["wins"], x["point_diff"]), reverse=True)
         
-        # Add wildcards to reach 10 total seeds
-        # If we have fewer than 10 seeds so far, add wildcards to reach 10
-        remaining_seeds_needed = 10 - len(all_seeds)
-        wildcards_to_add = min(remaining_seeds_needed, len(wildcard_teams))
-        
-        for wildcard in wildcard_teams[:wildcards_to_add]:
-            all_seeds.append({
+        for team_data in wildcard_teams[:2]:  # Seeds 9-10
+            seed_data = {
                 "seed": seed_num,
-                "team": wildcard["team"],
-                "wins": wildcard["wins"],
-                "losses": wildcard["losses"],
-                "win_pct": wildcard.get("win_pct", 0),
-                "points_for": wildcard.get("points_for", 0),
-                "points_against": wildcard.get("points_against", 0),
-                "point_diff": wildcard.get("point_diff", 0),
-                "conference": wildcard["conference"],
+                "team": team_data["team"],
+                "wins": team_data["wins"],
+                "losses": team_data["losses"],
+                "win_pct": team_data.get("win_pct", 0),
+                "points_for": team_data.get("points_for", 0),
+                "points_against": team_data.get("points_against", 0),
+                "point_diff": team_data.get("point_diff", 0),
+                "conference": assignments.get(team_data["team"], {}).get("conference"),
                 "playoff_status": "wildcard",
                 "bye": False
-            })
+            }
+            all_seeds.append(seed_data)
             seed_num += 1
         
         return {
             "seeds": all_seeds,
             "standings": standings,
-            "conference_champs": conf_winners,
-            "conference_finalists": conf_losers
+            "bracket_structure": {
+                "conference_championships": {
+                    "week": 10,
+                    "matchups": [
+                        {"seed1": 1, "seed2": 4, "description": "1 seed vs 4 seed"},
+                        {"seed1": 2, "seed2": 3, "description": "2 seed vs 3 seed"}
+                    ]
+                },
+                "wildcard": {
+                    "week": 11,
+                    "matchups": [
+                        {"seed1": 5, "seed2": 12, "description": "5 seed vs 12 seed"},
+                        {"seed1": 6, "seed2": 11, "description": "6 seed vs 11 seed"},
+                        {"seed1": 7, "seed2": 10, "description": "7 seed vs 10 seed"},
+                        {"seed1": 8, "seed2": 9, "description": "8 seed vs 9 seed"}
+                    ]
+                },
+                "divisional": {
+                    "week": 12,
+                    "description": "Winners from Conference Championships play Wildcard winners"
+                },
+                "semifinals": {
+                    "week": 13,
+                    "description": "Conference Finals"
+                },
+                "championship": {
+                    "week": 14,
+                    "description": "Championship Game"
+                }
+            }
         }
     except Exception as e:
         logger.error(f"Error computing playoff seeds: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ---- Playoff Matchup Management ----
+
+async def _load_playoff_matchups() -> Dict[int, Dict[str, Any]]:
+    """Load custom playoff matchups from database."""
+    try:
+        doc = await db.league.find_one({"_id": "playoff_matchups"})
+        if doc and "matchups" in doc:
+            return doc["matchups"]
+    except Exception as e:
+        logger.error(f"Error loading playoff matchups: {str(e)}")
+    return {}  # Return empty dict if no custom matchups
+
+async def _save_playoff_matchups(matchups: Dict[int, Dict[str, Any]]):
+    """Save custom playoff matchups to database."""
+    try:
+        await db.league.update_one(
+            {"_id": "playoff_matchups"},
+            {"$set": {"type": "playoff_matchups", "matchups": matchups, "updated_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+    except Exception as e:
+        logger.error(f"Error saving playoff matchups: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save playoff matchups: {str(e)}")
+
+@api_router.get("/playoffs/matchups")
+async def get_playoff_matchups():
+    """Public: Get custom playoff matchups if they exist."""
+    try:
+        matchups = await _load_playoff_matchups()
+        return {"matchups": matchups, "has_custom": bool(matchups)}
+    except Exception as e:
+        logger.error(f"Error getting playoff matchups: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/playoffs/set-matchup")
+async def set_playoff_matchup(request: SetPlayoffMatchupRequest, admin_key: str = Header(...)):
+    """Admin: Set a single playoff matchup."""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        matchups = await _load_playoff_matchups()
+        
+        # Initialize week key if it doesn't exist
+        week_key = str(request.week)
+        if week_key not in matchups:
+            matchups[week_key] = {}
+        
+        # Store matchup
+        matchup_data = {
+            "team1": request.team1,
+            "team2": request.team2,
+            "round_name": request.round_name,
+            "description": request.description or f"{request.team1} vs {request.team2}"
+        }
+        matchups[week_key][request.matchup_id] = matchup_data
+        
+        await _save_playoff_matchups(matchups)
+        
+        await log_admin_action(
+            admin_key,
+            "set_playoff_matchup",
+            {"week": request.week, "round": request.round_name, "teams": [request.team1, request.team2]}
+        )
+        
+        return {"success": True, "message": f"Set {request.round_name} matchup for week {request.week}"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error setting playoff matchup: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/playoffs/bulk-set-matchups")
+async def bulk_set_playoff_matchups(request: BulkSetPlayoffMatchups, admin_key: str = Header(...)):
+    """Admin: Set multiple playoff matchups at once."""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        matchups = await _load_playoff_matchups()
+        
+        for matchup_req in request.matchups:
+            week_key = str(matchup_req.week)
+            if week_key not in matchups:
+                matchups[week_key] = {}
+            
+            matchup_data = {
+                "team1": matchup_req.team1,
+                "team2": matchup_req.team2,
+                "round_name": matchup_req.round_name,
+                "description": matchup_req.description or f"{matchup_req.team1} vs {matchup_req.team2}"
+            }
+            matchups[week_key][matchup_req.matchup_id] = matchup_data
+        
+        await _save_playoff_matchups(matchups)
+        
+        await log_admin_action(
+            admin_key,
+            "bulk_set_playoff_matchups",
+            {"count": len(request.matchups), "weeks": list(set(m.week for m in request.matchups))}
+        )
+        
+        return {"success": True, "message": f"Set {len(request.matchups)} playoff matchups"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error bulk setting playoff matchups: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/admin/playoffs/clear-matchups")
+async def clear_playoff_matchups(admin_key: str = Header(...)):
+    """Admin: Clear all custom playoff matchups (revert to auto-generated)."""
+    if not await verify_admin(admin_key):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        await db.league.delete_one({"_id": "playoff_matchups"})
+        
+        await log_admin_action(admin_key, "clear_playoff_matchups", {})
+        
+        return {"success": True, "message": "Cleared all custom playoff matchups"}
+    except Exception as e:
+        logger.error(f"Error clearing playoff matchups: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/admin/detect-userids")

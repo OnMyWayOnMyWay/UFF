@@ -16,6 +16,7 @@ const Playoffs = () => {
   const [colorMap, setColorMap] = useState({});
   const [assignments, setAssignments] = useState(null);
   const [playoffGames, setPlayoffGames] = useState({
+    conference_championships: [],
     wildcard: [],
     divisional: [],
     semifinals: [],
@@ -69,22 +70,25 @@ const Playoffs = () => {
   };
 
   const organizePlayoffGames = (allGames) => {
-    // 10-team playoff bracket structure:
-    // Week 9: Play-Ins (4 games - seeds 7v10, 8v9, 3v6, 4v5)
-    // Week 10: Elite 8 (4 games - winners play seeds 1,2,3,4 who had byes)
-    // Week 11: Final 4 / Conference Championships (2 games)
-    // Week 12: Championship (1 game)
+    // 5-round playoff bracket (in correct order):
+    // Week 10: Conference Championships (2 games - 1v4, 2v3)
+    // Week 11: Wildcard (4 games - 5v12, 6v11, 7v10, 8v9)
+    // Week 12: Divisional (4 games - winners advance)
+    // Week 13: Semifinals (2 games - conference finals)
+    // Week 14: Championship (1 game)
     
-    const playins = allGames.filter(g => g.week === 9);
-    const elite8 = allGames.filter(g => g.week === 10);
-    const final4 = allGames.filter(g => g.week === 11);
-    const championship = allGames.find(g => g.week === 12);
+    const confChamps = allGames.filter(g => g.week === 10);
+    const wildcard = allGames.filter(g => g.week === 11);
+    const divisional = allGames.filter(g => g.week === 12);
+    const semifinals = allGames.filter(g => g.week === 13);
+    const championship = allGames.find(g => g.week === 14);
 
     setPlayoffGames({
-      wildcard: playins,
-      divisional: elite8,
-      semifinals: final4,
-      championship
+      conference_championships: confChamps,
+      wildcard: wildcard,
+      divisional: divisional,
+      semifinals: semifinals,
+      championship: championship
     });
   };
 
@@ -478,31 +482,40 @@ const Playoffs = () => {
   const seedsByNumber = new Map((playoffSeeds?.seeds || []).map(s => [s.seed, s]));
   const teamForSeed = (n) => seedsByNumber.get(n)?.team || null;
 
-  // Play-Ins (Week 9)
-  const playIn98Game = findGameBySeeds(9, 9, 8);
-  const playIn107Game = findGameBySeeds(9, 10, 7);
-  const playIn98Winner = getWinnerName(playIn98Game) || (playIn98Game ? null : 'Winner 9/8');
-  const playIn107Winner = getWinnerName(playIn107Game) || (playIn107Game ? null : 'Winner 10/7');
+  // Conference Championships (Week 10) - 1v4 and 2v3 per conference
+  const confChamp1v4Game = playoffGames.conference_championships?.[0] || null;
+  const confChamp2v3Game = playoffGames.conference_championships?.[1] || null;
+  const confChamp1v4Winner = getWinnerName(confChamp1v4Game) || (confChamp1v4Game ? null : 'Winner #1 vs #4');
+  const confChamp2v3Winner = getWinnerName(confChamp2v3Game) || (confChamp2v3Game ? null : 'Winner #2 vs #3');
 
-  // Elite 8 (Week 10)
-  const elite1Game = findGameByTeams(10, teamForSeed(1), playIn98Winner);
-  const elite2Game = findGameByTeams(10, teamForSeed(5), teamForSeed(4));
-  const elite3Game = findGameByTeams(10, teamForSeed(3), teamForSeed(6));
-  const elite4Game = findGameByTeams(10, teamForSeed(2), playIn107Winner);
+  // Wildcard (Week 11) - 5v12, 6v11, 7v10, 8v9
+  const wildcard5v12Game = playoffGames.wildcard?.[0] || null;
+  const wildcard6v11Game = playoffGames.wildcard?.[1] || null;
+  const wildcard7v10Game = playoffGames.wildcard?.[2] || null;
+  const wildcard8v9Game = playoffGames.wildcard?.[3] || null;
+  const wildcard5v12Winner = getWinnerName(wildcard5v12Game) || (wildcard5v12Game ? null : 'Winner #5 vs #12');
+  const wildcard6v11Winner = getWinnerName(wildcard6v11Game) || (wildcard6v11Game ? null : 'Winner #6 vs #11');
+  const wildcard7v10Winner = getWinnerName(wildcard7v10Game) || (wildcard7v10Game ? null : 'Winner #7 vs #10');
+  const wildcard8v9Winner = getWinnerName(wildcard8v9Game) || (wildcard8v9Game ? null : 'Winner #8 vs #9');
 
-  const elite1Winner = getWinnerName(elite1Game) || (elite1Game ? null : 'Winner #1 / (9-8)');
-  const elite2Winner = getWinnerName(elite2Game) || (elite2Game ? null : 'Winner #5 / #4');
-  const elite3Winner = getWinnerName(elite3Game) || (elite3Game ? null : 'Winner #3 / #6');
-  const elite4Winner = getWinnerName(elite4Game) || (elite4Game ? null : 'Winner #2 / (10-7)');
+  // Divisional (Week 12) - Conference champs play wildcard winners
+  const divisional1Game = playoffGames.divisional?.[0] || null;
+  const divisional2Game = playoffGames.divisional?.[1] || null;
+  const divisional3Game = playoffGames.divisional?.[2] || null;
+  const divisional4Game = playoffGames.divisional?.[3] || null;
+  const divisional1Winner = getWinnerName(divisional1Game) || null;
+  const divisional2Winner = getWinnerName(divisional2Game) || null;
+  const divisional3Winner = getWinnerName(divisional3Game) || null;
+  const divisional4Winner = getWinnerName(divisional4Game) || null;
 
-  // Final 4 (Week 11)
-  const finalLeftGame = findGameByTeams(11, elite1Winner, elite2Winner);
-  const finalRightGame = findGameByTeams(11, elite3Winner, elite4Winner);
-  const finalLeftWinner = getWinnerName(finalLeftGame) || (finalLeftGame ? null : 'Winner Left');
-  const finalRightWinner = getWinnerName(finalRightGame) || (finalRightGame ? null : 'Winner Right');
+  // Semifinals (Week 13) - Conference Finals
+  const semifinal1Game = playoffGames.semifinals?.[0] || null;
+  const semifinal2Game = playoffGames.semifinals?.[1] || null;
+  const semifinal1Winner = getWinnerName(semifinal1Game) || (semifinal1Game ? null : 'Winner #1');
+  const semifinal2Winner = getWinnerName(semifinal2Game) || (semifinal2Game ? null : 'Winner #2');
 
-  // Championship (Week 12)
-  const championshipGame = playoffGames.championship || findGameByTeams(12, finalLeftWinner, finalRightWinner);
+  // Championship (Week 14)
+  const championshipGame = playoffGames.championship || null;
 
   const roundLabelClass = 'text-[11px] font-semibold tracking-[0.2em] uppercase text-white/70';
 
@@ -631,127 +644,186 @@ const Playoffs = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
-            <RoundColumn title="Play-Ins" subtitle="Week 9 · 9 vs 8 · 10 vs 7">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
+            {/* Conference Championships */}
+            <RoundColumn title="Conference Championships" subtitle="Week 10 · Seeds 1v4, 2v3">
               <BracketMatchCard
-                title="Play-In: #9 vs #8"
-                game={playIn98Game}
-                seedTop={9}
-                seedBottom={8}
-                teamTop={teamForSeed(9)}
-                teamBottom={teamForSeed(8)}
-                recordTop={getTeamRecord(teamForSeed(9))}
-                recordBottom={getTeamRecord(teamForSeed(8))}
-                compact
-                accentClass="bg-green-400"
-              />
-              <Connector delay={120} />
-              <BracketMatchCard
-                title="Play-In: #10 vs #7"
-                game={playIn107Game}
-                seedTop={10}
-                seedBottom={7}
-                teamTop={teamForSeed(10)}
-                teamBottom={teamForSeed(7)}
-                recordTop={getTeamRecord(teamForSeed(10))}
-                recordBottom={getTeamRecord(teamForSeed(7))}
-                compact
-                accentClass="bg-green-400"
-              />
-            </RoundColumn>
-
-            <RoundColumn title="Elite 8 Entry" subtitle="Week 10 · NFL-style pairings">
-              <BracketMatchCard
-                title="Elite 8: #1 vs Winner (9/8)"
-                game={elite1Game}
+                title="Conf Champ: #1 vs #4"
+                game={confChamp1v4Game}
                 seedTop={1}
-                seedBottom={null}
-                teamTop={teamForSeed(1)}
-                teamBottom={playIn98Winner || 'Winner 9/8'}
-                recordTop={getTeamRecord(teamForSeed(1))}
-                recordBottom={getTeamRecord(playIn98Winner)}
-                compact
-                accentClass="bg-yellow-400"
-              />
-              <Connector delay={160} />
-              <BracketMatchCard
-                title="Elite 8: #5 vs #4"
-                game={elite2Game}
-                seedTop={5}
                 seedBottom={4}
-                teamTop={teamForSeed(5)}
+                teamTop={teamForSeed(1)}
                 teamBottom={teamForSeed(4)}
-                recordTop={getTeamRecord(teamForSeed(5))}
+                recordTop={getTeamRecord(teamForSeed(1))}
                 recordBottom={getTeamRecord(teamForSeed(4))}
                 compact
-                accentClass="bg-yellow-400"
+                accentClass="bg-purple-400"
               />
-              <Connector delay={200} />
+              <Connector delay={100} />
               <BracketMatchCard
-                title="Elite 8: #3 vs #6"
-                game={elite3Game}
-                seedTop={3}
-                seedBottom={6}
-                teamTop={teamForSeed(3)}
-                teamBottom={teamForSeed(6)}
-                recordTop={getTeamRecord(teamForSeed(3))}
-                recordBottom={getTeamRecord(teamForSeed(6))}
-                compact
-                accentClass="bg-yellow-400"
-              />
-              <Connector delay={240} />
-              <BracketMatchCard
-                title="Elite 8: #2 vs Winner (10/7)"
-                game={elite4Game}
+                title="Conf Champ: #2 vs #3"
+                game={confChamp2v3Game}
                 seedTop={2}
-                seedBottom={null}
+                seedBottom={3}
                 teamTop={teamForSeed(2)}
-                teamBottom={playIn107Winner || 'Winner 10/7'}
+                teamBottom={teamForSeed(3)}
                 recordTop={getTeamRecord(teamForSeed(2))}
-                recordBottom={getTeamRecord(playIn107Winner)}
+                recordBottom={getTeamRecord(teamForSeed(3))}
                 compact
-                accentClass="bg-yellow-400"
+                accentClass="bg-purple-400"
               />
             </RoundColumn>
 
-            <RoundColumn title="Final 4" subtitle="Week 11 · Conference Champs">
+            {/* Wildcard */}
+            <RoundColumn title="Wildcard" subtitle="Week 11 · Seeds 5-12">
               <BracketMatchCard
-                title="Final 4"
-                game={finalLeftGame}
+                title="WC: #5 vs #12"
+                game={wildcard5v12Game}
+                seedTop={5}
+                seedBottom={12}
+                teamTop={teamForSeed(5)}
+                teamBottom={teamForSeed(12)}
+                recordTop={getTeamRecord(teamForSeed(5))}
+                recordBottom={getTeamRecord(teamForSeed(12))}
+                compact
+                accentClass="bg-green-400"
+              />
+              <Connector delay={140} />
+              <BracketMatchCard
+                title="WC: #6 vs #11"
+                game={wildcard6v11Game}
+                seedTop={6}
+                seedBottom={11}
+                teamTop={teamForSeed(6)}
+                teamBottom={teamForSeed(11)}
+                recordTop={getTeamRecord(teamForSeed(6))}
+                recordBottom={getTeamRecord(teamForSeed(11))}
+                compact
+                accentClass="bg-green-400"
+              />
+              <Connector delay={180} />
+              <BracketMatchCard
+                title="WC: #7 vs #10"
+                game={wildcard7v10Game}
+                seedTop={7}
+                seedBottom={10}
+                teamTop={teamForSeed(7)}
+                teamBottom={teamForSeed(10)}
+                recordTop={getTeamRecord(teamForSeed(7))}
+                recordBottom={getTeamRecord(teamForSeed(10))}
+                compact
+                accentClass="bg-green-400"
+              />
+              <Connector delay={220} />
+              <BracketMatchCard
+                title="WC: #8 vs #9"
+                game={wildcard8v9Game}
+                seedTop={8}
+                seedBottom={9}
+                teamTop={teamForSeed(8)}
+                teamBottom={teamForSeed(9)}
+                recordTop={getTeamRecord(teamForSeed(8))}
+                recordBottom={getTeamRecord(teamForSeed(9))}
+                compact
+                accentClass="bg-green-400"
+              />
+            </RoundColumn>
+
+            {/* Divisional */}
+            <RoundColumn title="Divisional" subtitle="Week 12 · Playoff Round">
+              <BracketMatchCard
+                title="Divisional"
+                game={divisional1Game}
                 seedTop={null}
                 seedBottom={null}
-                teamTop={elite1Winner || 'Winner #1/(9-8)'}
-                teamBottom={elite2Winner || 'Winner #5/#4'}
-                recordTop={getTeamRecord(elite1Winner)}
-                recordBottom={getTeamRecord(elite2Winner)}
+                teamTop={confChamp1v4Winner || 'Winner #1/#4'}
+                teamBottom={wildcard5v12Winner || 'Winner #5/#12'}
+                recordTop={getTeamRecord(confChamp1v4Winner)}
+                recordBottom={getTeamRecord(wildcard5v12Winner)}
                 compact
                 accentClass="bg-blue-400"
               />
-              <Connector delay={280} />
+              <Connector delay={260} />
               <BracketMatchCard
-                title="Final 4"
-                game={finalRightGame}
+                title="Divisional"
+                game={divisional2Game}
                 seedTop={null}
                 seedBottom={null}
-                teamTop={elite3Winner || 'Winner #3/#6'}
-                teamBottom={elite4Winner || 'Winner #2/(10-7)'}
-                recordTop={getTeamRecord(elite3Winner)}
-                recordBottom={getTeamRecord(elite4Winner)}
+                teamTop={confChamp2v3Winner || 'Winner #2/#3'}
+                teamBottom={wildcard6v11Winner || 'Winner #6/#11'}
+                recordTop={getTeamRecord(confChamp2v3Winner)}
+                recordBottom={getTeamRecord(wildcard6v11Winner)}
+                compact
+                accentClass="bg-blue-400"
+              />
+              <Connector delay={300} />
+              <BracketMatchCard
+                title="Divisional"
+                game={divisional3Game}
+                seedTop={null}
+                seedBottom={null}
+                teamTop={confChamp1v4Winner || 'Winner #1/#4'}
+                teamBottom={wildcard7v10Winner || 'Winner #7/#10'}
+                recordTop={getTeamRecord(confChamp1v4Winner)}
+                recordBottom={getTeamRecord(wildcard7v10Winner)}
+                compact
+                accentClass="bg-blue-400"
+              />
+              <Connector delay={340} />
+              <BracketMatchCard
+                title="Divisional"
+                game={divisional4Game}
+                seedTop={null}
+                seedBottom={null}
+                teamTop={confChamp2v3Winner || 'Winner #2/#3'}
+                teamBottom={wildcard8v9Winner || 'Winner #8/#9'}
+                recordTop={getTeamRecord(confChamp2v3Winner)}
+                recordBottom={getTeamRecord(wildcard8v9Winner)}
                 compact
                 accentClass="bg-blue-400"
               />
             </RoundColumn>
 
-            <RoundColumn title="Championship" subtitle="Week 12 · Trophy Game">
+            {/* Semifinals (Conference Finals) */}
+            <RoundColumn title="Semifinals" subtitle="Week 13 · Conference Finals">
               <BracketMatchCard
-                title="United Flag Bowl"
+                title="Conf Final #1"
+                game={semifinal1Game}
+                seedTop={null}
+                seedBottom={null}
+                teamTop={divisional1Winner || 'Winner Div 1'}
+                teamBottom={divisional2Winner || 'Winner Div 2'}
+                recordTop={getTeamRecord(divisional1Winner)}
+                recordBottom={getTeamRecord(divisional2Winner)}
+                compact
+                accentClass="bg-orange-400"
+              />
+              <Connector delay={380} />
+              <BracketMatchCard
+                title="Conf Final #2"
+                game={semifinal2Game}
+                seedTop={null}
+                seedBottom={null}
+                teamTop={divisional3Winner || 'Winner Div 3'}
+                teamBottom={divisional4Winner || 'Winner Div 4'}
+                recordTop={getTeamRecord(divisional3Winner)}
+                recordBottom={getTeamRecord(divisional4Winner)}
+                compact
+                accentClass="bg-orange-400"
+              />
+            </RoundColumn>
+
+            {/* Championship */}
+            <RoundColumn title="Championship" subtitle="Week 14 · The Final">
+              <BracketMatchCard
+                title="Championship Game"
                 game={championshipGame}
                 seedTop={null}
                 seedBottom={null}
-                teamTop={finalLeftWinner || 'Final 4 Winner'}
-                teamBottom={finalRightWinner || 'Final 4 Winner'}
-                recordTop={getTeamRecord(finalLeftWinner)}
-                recordBottom={getTeamRecord(finalRightWinner)}
+                teamTop={semifinal1Winner || 'Conf Final #1 Winner'}
+                teamBottom={semifinal2Winner || 'Conf Final #2 Winner'}
+                recordTop={getTeamRecord(semifinal1Winner)}
+                recordBottom={getTeamRecord(semifinal2Winner)}
                 variant="final"
                 accentClass="bg-red-400"
               />
