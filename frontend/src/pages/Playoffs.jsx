@@ -529,18 +529,6 @@ const Playoffs = () => {
   const seedsByNumber = new Map((playoffSeeds?.seeds || []).map(s => [s.seed, s]));
   const teamForSeed = (n) => seedsByNumber.get(n)?.team || null;
 
-  // Conference Championships (Week 9) - #1 vs #2 within each conference
-  // Ridge Conference Championship: Ridge #1 vs Ridge #2
-  // Grand Central Conference Championship: GC #1 vs GC #2
-  const ridgeConfChampGame = playoffGames.conference_championships?.find(g => 
-    (g.home_team === playoffSeeds?.ridge?.[0]?.team || g.away_team === playoffSeeds?.ridge?.[0]?.team)
-  ) || null;
-  const gcConfChampGame = playoffGames.conference_championships?.find(g => 
-    (g.home_team === playoffSeeds?.gc?.[0]?.team || g.away_team === playoffSeeds?.gc?.[0]?.team)
-  ) || null;
-  const ridgeConfChampWinner = getWinnerName(ridgeConfChampGame) || (ridgeConfChampGame ? null : 'Ridge Winner');
-  const gcConfChampWinner = getWinnerName(gcConfChampGame) || (gcConfChampGame ? null : 'GC Winner');
-
   // Conference Championships (Week 9) - produces seeds 1-2 (winners) and 3-4 (runners-up)
   const ridgeConfChampGame = playoffGames.conference_championships?.[0] || null;
   const gcConfChampGame = playoffGames.conference_championships?.[1] || null;
