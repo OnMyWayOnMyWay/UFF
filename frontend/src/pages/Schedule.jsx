@@ -16,6 +16,37 @@ const GameCard = ({ game, logoMap, colorMap, navigate, delay }) => {
   const targetRef = useRef({ x: 0, y: 0 });
   const currentRef = useRef({ x: 0, y: 0 });
 
+  // Get team colors
+  const awayColors = getTeamColors(game.away_team, colorMap);
+  const homeColors = getTeamColors(game.home_team, colorMap);
+
+  // Helper to get passing stats from the nested structure
+  const getPassingStats = (teamStats) => {
+    if (!teamStats) return null;
+    
+    // teamStats structure: { PlayerName: { Passing: { Completions, Attempts, etc }, Defense: {...} } }
+    const playerNames = Object.keys(teamStats);
+    if (playerNames.length === 0) return null;
+    
+    for (const playerName of playerNames) {
+      const playerData = teamStats[playerName];
+      if (playerData && playerData.Passing) {
+        return {
+          name: playerName,
+          completions: playerData.Passing.Completions || 0,
+          attempts: playerData.Passing.Attempts || 0,
+          yards: playerData.Passing.Yards || 0,
+          touchdowns: playerData.Passing.Touchdowns || 0,
+          interceptions: playerData.Passing.Interceptions || 0
+        };
+      }
+    }
+    return null;
+  };
+
+  const awayPassingStats = getPassingStats(game.away_stats);
+  const homePassingStats = getPassingStats(game.home_stats);
+
   useEffect(() => {
     let animationFrameId;
     
@@ -99,7 +130,12 @@ const GameCard = ({ game, logoMap, colorMap, navigate, delay }) => {
         onClick={() => navigate(`/week/${game.week}`)}
         style={{
           '--light-x': `${light.x}%`,
-          '--light-y': `${light.y}%`
+          '--light-y': `${light.y}%`,
+          background: `
+            radial-gradient(circle at top left, ${awayColors.primary}35, transparent 45%),
+            radial-gradient(circle at top right, ${homeColors.primary}35, transparent 45%),
+            rgba(12, 12, 12, 0.7)
+          `
         }}
       >
         {/* Light streak effect */}
@@ -147,7 +183,7 @@ const GameCard = ({ game, logoMap, colorMap, navigate, delay }) => {
         {/* Bottom Section - Player Stats */}
         <div className="card-bottom layer-shallow">
           {/* Away QB Stats */}
-          {game.away_stats && Object.keys(game.away_stats).length > 0 && (
+          {awayPassingStats && (
             <div className="player-stats magnet">
               <TeamLogoAvatar 
                 teamName={game.away_team} 
@@ -155,23 +191,16 @@ const GameCard = ({ game, logoMap, colorMap, navigate, delay }) => {
                 colorMap={colorMap} 
                 size="sm" 
               />
-              <div className="player-name">{Object.keys(game.away_stats)[0]}</div>
-              {Object.values(game.away_stats)[0] && typeof Object.values(game.away_stats)[0] === 'object' && (
-                <>
-                  <div className="stat-line">
-                    {Object.values(game.away_stats)[0].Completions || 0}–{Object.values(game.away_stats)[0].Attempts || 0}
-                  </div>
-                  <div className="stat-line">{Object.values(game.away_stats)[0].Yards || 0} YDS</div>
-                  <div className="stat-line">
-                    {Object.values(game.away_stats)[0].Touchdowns || 0} TD, {Object.values(game.away_stats)[0].Interceptions || 0} INT
-                  </div>
-                </>
-              )}
+              <div className="player-name">{awayPassingStats.name}</div>
+              <div className="stat-line">passing</div>
+              <div className="stat-line">{awayPassingStats.completions}–{awayPassingStats.attempts}</div>
+              <div className="stat-line">{awayPassingStats.yards} YDS</div>
+              <div className="stat-line">{awayPassingStats.touchdowns} TD, {awayPassingStats.interceptions} INT</div>
             </div>
           )}
 
           {/* Home QB Stats */}
-          {game.home_stats && Object.keys(game.home_stats).length > 0 && (
+          {homePassingStats && (
             <div className="player-stats magnet">
               <TeamLogoAvatar 
                 teamName={game.home_team} 
@@ -179,18 +208,11 @@ const GameCard = ({ game, logoMap, colorMap, navigate, delay }) => {
                 colorMap={colorMap} 
                 size="sm" 
               />
-              <div className="player-name">{Object.keys(game.home_stats)[0]}</div>
-              {Object.values(game.home_stats)[0] && typeof Object.values(game.home_stats)[0] === 'object' && (
-                <>
-                  <div className="stat-line">
-                    {Object.values(game.home_stats)[0].Completions || 0}–{Object.values(game.home_stats)[0].Attempts || 0}
-                  </div>
-                  <div className="stat-line">{Object.values(game.home_stats)[0].Yards || 0} YDS</div>
-                  <div className="stat-line">
-                    {Object.values(game.home_stats)[0].Touchdowns || 0} TD, {Object.values(game.home_stats)[0].Interceptions || 0} INT
-                  </div>
-                </>
-              )}
+              <div className="player-name">{homePassingStats.name}</div>
+              <div className="stat-line">passing</div>
+              <div className="stat-line">{homePassingStats.completions}–{homePassingStats.attempts}</div>
+              <div className="stat-line">{homePassingStats.yards} YDS</div>
+              <div className="stat-line">{homePassingStats.touchdowns} TD, {homePassingStats.interceptions} INT</div>
             </div>
           )}
         </div>
