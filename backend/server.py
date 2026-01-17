@@ -600,7 +600,7 @@ async def get_playoff_seeds(conference: str):
         wildcards = [t for t in standings if not t.get('division_winner')]
         wildcards.sort(key=lambda x: (x['win_pct'], x['point_diff']), reverse=True)
         
-        # Seed division winners 1-4 by win percentage (within conference)
+        # Seed division winners first (typically 2 per conference)
         division_winners.sort(key=lambda x: (x['win_pct'], x['point_diff']), reverse=True)
         seeds = {}
         for i, team in enumerate(division_winners, 1):
@@ -608,11 +608,18 @@ async def get_playoff_seeds(conference: str):
             team['conference'] = conference
             seeds[i] = team
         
-        # Seed wildcards 5-12 by win percentage (within conference)
-        for i, team in enumerate(wildcards[:8], 5):
-            team['seed'] = i
+        # Seed wildcards (remaining teams up to 5 per conference, for 10 total)
+        # If we have 4 division winners across both conferences, add 3 wildcards per conf
+        # If we have fewer division winners, fill out to 5 teams per conference
+        wildcards.sort(key=lambda x: (x['win_pct'], x['point_diff']), reverse=True)
+        next_seed = len(seeds) + 1
+        max_per_conference = 5  # Max 5 teams per conference for 10 total
+        teams_needed = max_per_conference - len([t for t in division_winners if t.get('conference') == conference])
+        
+        for i, team in enumerate(wildcards[:teams_needed]):
+            team['seed'] = next_seed + i
             team['conference'] = conference
-            seeds[i] = team
+            seeds[next_seed + i] = team
         
         # Convert seeds dict to array for frontend compatibility
         seeds_array = [seeds[i] for i in sorted(seeds.keys())]
@@ -621,7 +628,7 @@ async def get_playoff_seeds(conference: str):
             'conference': conference,
             'seeds': seeds_array,
             'division_winners': [t for t in division_winners],
-            'wildcards': wildcards[:8]
+            'wildcards': wildcards[:teams_needed]
         }
         
     except Exception as e:
