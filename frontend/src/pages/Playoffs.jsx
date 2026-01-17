@@ -40,56 +40,63 @@ const Playoffs = () => {
 
   const fetchData = async () => {
     try {
-      const [gamesRes, seedsRes, assignRes, gcStandingsRes, ridgeStandingsRes] = await Promise.all([
+      // Fetch playoff seeds for both conferences
+      const [gamesRes, gcSeedsRes, ridgeSeedsRes, assignRes, playoffGamesRes] = await Promise.all([
         axios.get(`${API}/games`),
-        axios.get(`${API}/playoffs/seeds`),
+        axios.get(`${API}/playoffs/seeds/Grand Central`),
+        axios.get(`${API}/playoffs/seeds/Ridge`),
         axios.get(`${API}/league/assignments`),
+        axios.get(`${API}/playoffs/games`)
+      ]);
+      
+      const gamesData = Array.isArray(gamesRes.data) ? gamesRes.data : (gamesRes.data.games || []);
+      const gcSeeds = gcSeedsRes.data?.seeds || {};
+      const ridgeSeeds = ridgeSeedsRes.data?.seeds || {};
+      const assignmentsData = assignRes.data || {};
+      const playoffGamesData = Array.isArray(playoffGamesRes.data) ? playoffGamesRes.data : [];
+      
+      // Combine both conferences' seeds
+      const combinedSeeds = { ...gcSeeds, ...ridgeSeeds };
+      
+      setGames(gamesData);
+      setPlayoffSeeds({
+        seeds: combinedSeeds,
+        gc: gcSeeds,
+        ridge: ridgeSeeds
+      });
+      setAssignments(assignmentsData);
+      
+      // Organize playoff games by round
+      const wcGames = playoffGamesData.filter(g => g.playoff_round === 'wildcard');
+      const divGames = playoffGamesData.filter(g => g.playoff_round === 'divisional');
+      const confChampGames = playoffGamesData.filter(g => g.playoff_round === 'conference_championship');
+      const champGames = playoffGamesData.filter(g => g.playoff_round === 'championship');
+      
+      setPlayoffGames({
+        wildcard: wcGames,
+        divisional: divGames,
+        conference_championship: confChampGames,
+        championship: champGames.length > 0 ? champGames[0] : null
+      });
+      
+      // Also get regular season standings for reference
+      const [gcStandingsRes, ridgeStandingsRes] = await Promise.all([
         axios.get(`${API}/teams/standings/conference/Grand Central`),
         axios.get(`${API}/teams/standings/conference/Ridge`)
       ]);
       
-      const gamesData = Array.isArray(gamesRes.data) ? gamesRes.data : (gamesRes.data.games || []);
-      const seedsData = seedsRes.data || {};
-      const assignmentsData = assignRes.data || {};
       const gcStandings = Array.isArray(gcStandingsRes.data) ? gcStandingsRes.data : [];
       const ridgeStandings = Array.isArray(ridgeStandingsRes.data) ? ridgeStandingsRes.data : [];
       
-      setGames(gamesData);
-      setPlayoffSeeds(seedsData);
       setStandings([...gcStandings, ...ridgeStandings].sort((a, b) => {
         if (b.wins !== a.wins) return b.wins - a.wins;
         return (b.point_diff || 0) - (a.point_diff || 0);
       }));
-      setAssignments(assignmentsData);
-      organizePlayoffGames(gamesData);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const organizePlayoffGames = (allGames) => {
-    // 5-round playoff bracket (in correct order):
-    // Week 10: Conference Championships (2 games - 1v4, 2v3)
-    // Week 11: Wildcard (4 games - 5v12, 6v11, 7v10, 8v9)
-    // Week 12: Divisional (4 games - winners advance)
-    // Week 13: Semifinals (2 games - conference finals)
-    // Week 14: Championship (1 game)
-    
-    const confChamps = allGames.filter(g => g.week === 10);
-    const wildcard = allGames.filter(g => g.week === 11);
-    const divisional = allGames.filter(g => g.week === 12);
-    const semifinals = allGames.filter(g => g.week === 13);
-    const championship = allGames.find(g => g.week === 14);
-
-    setPlayoffGames({
-      conference_championships: confChamps,
-      wildcard: wildcard,
-      divisional: divisional,
-      semifinals: semifinals,
-      championship: championship
-    });
   };
 
   const normalizeName = (name = '') => name.toLowerCase().trim();

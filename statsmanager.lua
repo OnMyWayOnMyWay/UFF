@@ -97,6 +97,7 @@ local submissionData = {
 	away_score = 0,
 	player_of_game = "",
 	game_date = nil,  -- Optional: YYYY-MM-DD format, auto-generated if nil
+	is_playoff = false,  -- Set to true for playoff games (weeks 9-13)
 	home_stats = {},  -- Format: {PlayerUsername: {Category: {Stat: Value}}}
 	away_stats = {}   -- Format: {PlayerUsername: {Category: {Stat: Value}}}
 }
@@ -495,9 +496,15 @@ function StatsManager:SetScore(score, team)
 	end
 end
 
---- Set week number
+--- Set week number (automatically detects playoff weeks 9-13)
 function StatsManager:SetWeek(weekNumber)
 	submissionData.week = weekNumber
+	-- Automatically set is_playoff based on week number
+	if weekNumber >= 9 and weekNumber <= 13 then
+		submissionData.is_playoff = true
+	else
+		submissionData.is_playoff = false
+	end
 end
 
 --- Set player of the game (required for submission)
@@ -508,6 +515,16 @@ end
 --- Set game date (optional, format: "YYYY-MM-DD")
 function StatsManager:SetGameDate(dateString)
 	submissionData.game_date = dateString
+end
+
+--- Mark game as playoff (use with weeks 9-13)
+-- Week 9: Conference Championships (1v4, 2v3)
+-- Week 10: Wild Card (5v12, 6v11, 7v10, 8v9)
+-- Week 11: Divisional Round
+-- Week 12: Semifinals/Conference Finals
+-- Week 13: Championship
+function StatsManager:SetPlayoffGame(isPlayoff)
+	submissionData.is_playoff = isPlayoff or false
 end
 
 --- Get current API URL (for debugging)
@@ -603,7 +620,7 @@ end
 
 --- Reset all stats
 function StatsManager:Reset()
-	-- Reset submission data (preserve week number)
+	-- Reset submission data (preserve week number and playoff info)
 	submissionData = {
 		week = submissionData.week,
 		home_team = "Home",
@@ -612,6 +629,8 @@ function StatsManager:Reset()
 		away_score = 0,
 		player_of_game = "",
 		game_date = nil,
+		is_playoff = submissionData.is_playoff,
+		playoff_round = submissionData.playoff_round,
 		home_stats = {},
 		away_stats = {}
 	}
@@ -676,9 +695,15 @@ function StatsManager:Submit()
 	rebuildSubmissionData()
 
 	-- Validate submission data before encoding
-	if not submissionData.week or submissionData.week < 1 then
-		warn("[StatsManager] Invalid week number:", submissionData.week)
+	if not submissionData.week or submissionData.week < 1 or submissionData.week > 14 then
+		warn("[StatsManager] Invalid week number:", submissionData.week, "(must be 1-14)")
 		return false, "Invalid week number"
+	end
+
+	-- Validate playoff week range (weeks 9-13 for playoffs)
+	if submissionData.is_playoff and (submissionData.week < 9 or submissionData.week > 13) then
+		warn("[StatsManager] Playoff games must be in weeks 9-13. Current week:", submissionData.week)
+		return false, "Playoff game in invalid week"
 	end
 
 	-- Validate teams have names
@@ -739,6 +764,7 @@ function StatsManager:Submit()
 		home_score = submissionData.home_score,
 		away_score = submissionData.away_score,
 		player_of_game = submissionData.player_of_game,
+		is_playoff = submissionData.is_playoff,
 		home_stats = homeStatsDict,
 		away_stats = awayStatsDict
 	}

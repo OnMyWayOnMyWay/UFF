@@ -57,6 +57,7 @@ class GameData(BaseModel):
     away_stats: Dict[str, Dict[str, Dict[str, Any]]]  # Same structure
     player_of_game: str
     game_date: Optional[str] = None
+    is_playoff: Optional[bool] = False
 
 class Game(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -71,6 +72,7 @@ class Game(BaseModel):
     away_stats: Dict[str, Any]
     player_of_game: str
     game_date: str
+    is_playoff: bool = False
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class AdminUser(BaseModel):
@@ -426,8 +428,16 @@ def transform_player_stats(player_stats: Dict[str, Dict[str, Dict[str, Any]]], t
 
 @api_router.post("/game", response_model=Game)
 async def submit_game(game_data: GameData):
-    """Endpoint for Roblox to submit game stats"""
+    """Endpoint for Roblox to submit game stats (regular season or playoffs)"""
     try:
+        # Validate week number (1-14: 8 regular season + 5 playoff weeks)
+        if game_data.week < 1 or game_data.week > 14:
+            raise HTTPException(status_code=400, detail="Week must be between 1 and 14")
+        
+        # Validate playoff week range (weeks 9-13 for playoffs)
+        if game_data.is_playoff and (game_data.week < 9 or game_data.week > 13):
+            raise HTTPException(status_code=400, detail="Playoff games must be in weeks 9-13")
+        
         # Transform stats from player-organized to category-organized format
         # Include team name so we can track player history
         home_stats_transformed = transform_player_stats(game_data.home_stats, game_data.home_team)
@@ -443,7 +453,8 @@ async def submit_game(game_data: GameData):
             home_stats=home_stats_transformed,
             away_stats=away_stats_transformed,
             player_of_game=game_data.player_of_game,
-            game_date=game_data.game_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            game_date=game_data.game_date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            is_playoff=game_data.is_playoff or False
         )
         
         # Convert to dict and serialize datetime to ISO string for MongoDB
@@ -498,6 +509,163 @@ async def get_available_weeks():
     ]
     weeks = await db.games.aggregate(pipeline).to_list(100)
     return {"weeks": [w["_id"] for w in weeks]}
+
+
+@api_router.get("/playoffs/seeds/{conference}")
+async def get_playoff_seeds(conference: str):
+    """
+    Get playoff seeding for a conference based on regular season standings.
+    Returns division winners (seeds 1-4) and wildcard teams (seeds 5-12).
+    """
+    try:
+        # Get games from regular season weeks only (1-8)
+        games = await db.games.find(
+            {"week": {"$lte": 8}, "is_playoff": {"$ne": True}},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        assignments = await _load_assignments()
+        
+        # Filter teams by conference
+        conf_teams = {team: info for team, info in assignments.items() if info.get('conference') == conference}
+        
+        # Initialize all conference teams with zero records
+        team_records = {}
+        for team in conf_teams:
+            team_records[team] = {
+                'wins': 0,
+                'losses': 0,
+                'points_for': 0,
+                'points_against': 0,
+                'division': conf_teams[team].get('division', 'Unknown')
+            }
+        
+        # Update records from games
+        for game in games:
+            home = _normalize_team_name(game['home_team'], assignments)
+            away = _normalize_team_name(game['away_team'], assignments)
+            
+            if home in team_records:
+                team_records[home]['points_for'] += game['home_score']
+                team_records[home]['points_against'] += game['away_score']
+                if game['home_score'] > game['away_score']:
+                    team_records[home]['wins'] += 1
+                else:
+                    team_records[home]['losses'] += 1
+                    
+            if away in team_records:
+                team_records[away]['points_for'] += game['away_score']
+                team_records[away]['points_against'] += game['home_score']
+                if game['away_score'] > game['home_score']:
+                    team_records[away]['wins'] += 1
+                else:
+                    team_records[away]['losses'] += 1
+        
+        # Convert to list with calculated fields
+        standings = []
+        for team, record in team_records.items():
+            games_played = record['wins'] + record['losses']
+            win_pct = record['wins'] / games_played if games_played > 0 else 0
+            standings.append({
+                'team': team,
+                'wins': record['wins'],
+                'losses': record['losses'],
+                'win_pct': round(win_pct, 3),
+                'points_for': record['points_for'],
+                'points_against': record['points_against'],
+                'point_diff': record['points_for'] - record['points_against'],
+                'division': record['division']
+            })
+        
+        # Group by division to find division winners
+        divisions = {}
+        for team_data in standings:
+            div = team_data['division']
+            if div not in divisions:
+                divisions[div] = []
+            divisions[div].append(team_data)
+        
+        # Get division winners (best win % in each division)
+        division_winners = []
+        for division, teams in divisions.items():
+            teams.sort(key=lambda x: (x['win_pct'], x['point_diff']), reverse=True)
+            teams[0]['division_winner'] = True
+            division_winners.append(teams[0])
+        
+        # Get wildcard teams (best remaining win % in conference)
+        wildcards = [t for t in standings if not t.get('division_winner')]
+        wildcards.sort(key=lambda x: (x['win_pct'], x['point_diff']), reverse=True)
+        
+        # Seed division winners 1-4 by win percentage
+        division_winners.sort(key=lambda x: (x['win_pct'], x['point_diff']), reverse=True)
+        seeds = {}
+        for i, team in enumerate(division_winners, 1):
+            team['seed'] = i
+            seeds[i] = team
+        
+        # Seed wildcards 5-12 by win percentage
+        for i, team in enumerate(wildcards[:8], 5):
+            team['seed'] = i
+            seeds[i] = team
+        
+        return {
+            'conference': conference,
+            'seeds': seeds,
+            'division_winners': [t for t in division_winners],
+            'wildcards': wildcards[:8]
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting playoff seeds: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/playoffs/games")
+async def get_playoff_games():
+    """Get all playoff games"""
+    try:
+        games = await db.games.find({"is_playoff": True}, {"_id": 0}).to_list(1000)
+        
+        # Convert ISO string timestamps back to datetime objects
+        for game in games:
+            if isinstance(game['timestamp'], str):
+                game['timestamp'] = datetime.fromisoformat(game['timestamp'])
+        
+        return games
+        
+    except Exception as e:
+        logger.error(f"Error getting playoff games: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/playoffs/games/{playoff_round}")
+async def get_playoff_games_by_round(playoff_round: str):
+    """Get playoff games by round"""
+    try:
+        valid_rounds = ["wildcard", "divisional", "conference_championship", "championship"]
+        if playoff_round not in valid_rounds:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid playoff_round. Must be one of: {', '.join(valid_rounds)}"
+            )
+        
+        games = await db.games.find(
+            {"is_playoff": True, "playoff_round": playoff_round},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        # Convert ISO string timestamps back to datetime objects
+        for game in games:
+            if isinstance(game['timestamp'], str):
+                game['timestamp'] = datetime.fromisoformat(game['timestamp'])
+        
+        return games
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting playoff games by round: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/admin/send-to-discord")
