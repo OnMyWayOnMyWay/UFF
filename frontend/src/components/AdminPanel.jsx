@@ -3715,6 +3715,77 @@ const AdminPanel = ({ isOpen, onClose }) => {
                   )}
                 </div>
               )}
+
+              {/* Playoffs Editor Tab */}
+              {activeTab === 'playoffs' && (
+                <div className="space-y-6">
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
+                    <p className="text-amber-400 text-sm">
+                      <strong>Playoffs Editor:</strong> Drag and drop teams to create custom playoff matchups. Teams are seeded based on regular season standings.
+                    </p>
+                  </div>
+
+                  {playoffLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Seeded Teams Pool */}
+                      <div className="bg-[#1a1a1b] border border-gray-800 rounded-lg p-6">
+                        <h3 className="text-white font-semibold mb-4 flex items-center">
+                          <Trophy className="w-5 h-5 mr-2 text-amber-400" />
+                          Playoff Seeds
+                        </h3>
+                        <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                          {playoffSeeds.map((seed) => (
+                            <div
+                              key={seed.seed}
+                              draggable
+                              onDragStart={(e) => {
+                                setDraggedTeam(seed.team);
+                                e.dataTransfer.effectAllowed = 'move';
+                              }}
+                              onDragEnd={() => setDraggedTeam(null)}
+                              className={`playoff-seed-item bg-[#2a2a2b] border border-gray-700 rounded-lg p-4 cursor-grab active:cursor-grabbing hover:border-amber-500 transition-all ${
+                                draggedTeam === seed.team ? 'dragging opacity-50 scale-95' : ''
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <div className="seed-badge text-white text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center bg-amber-500/20">
+                                    #{seed.seed}
+                                  </div>
+                                  <div>
+                                    <div className="text-white font-semibold">{seed.team}</div>
+                                    <div className="text-gray-400 text-xs">
+                                      {seed.wins}-{seed.losses}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-gray-400 text-xs">
+                                  {seed.point_diff >= 0 ? '+' : ''}{seed.point_diff || 0}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Matchups Display */}
+                      <div className="space-y-4">
+                        <h3 className="text-white font-semibold flex items-center">
+                          <Calendar className="w-5 h-5 mr-2 text-amber-400" />
+                          Playoff Matchups
+                        </h3>
+                        <div className="bg-[#1a1a1b] border border-gray-800 rounded-lg p-4 text-center">
+                          <p className="text-gray-400 text-sm">Playoff bracket interface coming soon</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}
