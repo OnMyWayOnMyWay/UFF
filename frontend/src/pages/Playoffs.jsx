@@ -11,6 +11,7 @@ const Playoffs = () => {
   const [games, setGames] = useState([]);
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [playoffSeeds, setPlayoffSeeds] = useState(null);
   const [logoMap, setLogoMap] = useState({});
   const [colorMap, setColorMap] = useState({});
@@ -89,12 +90,15 @@ const Playoffs = () => {
       const wcGames = playoffGamesData.filter(g => g.playoff_round === 'wildcard');
       const divGames = playoffGamesData.filter(g => g.playoff_round === 'divisional');
       const confChampGames = playoffGamesData.filter(g => g.playoff_round === 'conference_championship');
+      // Semis sometimes labeled singular; accept both spellings
+      const semiGames = playoffGamesData.filter(g => g.playoff_round === 'semifinals' || g.playoff_round === 'semifinal');
       const champGames = playoffGamesData.filter(g => g.playoff_round === 'championship');
       
       setPlayoffGames({
         wildcard: wcGames,
         divisional: divGames,
-        conference_championship: confChampGames,
+        conference_championships: confChampGames,
+        semifinals: semiGames,
         championship: champGames.length > 0 ? champGames[0] : null
       });
       
@@ -112,7 +116,10 @@ const Playoffs = () => {
         return (b.point_diff || 0) - (a.point_diff || 0);
       }));
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching playoff data:', error);
+      setError(error.message || 'Failed to load playoff data');
+      // Still set loading to false even on error
+      // This allows the fallback UI to show
     } finally {
       setLoading(false);
     }
@@ -505,6 +512,20 @@ const Playoffs = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen p-6 flex items-center justify-center">
+        <div className="max-w-md">
+          <div className="glass-card p-6 rounded-xl border border-red-500/30 bg-red-500/10">
+            <h2 className="text-red-400 font-bold mb-2">Error Loading Playoffs</h2>
+            <p className="text-gray-400 text-sm mb-4">{error}</p>
+            <p className="text-gray-500 text-xs">Please ensure the backend server is running and connected to MongoDB.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const seedsByNumber = new Map((playoffSeeds?.seeds || []).map(s => [s.seed, s]));
   const teamForSeed = (n) => seedsByNumber.get(n)?.team || null;
 
@@ -809,7 +830,7 @@ const Playoffs = () => {
                 seedBottom={null}
                 teamTop={gcConfChampWinner || 'GC Winner'}
                 teamBottom={wildcard8v9Winner || 'Winner #8/#9'}
-                recordTop={getTeamRecord(confChamp2v3Winner)}
+                recordTop={getTeamRecord(gcConfChampWinner)}
                 recordBottom={getTeamRecord(wildcard8v9Winner)}
                 compact
                 accentClass="bg-blue-400"
@@ -864,9 +885,20 @@ const Playoffs = () => {
           </div>
         </>
       ) : (
-        <div className="max-w-7xl mx-auto mb-8">
-          <div className="glass-card p-6 rounded-xl border border-white/10">
-            <p className="text-gray-400 text-center">No playoff seeds available yet. Check back after regular season concludes.</p>
+        <div className="max-w-2xl mx-auto mb-8">
+          <div className="glass-card p-8 rounded-xl border border-white/10">
+            <div className="text-center">
+              <Trophy className="w-12 h-12 text-gray-500 mx-auto mb-4 opacity-50" />
+              <h2 className="text-xl font-bold text-gray-300 mb-2">No Playoff Seeds Available</h2>
+              <p className="text-gray-400 text-sm mb-4">
+                Playoff bracket will appear after the regular season concludes and seeds are determined.
+              </p>
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4 text-left text-sm text-gray-400 space-y-2">
+                <p><strong className="text-white">Regular Season:</strong> Weeks 1-8</p>
+                <p><strong className="text-white">Playoffs:</strong> Weeks 9-13</p>
+                <p className="text-xs mt-4">Teams and standings will be calculated once games are submitted for the regular season.</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
