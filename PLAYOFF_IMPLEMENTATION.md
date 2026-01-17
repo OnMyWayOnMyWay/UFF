@@ -100,8 +100,8 @@ Final Seeds:
 
 | Round | Week | Teams | Matchups | Format |
 |-------|------|-------|----------|--------|
-| Conference Championships | 9 | 1,2,3,4 per conf | 1v4, 2v3 (each conf) | 4 games, single elimination |
-| Wild Card | 10 | 5,6,7,8,9,10,11,12 | 5v12, 6v11, 7v10, 8v9 | 4 games, single elimination |
+| Conference Championships | 9 | Top 2 per conf | Ridge: #1v#2, GC: #1v#2 | **MUST COMPLETE FIRST** - 2 games, determines seeding |
+| Wild Card | 10 | Seeds 5-12 | 5v12, 6v11, 7v10, 8v9 | Played AFTER Conf Champs complete - 4 games |
 | Divisional | 11 | CC winners vs WC winners | Winners advance | 4 games, single elimination |
 | Semifinals/Conference Finals | 12 | Divisional winners | Winners advance | 2 games, single elimination |
 | Championship | 13 | Conference champions | GC Champ vs Ridge Champ | 1 game, determines champion |

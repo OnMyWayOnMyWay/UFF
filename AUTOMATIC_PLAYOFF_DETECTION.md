@@ -41,8 +41,8 @@ When you call `SetWeek()`:
 - #8 POR (4-4) vs #9 RIC (4-4) - **Week 10** (Wild Card)
 
 **CONFERENCE CHAMPIONSHIPS:**
-- #2 COL (7-1) vs #4 EVE (5-3) - **Week 9** (Conference Championship)
-- #1 VIC (8-0) vs #3 NY (7-1) - **Week 9** (Conference Championship)
+- Ridge #1 (8-0) vs Ridge #2 (7-1) - **Week 9** (Ridge Conference Championship)
+- GC #1 (8-0) vs GC #2 (7-1) - **Week 9** (Grand Central Conference Championship)
 
 ```lua
 -- Submit Wild Card games

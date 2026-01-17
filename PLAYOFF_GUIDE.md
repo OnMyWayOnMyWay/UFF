@@ -28,11 +28,15 @@ At the end of the regular season, teams are seeded based on their win-loss recor
 ### Playoff Rounds
 
 #### Week 9: Conference Championships (Single Elimination)
-- **#1 seed** hosts **#4 seed** (better seed plays at home)
-- **#2 seed** hosts **#3 seed**
-- Both games per conference
+- **Ridge Conference Championship**: Ridge #1 seed vs Ridge #2 seed
+- **Grand Central Conference Championship**: Grand Central #1 seed vs Grand Central #2 seed
+- **⚠️ MUST COMPLETE BEFORE WILD CARD ROUND**
+- Determines playoff seeding and bracket structure
+- **Format**: 2 games (one per conference)
 
-**Winners advance to Week 10 Wildcard Round**
+**These games must be played and completed FIRST before Week 10 Wild Card games begin.**
+
+**Winners advance to Week 11 Divisional Round**
 
 #### Week 10: Wild Card Round (Single Elimination)
 - **#5 seed** hosts **#12 seed** (better seed plays at home)
@@ -96,11 +100,13 @@ StatsManager:Submit()
 
 Just set the week number - the system automatically marks it as a playoff game!
 
-- **Week 9**: Conference Championships (Seeds 1v4, 2v3)
-- **Week 10**: Wild Card Round (Seeds 5v12, 6v11, 7v10, 8v9)
-- **Week 11**: Divisional Round (CC winners vs WC winners)
+- **Week 9**: Conference Championships (Ridge #1 vs #2, GC #1 vs #2) - **PLAY FIRST**
+- **Week 10**: Wild Card Round (Seeds 5v12, 6v11, 7v10, 8v9) - **After Week 9 completes**
+- **Week 11**: Divisional Round (Conf Champ winners vs WC winners)
 - **Week 12**: Semifinals / Conference Finals
 - **Week 13**: Championship Game
+
+**⚠️ IMPORTANT**: Conference Championships (Week 9) must be completed before Wild Card games (Week 10) begin.
 
 **Note**: Weeks 9-13 are automatically flagged as playoff games. Weeks 1-8 are automatically regular season.
 

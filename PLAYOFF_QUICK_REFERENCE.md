@@ -4,7 +4,7 @@
 
 | Round | Week | Matchups | Format |
 |-------|------|----------|--------|
-| **Conference Championships** | 9 | #1v4 & #2v3 (each conference) | Single elimination |
+| **Conference Championships** | 9 | Ridge: #1v#2, Grand Central: #1v#2 | Single elimination (2 games total) |
 | **Wild Card** | 10 | #5v12, #6v11, #7v10, #8v9 | Single elimination |
 | **Divisional Round** | 11 | CC winners vs WC winners | Single elimination |
 | **Semifinals/Conference Finals** | 12 | Winners advance | Single elimination |

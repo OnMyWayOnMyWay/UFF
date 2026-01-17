@@ -30,7 +30,28 @@ SEEDING (by win %):
 ## Playoff Bracket Progression
 
 ```
-WEEK 9: WILD CARD ROUND (4 games)
+WEEK 9: CONFERENCE CHAMPIONSHIPS (2 games) ⚠️ MUST COMPLETE FIRST
+═════════════════════════════════════════════════════════════════
+
+RIDGE CONFERENCE CHAMPIONSHIP
+      Ridge #1 vs Ridge #2  ┐
+              ↓              │
+      RIDGE WINNER           ├─→ Advances to Divisional
+                             │
+
+GRAND CENTRAL CONFERENCE CHAMPIONSHIP
+      GC #1 vs GC #2         ┐
+              ↓              │
+      GC WINNER              ├─→ Advances to Divisional
+                             │
+
+⚠️ THESE GAMES MUST COMPLETE BEFORE WEEK 10 WILD CARD BEGINS
+
+
+WEEK 10: WILD CARD ROUND (4 games) - Played AFTER Week 9 completes
+═════════════════════════════════════════════════════════════════
+
+WEEK 10: WILD CARD ROUND (4 games)
 ═════════════════════════════════════════════════════════════════
 
       #5 vs #12  ┐
@@ -54,46 +75,38 @@ WEEK 9: WILD CARD ROUND (4 games)
     (or #8)      ┘
 
 
-WEEK 10: DIVISIONAL ROUND (4 games)
+WEEK 11: DIVISIONAL ROUND (4 games)
 ═════════════════════════════════════════════════════════════════
 
-#1 (bye) ┐
-         ├─→ #1 vs WC#4  ┐
-WC#4     ┘              │
-                        ├─→ To Conference Championship
-#2 (bye) ┐              │
-         ├─→ #2 vs WC#3  ┐
-WC#3     ┘              ┘
-
-#3 (bye) ┐
-         ├─→ #3 vs WC#2  ┐
-WC#2     ┘              │
-                        ├─→ To Conference Championship
-#4 (bye) ┐              │
-         ├─→ #4 vs WC#1  ┐
-WC#1     ┘              ┘
+Ridge Winner ┐
+             ├─→ vs WC Winner  ┐
+WC Winner    ┘                 │
+                               ├─→ To Semifinals
+GC Winner    ┐                 │
+             ├─→ vs WC Winner  ┐
+WC Winner    ┘                 ┘
 
 
-WEEK 11: CONFERENCE CHAMPIONSHIP (2 games - one per conference)
+WEEK 12: SEMIFINALS / CONFERENCE FINALS (2 games)
 ═════════════════════════════════════════════════════════════════
 
 [Divisional Winner #1]  ┐
-                        ├─→ GRAND CENTRAL CHAMPION  ┐
-[Divisional Winner #2]  ┘                            │
-                                                     │
-[Divisional Winner #3]  ┐                            ├─→ To Championship
-                        ├─→ RIDGE CHAMPION          │
-[Divisional Winner #4]  ┘                            ┘
+                        ├─→ CONFERENCE CHAMPION  ┐
+[Divisional Winner #2]  ┘                        │
+                                                 │
+[Divisional Winner #3]  ┐                        ├─→ To Championship
+                        ├─→ CONFERENCE CHAMPION  │
+[Divisional Winner #4]  ┘                        ┘
 
 
-WEEK 12: CHAMPIONSHIP GAME (1 game)
+WEEK 13: CHAMPIONSHIP GAME (1 game)
 ═════════════════════════════════════════════════════════════════
 
     🏆 UFF LEAGUE CHAMPION 🏆
 
-[GC Champion] ──┐
-                ├─→ CHAMPIONSHIP WINNER = UFF CHAMPION
-[Ridge Champ] ──┘
+[Conference Champion] ──┐
+                        ├─→ CHAMPIONSHIP WINNER = UFF CHAMPION
+[Conference Champion] ──┘
 
 
 ```

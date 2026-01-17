@@ -11,26 +11,29 @@
 	- Teams are assigned to conferences and divisions
 	
 	SEEDING (After Week 8):
-	- Division winners (best win % in each division) = Seeds 1-4
-	- Wild card teams (best remaining win % in conference) = Seeds 5-12
-	- Seeds 1-4 get first-round bye
+	- Top 2 teams per conference compete in Conference Championships
 	- Seeding is per conference
 	
 	PLAYOFF STRUCTURE:
-	Week 9:  Wild Card Round   (5v12, 6v11, 7v10 per conference)
-	Week 10: Divisional Round  (1vWC#3, WC#1vWC#2)
-	Week 11: Conference Championship (winners face each other)
-	Week 12: Super Bowl / Championship (conference winners face each other)
+	Week 9:  Conference Championships (Ridge #1 vs #2, GC #1 vs #2) ⚠️ MUST COMPLETE FIRST
+	Week 10: Wild Card Round   (5v12, 6v11, 7v10, 8v9) - Played AFTER Week 9
+	Week 11: Divisional Round  (Conf Champ winners vs WC winners)
+	Week 12: Semifinals / Conference Finals
+	Week 13: Championship (conference champions face each other)
+	
+	⚠️ IMPORTANT: Conference Championship games (Week 9) must be completed
+	before Wild Card games (Week 10) can begin, as results affect bracket structure.
 ]]
 
 local PlayoffManager = {}
 
 -- Configuration
 local REGULAR_SEASON_WEEKS = 8
-local WILD_CARD_WEEK = 9
-local DIVISIONAL_WEEK = 10
-local CONFERENCE_CHAMPIONSHIP_WEEK = 11
-local CHAMPIONSHIP_WEEK = 12
+local CONFERENCE_CHAMPIONSHIP_WEEK = 9  -- Ridge #1 vs #2, GC #1 vs #2
+local WILD_CARD_WEEK = 10               -- Seeds 5-12 compete
+local DIVISIONAL_WEEK = 11              -- Conf Champ winners vs WC winners
+local SEMIFINALS_WEEK = 12              -- Conference Finals
+local CHAMPIONSHIP_WEEK = 13            -- Final game
 
 --============================================================================--
 --                         SEEDING LOGIC                                      --

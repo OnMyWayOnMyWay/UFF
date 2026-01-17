@@ -57,7 +57,8 @@ Your UFF playoff system has been **fully implemented and corrected** to match yo
 Perfectly implemented with weeks 9-13:
 
 ```
-Week 9:  Conference Championships (1v4, 2v3 per conference)
+Week 9:  Conference Championships (Ridge #1v#2, Grand Central #1v#2) ⚠️ MUST COMPLETE FIRST
+Week 10: Wild Card Round (played AFTER Week 9 completes)
 Week 10: Wild Card (5v12, 6v11, 7v10, 8v9)
 Week 11: Divisional Round
 Week 12: Semifinals/Conference Finals  

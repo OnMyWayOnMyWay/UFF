@@ -508,11 +508,17 @@ const Playoffs = () => {
   const seedsByNumber = new Map((playoffSeeds?.seeds || []).map(s => [s.seed, s]));
   const teamForSeed = (n) => seedsByNumber.get(n)?.team || null;
 
-  // Conference Championships (Week 9) - 1v4 and 2v3 per conference
-  const confChamp1v4Game = playoffGames.conference_championships?.[0] || null;
-  const confChamp2v3Game = playoffGames.conference_championships?.[1] || null;
-  const confChamp1v4Winner = getWinnerName(confChamp1v4Game) || (confChamp1v4Game ? null : 'Winner #1 vs #4');
-  const confChamp2v3Winner = getWinnerName(confChamp2v3Game) || (confChamp2v3Game ? null : 'Winner #2 vs #3');
+  // Conference Championships (Week 9) - #1 vs #2 within each conference
+  // Ridge Conference Championship: Ridge #1 vs Ridge #2
+  // Grand Central Conference Championship: GC #1 vs GC #2
+  const ridgeConfChampGame = playoffGames.conference_championships?.find(g => 
+    (g.home_team === playoffSeeds?.ridge?.[0]?.team || g.away_team === playoffSeeds?.ridge?.[0]?.team)
+  ) || null;
+  const gcConfChampGame = playoffGames.conference_championships?.find(g => 
+    (g.home_team === playoffSeeds?.gc?.[0]?.team || g.away_team === playoffSeeds?.gc?.[0]?.team)
+  ) || null;
+  const ridgeConfChampWinner = getWinnerName(ridgeConfChampGame) || (ridgeConfChampGame ? null : 'Ridge Winner');
+  const gcConfChampWinner = getWinnerName(gcConfChampGame) || (gcConfChampGame ? null : 'GC Winner');
 
   // Wildcard (Week 10) - 5v12, 6v11, 7v10, 8v9
   const wildcard5v12Game = playoffGames.wildcard?.[0] || null;
@@ -672,29 +678,29 @@ const Playoffs = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
             {/* Conference Championships */}
-            <RoundColumn title="Conference Championships" subtitle="Week 9 · Seeds 1v4, 2v3">
+            <RoundColumn title="Conference Championships" subtitle="Week 9 · Top Seeds Battle">
               <BracketMatchCard
-                title="Conf Champ: #1 vs #4"
-                game={confChamp1v4Game}
-                seedTop={1}
-                seedBottom={4}
-                teamTop={teamForSeed(1)}
-                teamBottom={teamForSeed(4)}
-                recordTop={getTeamRecord(teamForSeed(1))}
-                recordBottom={getTeamRecord(teamForSeed(4))}
+                title="Ridge Championship"
+                game={ridgeConfChampGame}
+                seedTop={null}
+                seedBottom={null}
+                teamTop={playoffSeeds?.ridge?.[0]?.team || 'Ridge #1'}
+                teamBottom={playoffSeeds?.ridge?.[1]?.team || 'Ridge #2'}
+                recordTop={getTeamRecord(playoffSeeds?.ridge?.[0]?.team)}
+                recordBottom={getTeamRecord(playoffSeeds?.ridge?.[1]?.team)}
                 compact
                 accentClass="bg-purple-400"
               />
               <Connector delay={100} />
               <BracketMatchCard
-                title="Conf Champ: #2 vs #3"
-                game={confChamp2v3Game}
-                seedTop={2}
-                seedBottom={3}
-                teamTop={teamForSeed(2)}
-                teamBottom={teamForSeed(3)}
-                recordTop={getTeamRecord(teamForSeed(2))}
-                recordBottom={getTeamRecord(teamForSeed(3))}
+                title="Grand Central Championship"
+                game={gcConfChampGame}
+                seedTop={null}
+                seedBottom={null}
+                teamTop={playoffSeeds?.gc?.[0]?.team || 'GC #1'}
+                teamBottom={playoffSeeds?.gc?.[1]?.team || 'GC #2'}
+                recordTop={getTeamRecord(playoffSeeds?.gc?.[0]?.team)}
+                recordBottom={getTeamRecord(playoffSeeds?.gc?.[1]?.team)}
                 compact
                 accentClass="bg-purple-400"
               />
@@ -762,9 +768,9 @@ const Playoffs = () => {
                 game={divisional1Game}
                 seedTop={null}
                 seedBottom={null}
-                teamTop={confChamp1v4Winner || 'Winner #1/#4'}
+                teamTop={ridgeConfChampWinner || 'Ridge Winner'}
                 teamBottom={wildcard5v12Winner || 'Winner #5/#12'}
-                recordTop={getTeamRecord(confChamp1v4Winner)}
+                recordTop={getTeamRecord(ridgeConfChampWinner)}
                 recordBottom={getTeamRecord(wildcard5v12Winner)}
                 compact
                 accentClass="bg-blue-400"
@@ -775,9 +781,9 @@ const Playoffs = () => {
                 game={divisional2Game}
                 seedTop={null}
                 seedBottom={null}
-                teamTop={confChamp2v3Winner || 'Winner #2/#3'}
+                teamTop={gcConfChampWinner || 'GC Winner'}
                 teamBottom={wildcard6v11Winner || 'Winner #6/#11'}
-                recordTop={getTeamRecord(confChamp2v3Winner)}
+                recordTop={getTeamRecord(gcConfChampWinner)}
                 recordBottom={getTeamRecord(wildcard6v11Winner)}
                 compact
                 accentClass="bg-blue-400"
@@ -788,9 +794,9 @@ const Playoffs = () => {
                 game={divisional3Game}
                 seedTop={null}
                 seedBottom={null}
-                teamTop={confChamp1v4Winner || 'Winner #1/#4'}
+                teamTop={ridgeConfChampWinner || 'Ridge Winner'}
                 teamBottom={wildcard7v10Winner || 'Winner #7/#10'}
-                recordTop={getTeamRecord(confChamp1v4Winner)}
+                recordTop={getTeamRecord(ridgeConfChampWinner)}
                 recordBottom={getTeamRecord(wildcard7v10Winner)}
                 compact
                 accentClass="bg-blue-400"
@@ -801,7 +807,7 @@ const Playoffs = () => {
                 game={divisional4Game}
                 seedTop={null}
                 seedBottom={null}
-                teamTop={confChamp2v3Winner || 'Winner #2/#3'}
+                teamTop={gcConfChampWinner || 'GC Winner'}
                 teamBottom={wildcard8v9Winner || 'Winner #8/#9'}
                 recordTop={getTeamRecord(confChamp2v3Winner)}
                 recordBottom={getTeamRecord(wildcard8v9Winner)}
