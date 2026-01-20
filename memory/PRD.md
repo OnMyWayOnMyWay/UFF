@@ -48,6 +48,14 @@ Build a feature-rich website for a fantasy football league named "UFF - United F
 
 ### Improvements Made (Jan 20, 2026)
 
+#### Admin Panel Enhancements
+- Added proper **Edit Team Modal** with: name, conference, division, wins/losses, color picker, **logo URL** field
+- Added proper **Edit Game Modal** with: home/away scores, player of game, POG stats, completed checkbox
+- Added proper **Edit Player Modal** with: name, position, team, **player image URL**, Roblox ID/username, elite checkbox
+- Replaced all browser `prompt()` dialogs with proper modal components
+- Added logo column to Teams table showing which teams have logos
+- Added image preview in edit modals
+
 #### Standings Page
 - Added **Playoff Picture** showing Top 5 per Conference (Grand Central & Ridge)
 - Added **Quick Stats** panel (Total Teams, Playoff Teams, Conferences, Leading Team, Best Record)
