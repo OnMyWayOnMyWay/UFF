@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Star, TrendingUp, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Star, TrendingUp, Eye, EyeOff, AlertCircle, Target, Shield, Zap, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -13,25 +13,29 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const PlayerProfile = () => {
   const { playerId } = useParams();
   const [player, setPlayer] = useState(null);
+  const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [inWatchlist, setInWatchlist] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   useEffect(() => {
-    const fetchPlayer = async () => {
+    const fetchData = async () => {
       try {
-        const [playerRes, watchlistRes] = await Promise.all([
+        const [playerRes, watchlistRes, analysisRes] = await Promise.all([
           axios.get(`${API}/players/${playerId}`),
-          axios.get(`${API}/watchlist`)
+          axios.get(`${API}/watchlist`),
+          axios.get(`${API}/players/${playerId}/analysis`)
         ]);
         setPlayer(playerRes.data);
         setInWatchlist(watchlistRes.data.some(p => p.id === playerId));
+        setAnalysis(analysisRes.data);
       } catch (error) {
         console.error('Error fetching player:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchPlayer();
+    fetchData();
   }, [playerId]);
 
   const toggleWatchlist = async () => {
@@ -54,9 +58,8 @@ const PlayerProfile = () => {
       QB: 'bg-orange-500',
       WR: 'bg-teal-500',
       RB: 'bg-sky-500',
-      TE: 'bg-emerald-500',
-      K: 'bg-purple-500',
-      DEF: 'bg-red-500'
+      DEF: 'bg-red-500',
+      K: 'bg-purple-500'
     };
     return colors[pos] || 'bg-gray-500';
   };
@@ -65,46 +68,51 @@ const PlayerProfile = () => {
     switch (pos) {
       case 'QB':
         return [
-          { label: 'Pass YDS', value: stats.passing_yards?.toLocaleString() },
+          { label: 'Completions', value: stats.completions },
+          { label: 'Attempts', value: stats.attempts },
+          { label: 'Pass Yards', value: stats.passing_yards?.toLocaleString() },
           { label: 'TDs', value: stats.touchdowns },
           { label: 'INTs', value: stats.interceptions },
-          { label: 'Comp', value: stats.completions },
-          { label: 'Att', value: stats.attempts },
-          { label: 'Rush YDS', value: stats.rushing_yards },
+          { label: 'Rating', value: stats.rating?.toFixed(1) },
+          { label: 'Comp %', value: `${stats.completion_pct?.toFixed(1)}%` },
+          { label: 'Avg/Att', value: stats.avg_per_attempt?.toFixed(1) },
+          { label: 'Longest', value: stats.longest },
         ];
       case 'WR':
-      case 'TE':
         return [
           { label: 'Receptions', value: stats.receptions },
-          { label: 'Targets', value: stats.targets },
-          { label: 'Rec YDS', value: stats.receiving_yards?.toLocaleString() },
+          { label: 'Rec Yards', value: stats.receiving_yards?.toLocaleString() },
           { label: 'TDs', value: stats.touchdowns },
-          { label: 'YPC', value: stats.yards_per_catch?.toFixed(1) },
+          { label: 'Drops', value: stats.drops },
+          { label: 'Longest', value: stats.longest },
         ];
       case 'RB':
         return [
-          { label: 'Rush YDS', value: stats.rushing_yards?.toLocaleString() },
-          { label: 'Rush TDs', value: stats.rushing_tds },
-          { label: 'Receptions', value: stats.receptions },
-          { label: 'Rec YDS', value: stats.receiving_yards },
-          { label: 'Total TDs', value: stats.touchdowns },
+          { label: 'Attempts', value: stats.attempts },
+          { label: 'Rush Yards', value: stats.rushing_yards?.toLocaleString() },
+          { label: 'TDs', value: stats.touchdowns },
           { label: 'YPC', value: stats.yards_per_carry?.toFixed(1) },
+          { label: 'Fumbles', value: stats.fumbles },
+          { label: '20+ Yards', value: stats.twenty_plus },
+          { label: 'Longest', value: stats.longest },
+        ];
+      case 'DEF':
+        return [
+          { label: 'Tackles', value: stats.tackles },
+          { label: 'TFL', value: stats.tackles_for_loss },
+          { label: 'Sacks', value: stats.sacks },
+          { label: 'Safeties', value: stats.safeties },
+          { label: 'Swat', value: stats.swat },
+          { label: 'INTs', value: stats.interceptions },
+          { label: 'Pass Def', value: stats.pass_deflections },
+          { label: 'Def TDs', value: stats.defensive_td },
         ];
       case 'K':
         return [
           { label: 'FG Made', value: stats.field_goals },
           { label: 'FG Att', value: stats.field_goal_attempts },
           { label: 'XP Made', value: stats.extra_points },
-          { label: 'XP Att', value: stats.extra_point_attempts },
-          { label: 'Long', value: stats.long },
-        ];
-      case 'DEF':
-        return [
-          { label: 'Sacks', value: stats.sacks },
-          { label: 'INTs', value: stats.interceptions },
-          { label: 'Fumbles', value: stats.fumbles_recovered },
-          { label: 'TDs', value: stats.touchdowns },
-          { label: 'Pts Allowed', value: stats.points_allowed },
+          { label: 'Longest', value: stats.longest },
         ];
       default:
         return [];
@@ -171,7 +179,7 @@ const PlayerProfile = () => {
               </h1>
               <p className="font-body text-white/60 text-lg mb-4">{player.team}</p>
               
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <Button
                   onClick={toggleWatchlist}
                   variant={inWatchlist ? "default" : "outline"}
@@ -180,6 +188,15 @@ const PlayerProfile = () => {
                 >
                   {inWatchlist ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
                   {inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                </Button>
+                <Button
+                  onClick={() => setShowAnalysis(!showAnalysis)}
+                  variant="outline"
+                  className="border-neon-blue/50 text-neon-blue hover:bg-neon-blue/10"
+                  data-testid="show-analysis-btn"
+                >
+                  <Target className="w-4 h-4 mr-2" />
+                  {showAnalysis ? 'Hide Analysis' : 'View Analysis'}
                 </Button>
                 <div className="text-right">
                   <div className="font-body text-xs text-white/40 uppercase">Bye Week</div>
@@ -205,16 +222,80 @@ const PlayerProfile = () => {
       {/* Content */}
       <div className="px-6 md:px-12 py-8">
         <div className="max-w-7xl mx-auto space-y-8">
+          {/* Player Analysis */}
+          {showAnalysis && analysis && (
+            <Card className="glass-panel border-neon-blue/30 animate-slide-up" data-testid="player-analysis">
+              <CardHeader className="border-b border-white/5">
+                <CardTitle className="font-heading font-bold text-xl uppercase tracking-tight flex items-center gap-2">
+                  <Target className="w-5 h-5 text-neon-blue" />
+                  Player Analysis
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Overview */}
+                  <div className="md:col-span-2">
+                    <p className="font-body text-lg text-white/80">{analysis.overview}</p>
+                  </div>
+
+                  {/* Strengths */}
+                  <div className="space-y-3">
+                    <h4 className="font-heading font-bold text-lg text-neon-volt uppercase flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4" /> Strengths
+                    </h4>
+                    <ul className="space-y-2">
+                      {analysis.strengths?.map((strength, idx) => (
+                        <li key={idx} className="flex items-start gap-2 font-body text-sm text-white/70">
+                          <ChevronRight className="w-4 h-4 text-neon-volt mt-0.5 flex-shrink-0" />
+                          {strength}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Weaknesses */}
+                  <div className="space-y-3">
+                    <h4 className="font-heading font-bold text-lg text-red-500 uppercase flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" /> Areas to Improve
+                    </h4>
+                    <ul className="space-y-2">
+                      {analysis.weaknesses?.length > 0 ? analysis.weaknesses.map((weakness, idx) => (
+                        <li key={idx} className="flex items-start gap-2 font-body text-sm text-white/70">
+                          <ChevronRight className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                          {weakness}
+                        </li>
+                      )) : (
+                        <li className="font-body text-sm text-white/50">No significant weaknesses identified</li>
+                      )}
+                    </ul>
+                  </div>
+
+                  {/* Outlook & Fantasy Advice */}
+                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/10">
+                    <div className="p-4 rounded-lg bg-white/5">
+                      <h5 className="font-heading font-bold text-sm text-neon-blue uppercase mb-2">Season Outlook</h5>
+                      <p className="font-body text-sm text-white/70">{analysis.outlook}</p>
+                    </div>
+                    <div className="p-4 rounded-lg bg-neon-volt/10 border border-neon-volt/30">
+                      <h5 className="font-heading font-bold text-sm text-neon-volt uppercase mb-2">Fantasy Advice</h5>
+                      <p className="font-body text-sm text-white/70">{analysis.fantasy_advice}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Stats Grid */}
           <Card className="glass-panel border-white/10">
             <CardHeader className="border-b border-white/5">
               <CardTitle className="font-heading font-bold text-xl uppercase tracking-tight flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-neon-blue" />
+                <Zap className="w-5 h-5 text-neon-blue" />
                 Season Statistics
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {getStatsByPosition(player.position, player.stats).map((stat, idx) => (
                   <div key={idx} className="p-4 rounded-lg bg-white/5 text-center">
                     <div className="font-body text-xs uppercase tracking-widest text-white/40 mb-2">{stat.label}</div>
