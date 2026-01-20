@@ -1,0 +1,113 @@
+{
+  "identity": {
+    "name": "Gridiron Elite",
+    "archetype": "The Performance Pro (Tactical Broadcast)",
+    "tone": "High-Energy, Cinematic, Elite, Data-Driven",
+    "theme_mode": "dark"
+  },
+  "typography": {
+    "primary_font": "Barlow Condensed",
+    "secondary_font": "Inter",
+    "google_fonts_import": "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Inter:wght@400;500;600&display=swap",
+    "usage": {
+      "headings": "font-['Barlow_Condensed'] font-black uppercase tracking-tighter",
+      "subheadings": "font-['Barlow_Condensed'] font-bold tracking-tight text-muted-foreground",
+      "body": "font-['Inter'] text-base leading-relaxed",
+      "data_labels": "font-['Inter'] text-xs uppercase tracking-widest text-muted-foreground",
+      "numbers": "font-['Barlow_Condensed'] font-bold tabular-nums"
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": "#050505",
+      "foreground": "#FFFFFF",
+      "card": "#0A0A0A",
+      "card_foreground": "#FFFFFF",
+      "primary": "#007AFF",
+      "primary_foreground": "#FFFFFF",
+      "secondary": "#1A1A1A",
+      "secondary_foreground": "#A1A1AA",
+      "accent": "#CCFF00",
+      "accent_foreground": "#000000",
+      "destructive": "#FF3B30",
+      "border": "#27272A",
+      "input": "#27272A",
+      "ring": "#007AFF"
+    },
+    "gradients": {
+      "hero_glow": "radial-gradient(circle at center, rgba(0,122,255,0.15) 0%, rgba(5,5,5,0) 70%)",
+      "card_shine": "linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%)",
+      "neon_trace": "linear-gradient(90deg, transparent, #007AFF, transparent)"
+    }
+  },
+  "layout_strategies": {
+    "dashboard": {
+      "type": "Bento Grid (Mode A)",
+      "grid_cols": "grid-cols-1 md:grid-cols-4 lg:grid-cols-12",
+      "gap": "gap-6",
+      "padding": "p-6 md:p-8"
+    },
+    "stats_table": {
+      "type": "High Density (Mode B)",
+      "style": "compact",
+      "row_height": "h-12"
+    },
+    "spacing": {
+      "container_padding": "p-6 md:p-12",
+      "section_gap": "gap-12"
+    }
+  },
+  "components": {
+    "cards": {
+      "style": "glass_panel",
+      "classes": "bg-card/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl overflow-hidden relative group"
+    },
+    "buttons": {
+      "primary": "bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wider rounded-none skew-x-[-10deg] px-8 py-3 transition-all hover:skew-x-[-15deg]",
+      "secondary": "bg-transparent border border-white/20 hover:border-white/50 text-white uppercase tracking-wider rounded-none px-6 py-3"
+    },
+    "navigation": {
+      "style": "floating_dock",
+      "classes": "fixed bottom-8 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md border border-white/10 rounded-full px-6 py-3 flex gap-6 shadow-2xl z-50"
+    }
+  },
+  "visual_enhancers": {
+    "textures": "bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay fixed inset-0 pointer-events-none z-0",
+    "glows": "shadow-[0_0_30px_-10px_rgba(0,122,255,0.3)]",
+    "borders": "border-r border-b border-white/5 (Grid Border Style)"
+  },
+  "motion": {
+    "page_transition": "initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.4, ease: 'easeOut' }}",
+    "hover_lift": "hover:-translate-y-1 hover:shadow-lg transition-transform duration-300",
+    "loading_sequence": "Staggered reveal of logo parts, followed by a 'light speed' expansion to the dashboard."
+  },
+  "image_urls": {
+    "hero_bg": "https://images.unsplash.com/photo-1663563624897-de8972d7ce93?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "player_action_1": "https://images.unsplash.com/photo-1633714201539-ea56e098549e?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "player_action_2": "https://images.unsplash.com/photo-1640817765148-7fc976b73dfb?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "stadium_night": "https://images.unsplash.com/photo-1760046999375-ecc8b13cabe1?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "trophy": "https://images.unsplash.com/photo-1754300681803-61eadeb79d10?crop=entropy&cs=srgb&fm=jpg&q=85"
+  },
+  "pages_structure": {
+    "dashboard": {
+      "sections": ["League Overview (Hero)", "Live Match Ticker", "Top Performers (Cards)", "Standings Preview (Mini Table)"]
+    },
+    "elite_players": {
+      "layout": "Horizontal Scroll / Carousel with 3D Tilt effect on cards"
+    },
+    "standings": {
+      "layout": "Split View: Grand Central Conference (Left) vs Ridge Conference (Right)"
+    },
+    "playoffs": {
+      "feature": "Interactive Bracket with connecting lines that glow on hover. Use SVG for lines."
+    }
+  },
+  "universal_guidelines": [
+    "Do not use generic centered layouts.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Every interaction needs micro-animations.",
+    "Dark colors look good when used independently without gradients.",
+    "Use glass-morphism effects with backdrop filters.",
+    "All interactive elements MUST include data-testid attribute."
+  ]
+}
