@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Trophy, TrendingUp, TrendingDown } from 'lucide-react';
+import { Trophy, TrendingUp, TrendingDown, Info } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Standings = () => {
-  const [standings, setStandings] = useState({ grand_central: [], ridge: [] });
+  const [standings, setStandings] = useState({ grand_central: [], ridge: [], league_structure: null });
   const [loading, setLoading] = useState(true);
   const [activeConference, setActiveConference] = useState('all');
 
@@ -24,6 +26,16 @@ const Standings = () => {
     };
     fetchStandings();
   }, []);
+
+  const getPlayoffBadge = (status) => {
+    if (!status) return null;
+    const badges = {
+      x: { label: 'x', color: 'bg-neon-volt/20 text-neon-volt border-neon-volt/30', desc: 'Division Leader' },
+      y: { label: 'y', color: 'bg-neon-blue/20 text-neon-blue border-neon-blue/30', desc: 'Wildcard' },
+      z: { label: 'z', color: 'bg-white/10 text-white/60 border-white/20', desc: 'Playins' },
+    };
+    return badges[status];
+  };
 
   const renderStandingsTable = (teams, conferenceName) => (
     <div className="glass-panel rounded-xl overflow-hidden border border-white/10">
@@ -51,12 +63,12 @@ const Standings = () => {
             {teams.map((team, idx) => {
               const pct = ((team.wins / (team.wins + team.losses)) * 100).toFixed(0);
               const diff = (team.points_for - team.points_against).toFixed(1);
-              const isPlayoff = idx < 4;
+              const playoffBadge = getPlayoffBadge(team.playoff_status);
               
               return (
                 <TableRow 
                   key={team.id} 
-                  className={`border-white/5 table-row-hover ${isPlayoff ? 'bg-white/[0.02]' : ''}`}
+                  className={`border-white/5 table-row-hover ${team.playoff_status ? 'bg-white/[0.02]' : ''}`}
                   data-testid={`standings-row-${team.id}`}
                 >
                   <TableCell className="font-heading font-black text-xl text-white/20">
@@ -71,14 +83,18 @@ const Standings = () => {
                         {team.abbreviation?.charAt(0)}
                       </div>
                       <div>
-                        <div className="font-heading font-bold text-white">{team.name}</div>
+                        <div className="font-heading font-bold text-white flex items-center gap-2">
+                          {team.name}
+                          {playoffBadge && (
+                            <Badge className={`${playoffBadge.color} text-xs px-1.5`}>
+                              {playoffBadge.label}
+                            </Badge>
+                          )}
+                        </div>
                         <div className="font-body text-xs text-white/40">{team.abbreviation}</div>
                       </div>
                       {idx === 0 && (
                         <Trophy className="w-4 h-4 text-neon-volt ml-2" />
-                      )}
-                      {isPlayoff && idx !== 0 && (
-                        <div className="text-xs text-neon-blue font-body ml-2">Playoff</div>
                       )}
                     </div>
                   </TableCell>
@@ -116,6 +132,8 @@ const Standings = () => {
     );
   }
 
+  const structure = standings.league_structure;
+
   return (
     <div data-testid="standings-page" className="min-h-screen">
       {/* Header */}
@@ -136,7 +154,70 @@ const Standings = () => {
 
       {/* Content */}
       <div className="px-6 md:px-12 py-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* League Structure Card */}
+          {structure && (
+            <Card className="glass-panel border-white/10" data-testid="league-structure">
+              <CardHeader className="border-b border-white/5">
+                <CardTitle className="font-heading font-bold text-xl uppercase tracking-tight flex items-center gap-2">
+                  <Info className="w-5 h-5 text-neon-blue" />
+                  League Structure & Playoff Format
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Playoff Format */}
+                  <div className="space-y-3">
+                    <h4 className="font-heading font-bold text-lg text-neon-volt uppercase">Playoff Format</h4>
+                    <ul className="space-y-2 font-body text-sm text-white/70">
+                      <li>• {structure.format}</li>
+                      <li>• {structure.seeding.division_leaders}</li>
+                      <li>• {structure.seeding.wildcards}</li>
+                      <li>• {structure.seeding.playins}</li>
+                    </ul>
+                    <div className="pt-2">
+                      <p className="font-body text-xs text-white/50">
+                        {structure.rounds.join(' → ')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Playoff Indicators */}
+                  <div className="space-y-3">
+                    <h4 className="font-heading font-bold text-lg text-neon-blue uppercase">Playoff Indicators</h4>
+                    <div className="space-y-2">
+                      {Object.entries(structure.legend).map(([key, value]) => (
+                        <div key={key} className="flex items-center gap-3">
+                          <Badge className={
+                            key === 'x' ? 'bg-neon-volt/20 text-neon-volt border-neon-volt/30' :
+                            key === 'y' ? 'bg-neon-blue/20 text-neon-blue border-neon-blue/30' :
+                            'bg-white/10 text-white/60 border-white/20'
+                          }>
+                            {key}
+                          </Badge>
+                          <span className="font-body text-sm text-white/70">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Statistics Legend */}
+                  <div className="space-y-3">
+                    <h4 className="font-heading font-bold text-lg text-white uppercase">Statistics</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.entries(structure.stats_legend).map(([key, value]) => (
+                        <div key={key} className="flex items-center gap-2">
+                          <span className="font-heading font-bold text-sm text-neon-blue">{key}:</span>
+                          <span className="font-body text-xs text-white/60">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Tabs value={activeConference} onValueChange={setActiveConference} className="space-y-6">
             <TabsList data-testid="conference-tabs" className="bg-transparent flex gap-2 h-auto p-0">
               <TabsTrigger
@@ -183,18 +264,6 @@ const Standings = () => {
               </div>
             </TabsContent>
           </Tabs>
-
-          {/* Legend */}
-          <div className="mt-8 flex flex-wrap items-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-white/10" />
-              <span className="font-body text-white/40">Playoff Position</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-neon-volt" />
-              <span className="font-body text-white/40">Conference Leader</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>
