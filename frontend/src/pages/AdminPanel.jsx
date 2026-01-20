@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Shield, Users, Calendar, ArrowRightLeft, Trash2, Edit, Save, Plus, Search, Download, RefreshCw, AlertCircle, Check, X, Trophy, BarChart3, History, Zap, UserPlus, Merge, Copy } from 'lucide-react';
+import { Shield, Users, Calendar, ArrowRightLeft, Trash2, Edit, Save, Plus, Search, Download, RefreshCw, AlertCircle, Check, X, Trophy, BarChart3, History, Zap, UserPlus, Merge, Copy, Image } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -36,6 +38,11 @@ const AdminPanel = () => {
   const [gameForm, setGameForm] = useState({ week: 1, home_team_id: '', away_team_id: '', mode: 'simple' });
   const [bulkDeleteRange, setBulkDeleteRange] = useState({ start: 1, end: 1 });
   const [mergeForm, setMergeForm] = useState({ source_player_id: '', target_player_id: '', keep_name: 'target' });
+  
+  // Edit modal states
+  const [editTeamModal, setEditTeamModal] = useState({ open: false, team: null });
+  const [editGameModal, setEditGameModal] = useState({ open: false, game: null });
+  const [editPlayerModal, setEditPlayerModal] = useState({ open: false, player: null });
   
   const headers = { 'X-Admin-Key': adminKey };
 
@@ -115,6 +122,16 @@ const AdminPanel = () => {
   };
 
   // Player Management
+  const updatePlayer = async (playerId, updates) => {
+    try {
+      await axios.put(`${API}/admin/player/${playerId}`, updates, { headers });
+      toast.success('Player updated');
+      fetchAllData();
+    } catch (error) {
+      toast.error('Failed to update player');
+    }
+  };
+
   const updatePlayerStats = async (playerId, stats) => {
     try {
       await axios.put(`${API}/admin/player/${playerId}/stats`, stats, { headers });
@@ -316,6 +333,70 @@ const AdminPanel = () => {
     return colors[pos] || 'bg-gray-500';
   };
 
+  const getTeamName = (teamId) => {
+    const team = teams.find(t => t.id === teamId);
+    return team ? team.name : teamId?.toUpperCase();
+  };
+
+  // Save Team Edit
+  const saveTeamEdit = async () => {
+    if (!editTeamModal.team) return;
+    const { id, name, conference, division, color, logo, wins, losses } = editTeamModal.team;
+    try {
+      await axios.put(`${API}/admin/team/${id}`, { name, conference, division, wins: parseInt(wins), losses: parseInt(losses) }, { headers });
+      if (color || logo) {
+        await axios.put(`${API}/admin/team/${id}/branding?color=${encodeURIComponent(color || '')}&logo=${encodeURIComponent(logo || '')}`, {}, { headers });
+      }
+      toast.success('Team updated');
+      setEditTeamModal({ open: false, team: null });
+      fetchAllData();
+    } catch (error) {
+      toast.error('Failed to update team');
+    }
+  };
+
+  // Save Game Edit
+  const saveGameEdit = async () => {
+    if (!editGameModal.game) return;
+    const { id, home_score, away_score, player_of_game, player_of_game_stats, is_completed } = editGameModal.game;
+    try {
+      await axios.put(`${API}/admin/game/${id}`, {
+        home_score: parseFloat(home_score) || 0,
+        away_score: parseFloat(away_score) || 0,
+        player_of_game: player_of_game || '',
+        player_of_game_stats: player_of_game_stats || '',
+        is_completed: is_completed
+      }, { headers });
+      toast.success('Game updated');
+      setEditGameModal({ open: false, game: null });
+      fetchAllData();
+    } catch (error) {
+      toast.error('Failed to update game');
+    }
+  };
+
+  // Save Player Edit
+  const savePlayerEdit = async () => {
+    if (!editPlayerModal.player) return;
+    const { id, name, position, team_id, image, roblox_id, roblox_username, is_elite } = editPlayerModal.player;
+    try {
+      await axios.put(`${API}/admin/player/${id}`, {
+        name,
+        position,
+        team_id,
+        image: image || '',
+        roblox_id: roblox_id || '',
+        roblox_username: roblox_username || '',
+        is_elite: is_elite || false
+      }, { headers });
+      toast.success('Player updated');
+      setEditPlayerModal({ open: false, player: null });
+      fetchAllData();
+    } catch (error) {
+      toast.error('Failed to update player');
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div data-testid="admin-login" className="min-h-screen flex items-center justify-center px-6">
@@ -334,6 +415,7 @@ const AdminPanel = () => {
               placeholder="Enter admin key..."
               value={adminKey}
               onChange={(e) => setAdminKey(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && authenticate()}
               className="bg-white/5 border-white/10"
               data-testid="admin-key-input"
             />
@@ -348,6 +430,282 @@ const AdminPanel = () => {
 
   return (
     <div data-testid="admin-panel" className="min-h-screen">
+      {/* Edit Team Modal */}
+      <Dialog open={editTeamModal.open} onOpenChange={(open) => setEditTeamModal({ ...editTeamModal, open })}>
+        <DialogContent className="bg-[#0a0a0a] border-white/10 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading font-bold text-xl uppercase">Edit Team</DialogTitle>
+          </DialogHeader>
+          {editTeamModal.team && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label className="text-white/60">Team Name</Label>
+                <Input
+                  value={editTeamModal.team.name || ''}
+                  onChange={(e) => setEditTeamModal({ ...editTeamModal, team: { ...editTeamModal.team, name: e.target.value } })}
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-white/60">Conference</Label>
+                  <Select
+                    value={editTeamModal.team.conference || ''}
+                    onValueChange={(v) => setEditTeamModal({ ...editTeamModal, team: { ...editTeamModal.team, conference: v } })}
+                  >
+                    <SelectTrigger className="bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Grand Central">Grand Central</SelectItem>
+                      <SelectItem value="Ridge">Ridge</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/60">Division</Label>
+                  <Select
+                    value={editTeamModal.team.division || ''}
+                    onValueChange={(v) => setEditTeamModal({ ...editTeamModal, team: { ...editTeamModal.team, division: v } })}
+                  >
+                    <SelectTrigger className="bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="East">East</SelectItem>
+                      <SelectItem value="West">West</SelectItem>
+                      <SelectItem value="North">North</SelectItem>
+                      <SelectItem value="South">South</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-white/60">Wins</Label>
+                  <Input
+                    type="number"
+                    value={editTeamModal.team.wins || 0}
+                    onChange={(e) => setEditTeamModal({ ...editTeamModal, team: { ...editTeamModal.team, wins: e.target.value } })}
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/60">Losses</Label>
+                  <Input
+                    type="number"
+                    value={editTeamModal.team.losses || 0}
+                    onChange={(e) => setEditTeamModal({ ...editTeamModal, team: { ...editTeamModal.team, losses: e.target.value } })}
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-white/60">Team Color</Label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={editTeamModal.team.color || '#000000'}
+                    onChange={(e) => setEditTeamModal({ ...editTeamModal, team: { ...editTeamModal.team, color: e.target.value } })}
+                    className="w-12 h-10 rounded cursor-pointer"
+                  />
+                  <Input
+                    value={editTeamModal.team.color || ''}
+                    onChange={(e) => setEditTeamModal({ ...editTeamModal, team: { ...editTeamModal.team, color: e.target.value } })}
+                    placeholder="#000000"
+                    className="bg-white/5 border-white/10 flex-1"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-white/60">Logo URL</Label>
+                <Input
+                  value={editTeamModal.team.logo || ''}
+                  onChange={(e) => setEditTeamModal({ ...editTeamModal, team: { ...editTeamModal.team, logo: e.target.value } })}
+                  placeholder="https://example.com/logo.png"
+                  className="bg-white/5 border-white/10"
+                />
+                {editTeamModal.team.logo && (
+                  <div className="mt-2 p-2 bg-white/5 rounded-lg">
+                    <img src={editTeamModal.team.logo} alt="Logo preview" className="w-16 h-16 object-contain mx-auto" />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTeamModal({ open: false, team: null })} className="border-white/20">Cancel</Button>
+            <Button onClick={saveTeamEdit} className="bg-neon-blue hover:bg-neon-blue/80">Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Game Modal */}
+      <Dialog open={editGameModal.open} onOpenChange={(open) => setEditGameModal({ ...editGameModal, open })}>
+        <DialogContent className="bg-[#0a0a0a] border-white/10 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading font-bold text-xl uppercase">Edit Game</DialogTitle>
+          </DialogHeader>
+          {editGameModal.game && (
+            <div className="space-y-4 py-4">
+              <div className="text-center mb-4">
+                <span className="font-heading font-bold text-white">
+                  {getTeamName(editGameModal.game.home_team_id)} vs {getTeamName(editGameModal.game.away_team_id)}
+                </span>
+                <div className="text-sm text-white/40">Week {editGameModal.game.week}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-white/60">Home Score</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={editGameModal.game.home_score || 0}
+                    onChange={(e) => setEditGameModal({ ...editGameModal, game: { ...editGameModal.game, home_score: e.target.value } })}
+                    className="bg-white/5 border-white/10 text-center text-xl font-bold"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/60">Away Score</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={editGameModal.game.away_score || 0}
+                    onChange={(e) => setEditGameModal({ ...editGameModal, game: { ...editGameModal.game, away_score: e.target.value } })}
+                    className="bg-white/5 border-white/10 text-center text-xl font-bold"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-white/60">Player of the Game</Label>
+                <Input
+                  value={editGameModal.game.player_of_game || ''}
+                  onChange={(e) => setEditGameModal({ ...editGameModal, game: { ...editGameModal.game, player_of_game: e.target.value } })}
+                  placeholder="Player name"
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-white/60">Player of Game Stats</Label>
+                <Input
+                  value={editGameModal.game.player_of_game_stats || ''}
+                  onChange={(e) => setEditGameModal({ ...editGameModal, game: { ...editGameModal.game, player_of_game_stats: e.target.value } })}
+                  placeholder="e.g., 25 pts, 3 TD"
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="game-completed"
+                  checked={editGameModal.game.is_completed || false}
+                  onChange={(e) => setEditGameModal({ ...editGameModal, game: { ...editGameModal.game, is_completed: e.target.checked } })}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="game-completed" className="text-white/60">Game Completed</Label>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditGameModal({ open: false, game: null })} className="border-white/20">Cancel</Button>
+            <Button onClick={saveGameEdit} className="bg-neon-blue hover:bg-neon-blue/80">Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Player Modal */}
+      <Dialog open={editPlayerModal.open} onOpenChange={(open) => setEditPlayerModal({ ...editPlayerModal, open })}>
+        <DialogContent className="bg-[#0a0a0a] border-white/10 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading font-bold text-xl uppercase">Edit Player</DialogTitle>
+          </DialogHeader>
+          {editPlayerModal.player && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label className="text-white/60">Player Name</Label>
+                <Input
+                  value={editPlayerModal.player.name || ''}
+                  onChange={(e) => setEditPlayerModal({ ...editPlayerModal, player: { ...editPlayerModal.player, name: e.target.value } })}
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-white/60">Position</Label>
+                  <Select
+                    value={editPlayerModal.player.position || ''}
+                    onValueChange={(v) => setEditPlayerModal({ ...editPlayerModal, player: { ...editPlayerModal.player, position: v } })}
+                  >
+                    <SelectTrigger className="bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="QB">QB</SelectItem>
+                      <SelectItem value="WR">WR</SelectItem>
+                      <SelectItem value="RB">RB</SelectItem>
+                      <SelectItem value="DEF">DEF</SelectItem>
+                      <SelectItem value="K">K</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/60">Team</Label>
+                  <Select
+                    value={editPlayerModal.player.team_id || ''}
+                    onValueChange={(v) => setEditPlayerModal({ ...editPlayerModal, player: { ...editPlayerModal.player, team_id: v } })}
+                  >
+                    <SelectTrigger className="bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-white/60">Player Image URL</Label>
+                <Input
+                  value={editPlayerModal.player.image || ''}
+                  onChange={(e) => setEditPlayerModal({ ...editPlayerModal, player: { ...editPlayerModal.player, image: e.target.value } })}
+                  placeholder="https://example.com/player.png"
+                  className="bg-white/5 border-white/10"
+                />
+                {editPlayerModal.player.image && (
+                  <div className="mt-2 p-2 bg-white/5 rounded-lg">
+                    <img src={editPlayerModal.player.image} alt="Player preview" className="w-20 h-20 object-cover rounded-full mx-auto" />
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-white/60">Roblox ID</Label>
+                  <Input
+                    value={editPlayerModal.player.roblox_id || ''}
+                    onChange={(e) => setEditPlayerModal({ ...editPlayerModal, player: { ...editPlayerModal.player, roblox_id: e.target.value } })}
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/60">Roblox Username</Label>
+                  <Input
+                    value={editPlayerModal.player.roblox_username || ''}
+                    onChange={(e) => setEditPlayerModal({ ...editPlayerModal, player: { ...editPlayerModal.player, roblox_username: e.target.value } })}
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="player-elite"
+                  checked={editPlayerModal.player.is_elite || false}
+                  onChange={(e) => setEditPlayerModal({ ...editPlayerModal, player: { ...editPlayerModal.player, is_elite: e.target.checked } })}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="player-elite" className="text-white/60">Elite Player</Label>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditPlayerModal({ open: false, player: null })} className="border-white/20">Cancel</Button>
+            <Button onClick={savePlayerEdit} className="bg-neon-blue hover:bg-neon-blue/80">Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="relative hero-bg px-6 md:px-12 pt-8 pb-6">
         <div className="max-w-7xl mx-auto">
@@ -509,7 +867,14 @@ const AdminPanel = () => {
                       {players.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(player => (
                         <tr key={player.id} className="border-b border-white/5 table-row-hover">
                           <td className="p-3">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3">
+                              {player.image ? (
+                                <img src={player.image} alt={player.name} className="w-8 h-8 rounded-full object-cover" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                                  <span className="text-xs font-bold">{player.name.charAt(0)}</span>
+                                </div>
+                              )}
                               <span className="font-heading font-bold text-white">{player.name}</span>
                               {player.is_elite && <Badge className="bg-neon-volt/20 text-neon-volt text-xs">ELITE</Badge>}
                             </div>
@@ -521,6 +886,7 @@ const AdminPanel = () => {
                           <td className="p-3 text-center text-white/60">{player.games_played || 0}</td>
                           <td className="p-3 text-center">
                             <div className="flex gap-1 justify-center">
+                              <Button size="sm" variant="ghost" onClick={() => setEditPlayerModal({ open: true, player: { ...player } })}><Edit className="w-4 h-4" /></Button>
                               <Button size="sm" variant="ghost" onClick={() => deletePlayer(player.id)} className="text-red-500 hover:bg-red-500/10"><Trash2 className="w-4 h-4" /></Button>
                             </div>
                           </td>
@@ -547,6 +913,7 @@ const AdminPanel = () => {
                         <th className="p-3 text-center text-xs font-bold text-white/40 uppercase">Division</th>
                         <th className="p-3 text-center text-xs font-bold text-white/40 uppercase">Record</th>
                         <th className="p-3 text-center text-xs font-bold text-white/40 uppercase">Color</th>
+                        <th className="p-3 text-center text-xs font-bold text-white/40 uppercase">Logo</th>
                         <th className="p-3 text-center text-xs font-bold text-white/40 uppercase">Actions</th>
                       </tr>
                     </thead>
@@ -555,7 +922,11 @@ const AdminPanel = () => {
                         <tr key={team.id} className="border-b border-white/5 table-row-hover">
                           <td className="p-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded" style={{ backgroundColor: team.color }} />
+                              {team.logo ? (
+                                <img src={team.logo} alt={team.name} className="w-8 h-8 rounded object-contain" />
+                              ) : (
+                                <div className="w-8 h-8 rounded" style={{ backgroundColor: team.color }} />
+                              )}
                               <span className="font-heading font-bold text-white">{team.name}</span>
                             </div>
                           </td>
@@ -563,16 +934,19 @@ const AdminPanel = () => {
                           <td className="p-3 text-center text-white/60">{team.division || '-'}</td>
                           <td className="p-3 text-center font-heading font-bold text-white">{team.wins}-{team.losses}</td>
                           <td className="p-3 text-center">
-                            <input type="color" value={team.color} onChange={(e) => updateTeamBranding(team.id, e.target.value, team.logo)} className="w-8 h-8 rounded cursor-pointer" />
+                            <div className="w-6 h-6 rounded mx-auto" style={{ backgroundColor: team.color }} />
                           </td>
                           <td className="p-3 text-center">
-                            <Button size="sm" variant="ghost" onClick={() => {
-                              const newWins = prompt('Enter new wins:', team.wins);
-                              const newLosses = prompt('Enter new losses:', team.losses);
-                              if (newWins !== null && newLosses !== null) {
-                                updateTeam(team.id, { wins: parseInt(newWins), losses: parseInt(newLosses) });
-                              }
-                            }}><Edit className="w-4 h-4" /></Button>
+                            {team.logo ? (
+                              <Check className="w-4 h-4 text-green-500 mx-auto" />
+                            ) : (
+                              <X className="w-4 h-4 text-white/30 mx-auto" />
+                            )}
+                          </td>
+                          <td className="p-3 text-center">
+                            <Button size="sm" variant="ghost" onClick={() => setEditTeamModal({ open: true, team: { ...team } })}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -639,20 +1013,12 @@ const AdminPanel = () => {
                       {games.filter(g => g.week === selectedWeek).map(game => (
                         <tr key={game.id} className="border-b border-white/5 table-row-hover">
                           <td className="p-3 font-heading font-bold text-white">W{game.week}</td>
-                          <td className="p-3 text-white/80">{game.home_team_id.toUpperCase()} vs {game.away_team_id.toUpperCase()}</td>
+                          <td className="p-3 text-white/80">{getTeamName(game.home_team_id)} vs {getTeamName(game.away_team_id)}</td>
                           <td className="p-3 text-center font-heading font-bold text-neon-blue">{game.home_score} - {game.away_score}</td>
                           <td className="p-3 text-white/60 text-sm">{game.player_of_game || '-'}</td>
                           <td className="p-3 text-center">
                             <div className="flex gap-1 justify-center">
-                              <Button size="sm" variant="ghost" onClick={() => {
-                                const homeScore = prompt('Home Score:', game.home_score);
-                                const awayScore = prompt('Away Score:', game.away_score);
-                                const pog = prompt('Player of Game:', game.player_of_game || '');
-                                const pogStats = prompt('POG Stats:', game.player_of_game_stats || '');
-                                if (homeScore !== null) {
-                                  updateGame(game.id, { home_score: parseFloat(homeScore), away_score: parseFloat(awayScore), player_of_game: pog, player_of_game_stats: pogStats, is_completed: true });
-                                }
-                              }}><Edit className="w-4 h-4" /></Button>
+                              <Button size="sm" variant="ghost" onClick={() => setEditGameModal({ open: true, game: { ...game } })}><Edit className="w-4 h-4" /></Button>
                               <Button size="sm" variant="ghost" onClick={() => cloneGame(game.id, selectedWeek + 1)}><Copy className="w-4 h-4" /></Button>
                               <Button size="sm" variant="ghost" onClick={() => deleteGame(game.id)} className="text-red-500"><Trash2 className="w-4 h-4" /></Button>
                             </div>
