@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Trophy, Crown, Sparkles } from 'lucide-react';
+import { Trophy, Crown, Sparkles, Calendar } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const UFF_LOGO = "https://customer-assets.emergentagent.com/job_elite-league-hub/artifacts/g9a4t1r6_image.png";
 
 const Playoffs = () => {
   const [playoffData, setPlayoffData] = useState({ matchups: [], teams: [] });
@@ -24,7 +28,6 @@ const Playoffs = () => {
   }, []);
 
   useEffect(() => {
-    // Animate bracket reveal
     const timer1 = setTimeout(() => setAnimationPhase(1), 500);
     const timer2 = setTimeout(() => setAnimationPhase(2), 1000);
     const timer3 = setTimeout(() => setAnimationPhase(3), 1500);
@@ -39,23 +42,36 @@ const Playoffs = () => {
 
   const getMatchupsByRound = (round) => playoffData.matchups.filter(m => m.round === round);
 
-  const renderTeamCard = (teamId, score, isWinner, isLoser, position = 'top') => {
+  const renderTeamCard = (teamId, score, isWinner, isLoser) => {
+    if (!teamId) {
+      return (
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-dashed border-white/20">
+          <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center">
+            <span className="text-white/40 text-sm">?</span>
+          </div>
+          <div className="flex-1">
+            <div className="font-heading font-bold text-sm text-white/40">TBD</div>
+          </div>
+          <div className="font-heading font-bold text-lg text-white/30">-</div>
+        </div>
+      );
+    }
+
     const team = getTeamById(teamId);
     
     return (
-      <div 
-        className={`relative flex items-center gap-3 p-3 rounded-lg transition-all duration-500 ${
+      <Link 
+        to={`/team/${teamId}`}
+        className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-500 ${
           isWinner 
             ? 'bg-neon-volt/10 border border-neon-volt/50 shadow-[0_0_20px_rgba(204,255,0,0.2)]' 
             : isLoser 
               ? 'bg-white/5 border border-white/5 opacity-50' 
-              : 'bg-white/5 border border-white/10'
+              : 'bg-white/5 border border-white/10 hover:bg-white/10'
         }`}
       >
         {isWinner && (
-          <div className="absolute -right-2 -top-2">
-            <Crown className="w-4 h-4 text-neon-volt" />
-          </div>
+          <Crown className="w-4 h-4 text-neon-volt absolute -right-1 -top-1" />
         )}
         <div 
           className="w-8 h-8 rounded-md flex items-center justify-center font-heading font-bold text-sm text-white"
@@ -65,12 +81,12 @@ const Playoffs = () => {
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-heading font-bold text-sm text-white truncate">{team.name}</div>
-          <div className="font-body text-xs text-white/40">{team.abbreviation}</div>
+          <div className="font-body text-xs text-white/40">{team.wins}-{team.losses}</div>
         </div>
         <div className={`font-heading font-black text-lg ${isWinner ? 'text-neon-volt' : 'text-white/60'}`}>
-          {score?.toFixed(1) || '-'}
+          {score > 0 ? score.toFixed(1) : '-'}
         </div>
-      </div>
+      </Link>
     );
   };
 
@@ -82,11 +98,16 @@ const Playoffs = () => {
     
     return (
       <div 
-        className={`space-y-2 transition-all duration-700 ${animationPhase >= 1 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}
+        className={`space-y-2 transition-all duration-700 ${animationPhase >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
         style={{ transitionDelay: `${delay}ms` }}
       >
-        {renderTeamCard(matchup.team1_id, matchup.team1_score, isTeam1Winner, isTeam2Winner, 'top')}
-        {renderTeamCard(matchup.team2_id, matchup.team2_score, isTeam2Winner, isTeam1Winner, 'bottom')}
+        <div className="font-body text-xs text-white/40 uppercase tracking-widest mb-2">{matchup.matchup_name}</div>
+        <div className="relative">
+          {renderTeamCard(matchup.team1_id, matchup.team1_score, isTeam1Winner, isTeam2Winner)}
+        </div>
+        <div className="relative">
+          {renderTeamCard(matchup.team2_id, matchup.team2_score, isTeam2Winner, isTeam1Winner)}
+        </div>
       </div>
     );
   };
@@ -99,175 +120,202 @@ const Playoffs = () => {
     );
   }
 
-  const quarterfinals = getMatchupsByRound(1);
-  const semifinals = getMatchupsByRound(2);
-  const finals = getMatchupsByRound(3);
-  const champion = finals[0]?.winner_id ? getTeamById(finals[0].winner_id) : null;
+  const conferenceChamps = getMatchupsByRound('conference');
+  const wildcards = getMatchupsByRound('wildcard');
+  const divisional = getMatchupsByRound('divisional');
+  const semifinals = getMatchupsByRound('semifinal');
+  const finals = getMatchupsByRound('championship');
 
   return (
     <div data-testid="playoffs-page" className="min-h-screen">
       {/* Header */}
-      <div className="relative hero-bg px-6 md:px-12 pt-12 pb-8">
+      <div className="relative hero-bg px-6 md:px-12 pt-8 pb-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 mb-2 animate-slide-up">
-            <Trophy className="w-6 h-6 text-neon-volt" />
-            <span className="font-body text-xs uppercase tracking-widest text-white/50">Championship Bracket</span>
+          <div className="flex items-center gap-4 mb-4 animate-slide-up">
+            <img src={UFF_LOGO} alt="UFF Logo" className="w-12 h-12 object-contain" />
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Trophy className="w-6 h-6 text-neon-volt" />
+                <span className="font-body text-xs uppercase tracking-widest text-white/50">Championship Bracket</span>
+              </div>
+              <h1 className="font-heading font-black text-4xl md:text-5xl tracking-tighter uppercase text-white">
+                UFF <span className="text-neon-volt">PLAYOFFS</span>
+              </h1>
+            </div>
           </div>
-          <h1 className="font-heading font-black text-4xl md:text-6xl tracking-tighter uppercase text-white animate-slide-up stagger-1">
-            PLAYOFF <span className="text-neon-volt">BRACKET</span>
-          </h1>
-          <p className="font-body text-white/60 mt-2 max-w-md animate-slide-up stagger-2">
-            The road to the championship.
-          </p>
         </div>
       </div>
 
       {/* Bracket */}
       <div className="px-6 md:px-12 py-8 overflow-x-auto">
-        <div className="max-w-7xl mx-auto">
-          {/* Champion Banner */}
-          {champion && (
-            <div 
-              className={`mb-12 text-center transition-all duration-1000 ${animationPhase >= 3 ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
-              data-testid="champion-banner"
-            >
-              <div className="inline-block glass-panel rounded-2xl p-8 border border-neon-volt/30 relative overflow-hidden">
-                <div className="absolute inset-0 trophy-shine" />
-                <Sparkles className="w-8 h-8 text-neon-volt mx-auto mb-4" />
-                <div className="font-body text-xs uppercase tracking-widest text-white/50 mb-2">2024 Champion</div>
-                <div className="flex items-center justify-center gap-4">
-                  <div 
-                    className="w-16 h-16 rounded-xl flex items-center justify-center font-heading font-black text-2xl text-white shadow-lg"
-                    style={{ backgroundColor: champion.color }}
-                  >
-                    {champion.abbreviation?.charAt(0)}
-                  </div>
-                  <div className="text-left">
-                    <div className="font-heading font-black text-3xl text-white">{champion.name}</div>
-                    <div className="font-body text-white/60">{champion.wins}-{champion.losses} Season Record</div>
-                  </div>
-                </div>
-                <Trophy className="w-6 h-6 text-neon-volt mx-auto mt-4" />
+        <div className="max-w-7xl mx-auto space-y-12">
+          
+          {/* Conference Championships - Week 9 */}
+          <Card className="glass-panel border-white/10">
+            <CardHeader className="border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <Calendar className="w-5 h-5 text-neon-blue" />
+                <CardTitle className="font-heading font-bold text-xl uppercase tracking-tight">
+                  Conference Championships
+                </CardTitle>
+                <Badge className="bg-neon-blue/20 text-neon-blue">Week 9</Badge>
+                <span className="font-body text-sm text-white/40 ml-auto">Top 2 Per Conference</span>
               </div>
-            </div>
-          )}
-
-          {/* Bracket Grid */}
-          <div className="min-w-[900px]">
-            <div className="grid grid-cols-7 gap-4 items-center">
-              {/* Round Labels */}
-              <div className="col-span-7 grid grid-cols-7 gap-4 mb-4">
-                <div className="col-span-2 text-center">
-                  <span className="font-heading font-bold text-sm uppercase tracking-widest text-white/40">Quarterfinals</span>
-                </div>
-                <div className="col-span-1" />
-                <div className="col-span-1 text-center">
-                  <span className="font-heading font-bold text-sm uppercase tracking-widest text-white/40">Semifinals</span>
-                </div>
-                <div className="col-span-1" />
-                <div className="col-span-2 text-center">
-                  <span className="font-heading font-bold text-sm uppercase tracking-widest text-neon-volt">Championship</span>
-                </div>
-              </div>
-
-              {/* Quarterfinals - Left Side */}
-              <div className="col-span-2 space-y-8">
-                {quarterfinals.slice(0, 2).map((matchup, idx) => (
-                  <div key={matchup.id} data-testid={`qf-matchup-${idx}`}>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {conferenceChamps.map((matchup, idx) => (
+                  <div key={matchup.id} data-testid={`cc-matchup-${idx}`}>
+                    <div className="text-center mb-4">
+                      <Badge className={idx === 0 ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'}>
+                        {idx === 0 ? 'Ridge Conference' : 'Grand Central Conference'}
+                      </Badge>
+                    </div>
                     {renderMatchup(matchup, idx * 200)}
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Connector Lines */}
-              <div className="col-span-1 flex flex-col items-center justify-center h-full">
-                <svg className="w-full h-64" viewBox="0 0 100 200">
-                  <path
-                    d="M 0 50 L 50 50 L 50 100 L 100 100"
-                    className={`bracket-line ${animationPhase >= 2 ? 'bracket-line-winner' : ''}`}
-                    strokeDasharray="200"
-                    strokeDashoffset={animationPhase >= 1 ? 0 : 200}
-                    style={{ transition: 'stroke-dashoffset 1s ease-out' }}
-                  />
-                  <path
-                    d="M 0 150 L 50 150 L 50 100 L 100 100"
-                    className={`bracket-line ${animationPhase >= 2 ? 'bracket-line-winner' : ''}`}
-                    strokeDasharray="200"
-                    strokeDashoffset={animationPhase >= 1 ? 0 : 200}
-                    style={{ transition: 'stroke-dashoffset 1s ease-out 0.3s' }}
-                  />
-                </svg>
+          {/* Wildcard Round - Week 10 */}
+          <Card className="glass-panel border-white/10">
+            <CardHeader className="border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <Calendar className="w-5 h-5 text-neon-volt" />
+                <CardTitle className="font-heading font-bold text-xl uppercase tracking-tight">
+                  Wildcard Round
+                </CardTitle>
+                <Badge className="bg-neon-volt/20 text-neon-volt">Week 10</Badge>
+                <span className="font-body text-sm text-white/40 ml-auto">Seeds 5-10</span>
               </div>
-
-              {/* Semifinals */}
-              <div className="col-span-1 space-y-8">
-                {semifinals.map((matchup, idx) => (
-                  <div key={matchup.id} data-testid={`sf-matchup-${idx}`}>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {wildcards.map((matchup, idx) => (
+                  <div key={matchup.id} data-testid={`wc-matchup-${idx}`}>
                     {renderMatchup(matchup, 400 + idx * 200)}
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Connector Lines to Finals */}
-              <div className="col-span-1 flex flex-col items-center justify-center h-full">
-                <svg className="w-full h-64" viewBox="0 0 100 200">
-                  <path
-                    d="M 0 50 L 50 50 L 50 100 L 100 100"
-                    className={`bracket-line ${animationPhase >= 3 ? 'bracket-line-winner' : ''}`}
-                    strokeDasharray="200"
-                    strokeDashoffset={animationPhase >= 2 ? 0 : 200}
-                    style={{ transition: 'stroke-dashoffset 1s ease-out' }}
-                  />
-                  <path
-                    d="M 0 150 L 50 150 L 50 100 L 100 100"
-                    className={`bracket-line ${animationPhase >= 3 ? 'bracket-line-winner' : ''}`}
-                    strokeDasharray="200"
-                    strokeDashoffset={animationPhase >= 2 ? 0 : 200}
-                    style={{ transition: 'stroke-dashoffset 1s ease-out 0.3s' }}
-                  />
-                </svg>
+          {/* Divisional Round - Week 11 */}
+          <Card className="glass-panel border-white/10">
+            <CardHeader className="border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <Calendar className="w-5 h-5 text-neon-blue" />
+                <CardTitle className="font-heading font-bold text-xl uppercase tracking-tight">
+                  Divisional Round
+                </CardTitle>
+                <Badge className="bg-neon-blue/20 text-neon-blue">Week 11</Badge>
+                <span className="font-body text-sm text-white/40 ml-auto">Round 2</span>
               </div>
-
-              {/* Finals */}
-              <div className="col-span-2">
-                <div className="p-4 glass-panel rounded-xl border border-neon-volt/30" data-testid="finals-matchup">
-                  <div className="text-center mb-4">
-                    <Trophy className="w-6 h-6 text-neon-volt mx-auto mb-2" />
-                    <span className="font-heading font-bold text-sm uppercase tracking-widest text-neon-volt">Championship</span>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {divisional.map((matchup, idx) => (
+                  <div key={matchup.id} data-testid={`div-matchup-${idx}`}>
+                    {renderMatchup(matchup, 800 + idx * 200)}
                   </div>
-                  {finals[0] && renderMatchup(finals[0], 800)}
+                ))}
+                <div className="flex items-center justify-center p-6 rounded-lg bg-white/5 border border-dashed border-white/20">
+                  <div className="text-center">
+                    <div className="font-body text-sm text-white/40">WC Winners</div>
+                    <div className="font-heading font-bold text-white/60">Winner #7 vs #8</div>
+                    <div className="font-body text-xs text-white/30 mt-2">Bye or eliminated</div>
+                  </div>
                 </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            {/* Right Side Quarterfinals (visual balance) */}
-            <div className="grid grid-cols-7 gap-4 items-center mt-8">
-              <div className="col-span-2 space-y-8">
-                {quarterfinals.slice(2, 4).map((matchup, idx) => (
-                  <div key={matchup.id} data-testid={`qf-matchup-${idx + 2}`}>
-                    {renderMatchup(matchup, (idx + 2) * 200)}
+          {/* Semifinals - Week 12 */}
+          <Card className="glass-panel border-white/10">
+            <CardHeader className="border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <Calendar className="w-5 h-5 text-neon-volt" />
+                <CardTitle className="font-heading font-bold text-xl uppercase tracking-tight">
+                  Semifinals
+                </CardTitle>
+                <Badge className="bg-neon-volt/20 text-neon-volt">Week 12</Badge>
+                <span className="font-body text-sm text-white/40 ml-auto">Final 4</span>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {semifinals.map((matchup, idx) => (
+                  <div key={matchup.id} data-testid={`sf-matchup-${idx}`}>
+                    {renderMatchup(matchup, 1200 + idx * 200)}
                   </div>
                 ))}
               </div>
-              <div className="col-span-5" />
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Legend */}
-          <div className="mt-12 flex flex-wrap items-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-neon-volt/20 border border-neon-volt/50" />
-              <span className="font-body text-white/40">Winner</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-white/5 border border-white/10" />
-              <span className="font-body text-white/40">Eliminated</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Crown className="w-4 h-4 text-neon-volt" />
-              <span className="font-body text-white/40">Advancing Team</span>
-            </div>
-          </div>
+          {/* Championship - Week 13 */}
+          <Card className="glass-panel border-neon-volt/30 overflow-hidden">
+            <div className="absolute inset-0 trophy-shine" />
+            <CardHeader className="border-b border-neon-volt/20 relative">
+              <div className="flex items-center justify-center gap-3">
+                <Trophy className="w-6 h-6 text-neon-volt" />
+                <CardTitle className="font-heading font-bold text-2xl uppercase tracking-tight text-center">
+                  UFF Championship
+                </CardTitle>
+                <Trophy className="w-6 h-6 text-neon-volt" />
+              </div>
+              <div className="text-center mt-2">
+                <Badge className="bg-neon-volt text-black font-bold">Week 13 - The Final</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-8 relative">
+              <div className="max-w-md mx-auto">
+                <div className="text-center mb-6">
+                  <img src={UFF_LOGO} alt="UFF Logo" className="w-20 h-20 mx-auto mb-4 opacity-50" />
+                  <h3 className="font-heading font-bold text-xl text-white/60">United Flag Bowl</h3>
+                </div>
+                {finals[0] && (
+                  <div data-testid="finals-matchup">
+                    {renderMatchup(finals[0], 1600)}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Playoff Format Legend */}
+          <Card className="glass-panel border-white/10">
+            <CardHeader className="border-b border-white/5">
+              <CardTitle className="font-heading font-bold text-lg uppercase tracking-tight">
+                Playoff Format
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+                <div className="p-3 rounded-lg bg-white/5">
+                  <div className="font-heading font-bold text-neon-blue mb-1">10-Team Bracket</div>
+                  <div className="font-body text-white/60">Full playoff field</div>
+                </div>
+                <div className="p-3 rounded-lg bg-white/5">
+                  <div className="font-heading font-bold text-neon-volt mb-1">Seeds 1-4</div>
+                  <div className="font-body text-white/60">Conference champs, bye to Semifinals</div>
+                </div>
+                <div className="p-3 rounded-lg bg-white/5">
+                  <div className="font-heading font-bold text-white mb-1">Seeds 5-6</div>
+                  <div className="font-body text-white/60">Wildcards, straight to Divisional</div>
+                </div>
+                <div className="p-3 rounded-lg bg-white/5">
+                  <div className="font-heading font-bold text-white/60 mb-1">Seeds 7-10</div>
+                  <div className="font-body text-white/60">Wildcard round</div>
+                </div>
+                <div className="p-3 rounded-lg bg-neon-volt/10 border border-neon-volt/30">
+                  <div className="font-heading font-bold text-neon-volt mb-1">United Flag Bowl</div>
+                  <div className="font-body text-white/60">Conference champions meet</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
