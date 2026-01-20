@@ -5,10 +5,16 @@ import LoadingScreen from "./pages/LoadingScreen";
 import Dashboard from "./pages/Dashboard";
 import ElitePlayers from "./pages/ElitePlayers";
 import PlayerStats from "./pages/PlayerStats";
+import PlayerProfile from "./pages/PlayerProfile";
 import Standings from "./pages/Standings";
 import Schedule from "./pages/Schedule";
 import Playoffs from "./pages/Playoffs";
 import Awards from "./pages/Awards";
+import Trades from "./pages/Trades";
+import PowerRankings from "./pages/PowerRankings";
+import Watchlist from "./pages/Watchlist";
+import StatLeaders from "./pages/StatLeaders";
+import AdminPanel from "./pages/AdminPanel";
 import Navigation from "./components/Navigation";
 import { Toaster } from "./components/ui/sonner";
 
@@ -36,10 +42,16 @@ const AppContent = () => {
           <Route path="/elite" element={<ElitePlayers />} />
           <Route path="/players" element={<PlayerStats />} />
           <Route path="/players/:position" element={<PlayerStats />} />
+          <Route path="/player/:playerId" element={<PlayerProfile />} />
           <Route path="/standings" element={<Standings />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/playoffs" element={<Playoffs />} />
           <Route path="/awards" element={<Awards />} />
+          <Route path="/trades" element={<Trades />} />
+          <Route path="/rankings" element={<PowerRankings />} />
+          <Route path="/watchlist" element={<Watchlist />} />
+          <Route path="/leaders" element={<StatLeaders />} />
+          <Route path="/admin" element={<AdminPanel />} />
         </Routes>
       </main>
       <Navigation currentPath={location.pathname} />
