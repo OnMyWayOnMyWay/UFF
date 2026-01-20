@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import ElitePlayers from "./pages/ElitePlayers";
 import PlayerStats from "./pages/PlayerStats";
 import PlayerProfile from "./pages/PlayerProfile";
+import TeamAnalysis from "./pages/TeamAnalysis";
 import Standings from "./pages/Standings";
 import Schedule from "./pages/Schedule";
 import Playoffs from "./pages/Playoffs";
@@ -43,6 +44,7 @@ const AppContent = () => {
           <Route path="/players" element={<PlayerStats />} />
           <Route path="/players/:position" element={<PlayerStats />} />
           <Route path="/player/:playerId" element={<PlayerProfile />} />
+          <Route path="/team/:teamId" element={<TeamAnalysis />} />
           <Route path="/standings" element={<Standings />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/playoffs" element={<Playoffs />} />
