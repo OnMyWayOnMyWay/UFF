@@ -1,34 +1,137 @@
-.App-logo {
-    height: 40vmin;
+.App {
+    min-height: 100vh;
+    background-color: #050505;
+}
+
+/* Hero section background */
+.hero-bg {
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(0, 122, 255, 0.12) 0%, transparent 60%);
     pointer-events: none;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* Player card 3D tilt effect */
+.player-card-3d {
+    transform-style: preserve-3d;
+    perspective: 1000px;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.player-card-3d:hover {
+    transform: rotateY(-5deg) rotateX(5deg) translateZ(10px);
 }
 
-.App-link {
-    color: #61dafb;
-}
-
-@keyframes App-logo-spin {
+/* Bracket animation */
+@keyframes draw-line {
     from {
-        transform: rotate(0deg);
+        stroke-dashoffset: 100;
     }
     to {
-        transform: rotate(360deg);
+        stroke-dashoffset: 0;
     }
+}
+
+.bracket-line-animated {
+    stroke-dasharray: 100;
+    animation: draw-line 1s ease-out forwards;
+}
+
+/* Conference badge styling */
+.conference-badge {
+    clip-path: polygon(10% 0%, 100% 0%, 90% 100%, 0% 100%);
+}
+
+/* Score card highlight */
+.score-highlight {
+    background: linear-gradient(90deg, transparent, rgba(0, 122, 255, 0.1), transparent);
+}
+
+/* Stat bar */
+.stat-bar {
+    position: relative;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.stat-bar-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #007AFF, #CCFF00);
+    border-radius: 2px;
+    transition: width 0.8s ease-out;
+}
+
+/* Week selector tabs */
+.week-tab {
+    position: relative;
+}
+
+.week-tab::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #007AFF;
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.week-tab.active::after {
+    transform: scaleX(1);
+}
+
+/* Playoff team card */
+.playoff-team {
+    transition: all 0.3s ease;
+}
+
+.playoff-team.winner {
+    border-color: #CCFF00;
+    box-shadow: 0 0 20px rgba(204, 255, 0, 0.2);
+}
+
+.playoff-team.loser {
+    opacity: 0.5;
+}
+
+/* Trophy animation */
+@keyframes trophy-shine {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
+
+.trophy-shine {
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.3), transparent);
+    background-size: 200% 100%;
+    animation: trophy-shine 3s linear infinite;
+}
+
+/* Navigation active indicator */
+.nav-item-active {
+    position: relative;
+}
+
+.nav-item-active::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    background: #007AFF;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #007AFF;
 }
