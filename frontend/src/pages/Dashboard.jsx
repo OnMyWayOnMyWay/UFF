@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Trophy, TrendingUp, Calendar, Users, ChevronRight, Star, Zap, ArrowRightLeft, BarChart3, Eye } from 'lucide-react';
+import { Trophy, TrendingUp, Calendar, Users, ChevronRight, Star, ArrowRightLeft, BarChart3, Eye, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const UFF_LOGO = "https://customer-assets.emergentagent.com/job_elite-league-hub/artifacts/g9a4t1r6_image.png";
 
 const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -60,9 +61,8 @@ const Dashboard = () => {
       QB: 'bg-orange-500',
       WR: 'bg-teal-500',
       RB: 'bg-sky-500',
-      TE: 'bg-emerald-500',
-      K: 'bg-purple-500',
-      DEF: 'bg-red-500'
+      DEF: 'bg-red-500',
+      K: 'bg-purple-500'
     };
     return colors[pos] || 'bg-gray-500';
   };
@@ -84,26 +84,33 @@ const Dashboard = () => {
   return (
     <div data-testid="dashboard" className="min-h-screen">
       {/* Hero Section */}
-      <div className="relative hero-bg px-6 md:px-12 pt-12 pb-16">
+      <div className="relative hero-bg px-6 md:px-12 pt-8 pb-12">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 mb-2 animate-slide-up">
-            <Zap className="w-8 h-8 text-neon-blue" />
-            <span className="font-body text-xs uppercase tracking-widest text-white/50">Fantasy Football League</span>
+          {/* UFF Logo and Title */}
+          <div className="flex items-center gap-4 mb-6 animate-slide-up">
+            <img src={UFF_LOGO} alt="UFF Logo" className="w-16 h-16 md:w-20 md:h-20 object-contain" />
+            <div>
+              <h1 className="font-heading font-black text-3xl md:text-5xl lg:text-6xl tracking-tighter uppercase text-white">
+                UNITED FOOTBALL
+              </h1>
+              <h2 className="font-heading font-bold text-lg md:text-2xl tracking-widest uppercase text-neon-volt">
+                LEAGUE
+              </h2>
+            </div>
           </div>
-          <h1 className="font-heading font-black text-5xl md:text-7xl lg:text-8xl tracking-tighter uppercase text-white mb-4 animate-slide-up stagger-1">
-            GRIDIRON<br />
-            <span className="text-neon-blue">ELITE</span>
-          </h1>
           
           {/* Search Bar */}
-          <div className="relative max-w-md mt-6 animate-slide-up stagger-2">
-            <Input
-              data-testid="player-search"
-              placeholder="Search players..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/40 pr-10"
-            />
+          <div className="relative max-w-md mt-6 animate-slide-up stagger-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+              <Input
+                data-testid="player-search"
+                placeholder="Search players..."
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 pl-10"
+              />
+            </div>
             {showSearch && searchResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-2 glass-panel rounded-lg border border-white/10 overflow-hidden z-50">
                 {searchResults.map((player) => (
@@ -131,29 +138,29 @@ const Dashboard = () => {
           </div>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10 animate-slide-up stagger-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 animate-slide-up stagger-2">
             <div className="glass-panel rounded-xl p-4">
               <div className="font-body text-xs uppercase tracking-widest text-white/40 mb-1">Teams</div>
               <div className="font-heading font-black text-3xl text-white">12</div>
             </div>
             <div className="glass-panel rounded-xl p-4">
               <div className="font-body text-xs uppercase tracking-widest text-white/40 mb-1">Week</div>
-              <div className="font-heading font-black text-3xl text-neon-blue">13</div>
+              <div className="font-heading font-black text-3xl text-neon-blue">8</div>
             </div>
             <div className="glass-panel rounded-xl p-4">
               <div className="font-body text-xs uppercase tracking-widest text-white/40 mb-1">Playoffs</div>
-              <div className="font-heading font-black text-3xl text-neon-volt">LIVE</div>
+              <div className="font-heading font-black text-xl text-neon-volt">Week 9</div>
             </div>
             <div className="glass-panel rounded-xl p-4">
-              <div className="font-body text-xs uppercase tracking-widest text-white/40 mb-1">Champion</div>
-              <div className="font-heading font-bold text-lg text-white truncate">MTL</div>
+              <div className="font-body text-xs uppercase tracking-widest text-white/40 mb-1">#1 Seed</div>
+              <div className="font-heading font-bold text-lg text-white truncate">VIC 8-0</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="px-6 md:px-12 py-12">
+      <div className="px-6 md:px-12 py-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6">
             
@@ -215,33 +222,32 @@ const Dashboard = () => {
                     Power Rankings
                   </CardTitle>
                   <Link to="/rankings" className="text-neon-blue text-sm flex items-center gap-1 hover:underline">
-                    Full Rankings <ChevronRight className="w-4 h-4" />
+                    Full <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-white/5">
-                  {dashboardData?.power_rankings_preview?.map((pr, idx) => {
-                    const team = dashboardData?.standings_preview?.grand_central_leader?.id === pr.team_id 
-                      ? dashboardData.standings_preview.grand_central_leader 
-                      : dashboardData?.standings_preview?.ridge_leader;
-                    return (
-                      <div key={pr.team_id} className="flex items-center gap-3 p-3 table-row-hover">
-                        <div className="font-heading font-black text-lg text-white/30 w-6">{pr.rank}</div>
-                        {getTrendIcon(pr.trend)}
-                        <div 
-                          className="w-8 h-8 rounded-md flex items-center justify-center font-heading font-bold text-sm text-white"
-                          style={{ backgroundColor: pr.team_color }}
-                        >
-                          {pr.team_abbr?.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-heading font-bold text-sm text-white truncate">{pr.team_name}</div>
-                          <div className="font-body text-xs text-white/40">{pr.record}</div>
-                        </div>
+                  {dashboardData?.power_rankings_preview?.map((pr, idx) => (
+                    <Link 
+                      key={pr.team_id} 
+                      to={`/team/${pr.team_id}`}
+                      className="flex items-center gap-3 p-3 table-row-hover"
+                    >
+                      <div className="font-heading font-black text-lg text-white/30 w-6">{pr.rank}</div>
+                      {getTrendIcon(pr.trend)}
+                      <div 
+                        className="w-8 h-8 rounded-md flex items-center justify-center font-heading font-bold text-sm text-white"
+                        style={{ backgroundColor: pr.team_color }}
+                      >
+                        {pr.team_abbr?.charAt(0)}
                       </div>
-                    );
-                  })}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-heading font-bold text-sm text-white truncate">{pr.team_name}</div>
+                        <div className="font-body text-xs text-white/40">{pr.record}</div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -265,15 +271,15 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-white/40">{trade.date}</span>
                       <Badge variant="outline" className="border-green-500/50 text-green-500 text-xs">
-                        Completed
+                        Done
                       </Badge>
                     </div>
                     <div className="space-y-1">
                       <div className="text-white/60">
-                        <span className="text-white font-semibold">{trade.team1_id.toUpperCase()}</span> receives: {trade.team1_receives.join(', ')}
+                        <span className="text-white font-semibold">{trade.team1_id.toUpperCase()}</span>: {trade.team1_receives.join(', ')}
                       </div>
                       <div className="text-white/60">
-                        <span className="text-white font-semibold">{trade.team2_id.toUpperCase()}</span> receives: {trade.team2_receives.join(', ')}
+                        <span className="text-white font-semibold">{trade.team2_id.toUpperCase()}</span>: {trade.team2_receives.join(', ')}
                       </div>
                     </div>
                   </div>
@@ -290,12 +296,12 @@ const Dashboard = () => {
                     Conference Leaders
                   </CardTitle>
                   <Link to="/standings" className="text-neon-blue text-sm flex items-center gap-1 hover:underline">
-                    Full Standings <ChevronRight className="w-4 h-4" />
+                    Standings <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
               </CardHeader>
               <CardContent className="p-4 space-y-4">
-                <div className="p-4 rounded-lg bg-white/5">
+                <Link to={`/team/${dashboardData?.standings_preview?.grand_central_leader?.id}`} className="block p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
                   <div className="font-body text-xs uppercase tracking-widest text-neon-blue mb-2">Grand Central</div>
                   <div className="flex items-center justify-between">
                     <div>
@@ -313,8 +319,8 @@ const Dashboard = () => {
                       {dashboardData?.standings_preview?.grand_central_leader?.abbreviation?.charAt(0)}
                     </div>
                   </div>
-                </div>
-                <div className="p-4 rounded-lg bg-white/5">
+                </Link>
+                <Link to={`/team/${dashboardData?.standings_preview?.ridge_leader?.id}`} className="block p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
                   <div className="font-body text-xs uppercase tracking-widest text-neon-volt mb-2">Ridge</div>
                   <div className="flex items-center justify-between">
                     <div>
@@ -332,7 +338,7 @@ const Dashboard = () => {
                       {dashboardData?.standings_preview?.ridge_leader?.abbreviation?.charAt(0)}
                     </div>
                   </div>
-                </div>
+                </Link>
               </CardContent>
             </Card>
 
@@ -345,43 +351,43 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="p-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <Link to="/schedule" data-testid="link-schedule" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
+                  <Link to="/schedule" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
                     <Calendar className="w-6 h-6 text-neon-blue mb-2 group-hover:scale-110 transition-transform" />
                     <div className="font-heading font-bold text-white">Schedule</div>
-                    <div className="font-body text-xs text-white/40">Week 13 Results</div>
+                    <div className="font-body text-xs text-white/40">Week 8 Results</div>
                   </Link>
-                  <Link to="/playoffs" data-testid="link-playoffs" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
+                  <Link to="/playoffs" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
                     <Trophy className="w-6 h-6 text-neon-volt mb-2 group-hover:scale-110 transition-transform" />
                     <div className="font-heading font-bold text-white">Playoffs</div>
-                    <div className="font-body text-xs text-white/40">Bracket View</div>
+                    <div className="font-body text-xs text-white/40">Starting Week 9</div>
                   </Link>
-                  <Link to="/leaders" data-testid="link-leaders" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
+                  <Link to="/leaders" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
                     <TrendingUp className="w-6 h-6 text-neon-blue mb-2 group-hover:scale-110 transition-transform" />
                     <div className="font-heading font-bold text-white">Stat Leaders</div>
                     <div className="font-body text-xs text-white/40">Top Stats</div>
                   </Link>
-                  <Link to="/watchlist" data-testid="link-watchlist" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
+                  <Link to="/watchlist" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
                     <Eye className="w-6 h-6 text-neon-volt mb-2 group-hover:scale-110 transition-transform" />
                     <div className="font-heading font-bold text-white">Watchlist</div>
                     <div className="font-body text-xs text-white/40">Your Players</div>
                   </Link>
-                  <Link to="/players" data-testid="link-players" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
+                  <Link to="/players" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
                     <Users className="w-6 h-6 text-neon-blue mb-2 group-hover:scale-110 transition-transform" />
                     <div className="font-heading font-bold text-white">All Players</div>
                     <div className="font-body text-xs text-white/40">By Position</div>
                   </Link>
-                  <Link to="/trades" data-testid="link-trades" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
+                  <Link to="/trades" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
                     <ArrowRightLeft className="w-6 h-6 text-neon-volt mb-2 group-hover:scale-110 transition-transform" />
                     <div className="font-heading font-bold text-white">Trades</div>
                     <div className="font-body text-xs text-white/40">Recent Moves</div>
                   </Link>
-                  <Link to="/awards" data-testid="link-awards" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
+                  <Link to="/awards" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group">
                     <Star className="w-6 h-6 text-neon-volt mb-2 group-hover:scale-110 transition-transform" />
                     <div className="font-heading font-bold text-white">Awards</div>
                     <div className="font-body text-xs text-white/40">Season Honors</div>
                   </Link>
-                  <Link to="/admin" data-testid="link-admin" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group border border-dashed border-white/20">
-                    <Zap className="w-6 h-6 text-white/60 mb-2 group-hover:scale-110 transition-transform" />
+                  <Link to="/admin" className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all hover:-translate-y-1 group border border-dashed border-white/20">
+                    <Trophy className="w-6 h-6 text-white/60 mb-2 group-hover:scale-110 transition-transform" />
                     <div className="font-heading font-bold text-white/80">Admin</div>
                     <div className="font-body text-xs text-white/40">Manage League</div>
                   </Link>
@@ -394,7 +400,7 @@ const Dashboard = () => {
               <CardHeader className="border-b border-white/5">
                 <div className="flex items-center justify-between">
                   <CardTitle className="font-heading font-bold text-xl uppercase tracking-tight">
-                    Recent Games — Week 13
+                    Recent Games — Week 8
                   </CardTitle>
                   <Link to="/schedule" className="text-neon-blue text-sm flex items-center gap-1 hover:underline">
                     Full Schedule <ChevronRight className="w-4 h-4" />
