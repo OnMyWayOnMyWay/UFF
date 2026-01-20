@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 
 class FantasyFootballAPITester:
-    def __init__(self, base_url="https://elite-league-hub.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://united-league.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0
