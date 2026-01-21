@@ -72,7 +72,7 @@ const Schedule = () => {
         <div className="max-w-7xl mx-auto">
           <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex gap-2" data-testid="week-selector">
-              {Array.from({ length: 13 }, (_, i) => i + 1).map((week) => (
+              {Array.from({ length: totalWeeks }, (_, i) => i + 1).map((week) => (
                 <button
                   key={week}
                   onClick={() => setSelectedWeek(week)}
