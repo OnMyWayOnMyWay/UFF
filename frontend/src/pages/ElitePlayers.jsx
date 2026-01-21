@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Star, Award, TrendingUp } from 'lucide-react';
+import { Star, Award, TrendingUp, User } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -41,21 +42,28 @@ const ElitePlayers = () => {
       case 'WR': case 'TE': return 'Rec YDS';
       case 'RB': return 'Rush YDS';
       case 'K': return 'FG Made';
-      case 'DEF': return 'Sacks';
+      case 'DEF': return 'Tackles';
       default: return 'Stats';
     }
   };
 
   const getMainStat = (player) => {
-    const stats = player.stats;
     switch (player.position) {
-      case 'QB': return stats.passing_yards?.toLocaleString();
-      case 'WR': case 'TE': return stats.receiving_yards?.toLocaleString();
-      case 'RB': return stats.rushing_yards?.toLocaleString();
-      case 'K': return stats.field_goals;
-      case 'DEF': return stats.sacks;
+      case 'QB': return player.passing?.yards?.toLocaleString() || '0';
+      case 'WR': case 'TE': return player.receiving?.yards?.toLocaleString() || '0';
+      case 'RB': return player.rushing?.yards?.toLocaleString() || '0';
+      case 'K': return player.kicking?.field_goals || '0';
+      case 'DEF': return player.defense?.tackles || '0';
       default: return '-';
     }
+  };
+
+  const getTouchdowns = (player) => {
+    const passingTDs = player.passing?.touchdowns || 0;
+    const rushingTDs = player.rushing?.touchdowns || 0;
+    const receivingTDs = player.receiving?.touchdowns || 0;
+    const defenseTDs = player.defense?.td || 0;
+    return passingTDs + rushingTDs + receivingTDs + defenseTDs;
   };
 
   if (loading) {
@@ -89,7 +97,8 @@ const ElitePlayers = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {players.map((player, idx) => (
-              <div
+              <Link
+                to={`/player/${player.id}`}
                 key={player.id}
                 data-testid={`elite-player-card-${idx}`}
                 className="group relative glass-panel rounded-xl overflow-hidden hover:-translate-y-2 transition-all duration-300 animate-slide-up"
@@ -109,9 +118,17 @@ const ElitePlayers = () => {
                 {/* Player Avatar */}
                 <div className="relative h-32 bg-gradient-to-br from-white/10 to-transparent flex items-end justify-center overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
-                  <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center mb-4 border-2 border-white/10">
-                    <span className="font-heading font-black text-3xl text-white">{player.name.charAt(0)}</span>
-                  </div>
+                  {player.image ? (
+                    <img 
+                      src={player.image} 
+                      alt={player.name} 
+                      className="relative w-20 h-20 rounded-full object-cover mb-4 border-2 border-white/10"
+                    />
+                  ) : (
+                    <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center mb-4 border-2 border-white/10">
+                      <User className="w-10 h-10 text-white/50" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Player Info */}
@@ -119,7 +136,7 @@ const ElitePlayers = () => {
                   <Badge className={`${getPositionColor(player.position)} text-white text-xs mb-3`}>
                     {player.position}
                   </Badge>
-                  <h3 className="font-heading font-bold text-2xl text-white mb-1">{player.name}</h3>
+                  <h3 className="font-heading font-bold text-2xl text-white mb-1">{player.name || player.roblox_username}</h3>
                   <p className="font-body text-sm text-white/50 mb-4">{player.team}</p>
 
                   {/* Stats */}
@@ -127,7 +144,7 @@ const ElitePlayers = () => {
                     <div>
                       <div className="font-body text-xs uppercase tracking-widest text-white/40 mb-1">Fantasy Pts</div>
                       <div className="font-heading font-black text-2xl text-neon-blue">
-                        {player.stats?.fantasy_points?.toFixed(1)}
+                        {player.fantasy_points?.toFixed(1) || '0.0'}
                       </div>
                     </div>
                     <div>
@@ -142,11 +159,11 @@ const ElitePlayers = () => {
                   <div className="flex items-center gap-2 mt-4 p-3 rounded-lg bg-white/5">
                     <TrendingUp className="w-4 h-4 text-neon-volt" />
                     <span className="font-body text-sm text-white/70">
-                      {player.stats?.touchdowns || 0} Touchdowns
+                      {getTouchdowns(player)} Touchdowns
                     </span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
