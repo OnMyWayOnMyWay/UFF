@@ -12,10 +12,24 @@ Build a feature-rich website for a fantasy football league named "UFF - United F
 - **Backend**: FastAPI (Python)
 - **Database**: MongoDB (currently using mock data)
 - **UI Components**: shadcn/ui
+- **External APIs**: Roblox API (user search, avatar fetching)
 
 ## Core Features
 
 ### Completed Features ✅
+
+#### Player System (Roblox Integration)
+- [x] Players identified by Roblox username (not random names)
+- [x] Roblox user search API integration (`/api/roblox/search/{username}`)
+- [x] Roblox avatar fetching API (`/api/roblox/avatar/{user_id}`)
+- [x] Player image support via URL
+
+#### Stats Structure (Updated Jan 21, 2026)
+Stats are now organized in 4 categories matching the user's schema:
+- **Passing**: Completions, Attempts, Yards, Touchdowns, Interceptions, Rating (calc), Completion % (calc), Average (calc), Longest
+- **Rushing**: Attempts, Yards, Touchdowns, Yards Per Carry (calc), Fumbles, 20+ Yard Runs, Longest
+- **Receiving**: Receptions, Yards, Touchdowns, Drops, Longest
+- **Defense**: Tackles, Tackles For Loss, Sacks, Safeties, Swat, Interceptions, Pass Deflections, Defensive TDs
 
 #### Public Pages
 - [x] **Dashboard** - League overview, top performers, recent games, trades, power rankings
