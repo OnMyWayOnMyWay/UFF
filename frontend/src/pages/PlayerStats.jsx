@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Users } from 'lucide-react';
+import { Users, User } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const POSITIONS = ['QB', 'WR', 'RB', 'TE', 'K', 'DEF'];
+const POSITIONS = ['QB', 'WR', 'RB', 'DEF'];
 
 const PlayerStats = () => {
   const { position } = useParams();
@@ -22,7 +22,7 @@ const PlayerStats = () => {
       setLoading(true);
       try {
         const response = await axios.get(`${API}/players?position=${activePosition}`);
-        setPlayers(response.data.sort((a, b) => (b.stats?.fantasy_points || 0) - (a.stats?.fantasy_points || 0)));
+        setPlayers(response.data.sort((a, b) => (b.fantasy_points || 0) - (a.fantasy_points || 0)));
       } catch (error) {
         console.error('Error fetching players:', error);
       } finally {
@@ -42,8 +42,6 @@ const PlayerStats = () => {
       QB: 'bg-orange-500 text-white',
       WR: 'bg-teal-500 text-white',
       RB: 'bg-sky-500 text-white',
-      TE: 'bg-emerald-500 text-white',
-      K: 'bg-purple-500 text-white',
       DEF: 'bg-red-500 text-white'
     };
     return colors[pos] || 'bg-gray-500 text-white';
@@ -52,34 +50,53 @@ const PlayerStats = () => {
   const getStatsColumns = (pos) => {
     switch (pos) {
       case 'QB':
-        return ['Pass YDS', 'TDs', 'INTs', 'Fantasy Pts'];
+        return ['Pass YDS', 'TDs', 'INTs', 'Rating', 'Fantasy Pts'];
       case 'WR':
-      case 'TE':
-        return ['Receptions', 'Rec YDS', 'TDs', 'Fantasy Pts'];
+        return ['Receptions', 'Rec YDS', 'TDs', 'Drops', 'Fantasy Pts'];
       case 'RB':
-        return ['Rush YDS', 'TDs', 'Receptions', 'Fantasy Pts'];
-      case 'K':
-        return ['FG Made', 'XP Made', 'Fantasy Pts'];
+        return ['Rush YDS', 'TDs', 'YPC', 'Receptions', 'Fantasy Pts'];
       case 'DEF':
-        return ['Sacks', 'INTs', 'TDs', 'Fantasy Pts'];
+        return ['Tackles', 'Sacks', 'INTs', 'TFL', 'Fantasy Pts'];
       default:
         return ['Fantasy Pts'];
     }
   };
 
   const getStatValue = (player, statName) => {
-    const stats = player.stats;
     switch (statName) {
-      case 'Pass YDS': return stats.passing_yards?.toLocaleString() || '-';
-      case 'TDs': return stats.touchdowns || '-';
-      case 'INTs': return stats.interceptions || '-';
-      case 'Receptions': return stats.receptions || '-';
-      case 'Rec YDS': return stats.receiving_yards?.toLocaleString() || '-';
-      case 'Rush YDS': return stats.rushing_yards?.toLocaleString() || '-';
-      case 'FG Made': return stats.field_goals || '-';
-      case 'XP Made': return stats.extra_points || '-';
-      case 'Sacks': return stats.sacks || '-';
-      case 'Fantasy Pts': return stats.fantasy_points?.toFixed(1) || '-';
+      // Passing stats
+      case 'Pass YDS': return player.passing?.yards?.toLocaleString() || '-';
+      case 'TDs': 
+        if (player.position === 'QB') return player.passing?.touchdowns || '-';
+        if (player.position === 'RB') return player.rushing?.touchdowns || '-';
+        if (player.position === 'WR') return player.receiving?.touchdowns || '-';
+        if (player.position === 'DEF') return player.defense?.td || '-';
+        return '-';
+      case 'INTs': 
+        if (player.position === 'QB') return player.passing?.interceptions || '-';
+        if (player.position === 'DEF') return player.defense?.interceptions || '-';
+        return '-';
+      case 'Rating': return player.passing?.rating?.toFixed(1) || '-';
+      case 'Comp %': return player.passing?.completion_pct?.toFixed(1) || '-';
+      
+      // Rushing stats
+      case 'Rush YDS': return player.rushing?.yards?.toLocaleString() || '-';
+      case 'YPC': return player.rushing?.yards_per_carry?.toFixed(1) || '-';
+      case 'Fumbles': return player.rushing?.fumbles || '-';
+      
+      // Receiving stats
+      case 'Receptions': return player.receiving?.receptions || '-';
+      case 'Rec YDS': return player.receiving?.yards?.toLocaleString() || '-';
+      case 'Drops': return player.receiving?.drops || '-';
+      
+      // Defense stats
+      case 'Tackles': return player.defense?.tackles || '-';
+      case 'Sacks': return player.defense?.sacks || '-';
+      case 'TFL': return player.defense?.tackles_for_loss || '-';
+      case 'PD': return player.defense?.pass_deflections || '-';
+      
+      // Fantasy
+      case 'Fantasy Pts': return player.fantasy_points?.toFixed(1) || '-';
       default: return '-';
     }
   };
@@ -147,24 +164,28 @@ const PlayerStats = () => {
                           {players.map((player, idx) => (
                             <TableRow 
                               key={player.id} 
-                              className="border-white/5 table-row-hover"
+                              className="border-white/5 table-row-hover cursor-pointer"
                               data-testid={`player-row-${idx}`}
                             >
                               <TableCell className="font-heading font-black text-xl text-white/20">
                                 {String(idx + 1).padStart(2, '0')}
                               </TableCell>
                               <TableCell>
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center">
-                                    <span className="font-heading font-bold">{player.name.charAt(0)}</span>
-                                  </div>
+                                <Link to={`/player/${player.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                                  {player.image ? (
+                                    <img src={player.image} alt={player.name} className="w-10 h-10 rounded-lg object-cover" />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center">
+                                      <User className="w-5 h-5 text-white/50" />
+                                    </div>
+                                  )}
                                   <div>
-                                    <div className="font-heading font-bold text-white">{player.name}</div>
+                                    <div className="font-heading font-bold text-white">{player.name || player.roblox_username}</div>
                                     {player.is_elite && (
                                       <Badge className="bg-neon-volt/20 text-neon-volt text-xs mt-1">ELITE</Badge>
                                     )}
                                   </div>
-                                </div>
+                                </Link>
                               </TableCell>
                               <TableCell className="font-body text-white/60">{player.team}</TableCell>
                               {getStatsColumns(pos).map((col) => (
