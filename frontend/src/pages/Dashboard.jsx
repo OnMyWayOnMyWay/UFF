@@ -179,36 +179,40 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-white/5">
-                  {dashboardData?.top_performers?.slice(0, 5).map((player, idx) => (
-                    <Link 
-                      key={player.id} 
-                      to={`/player/${player.id}`}
-                      className="flex items-center gap-4 p-4 table-row-hover"
-                      data-testid={`top-performer-${idx}`}
-                    >
-                      <div className="font-heading font-black text-2xl text-white/20 w-8">
-                        {String(idx + 1).padStart(2, '0')}
-                      </div>
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center">
-                        <span className="font-heading font-bold">{player.name.charAt(0)}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-heading font-bold text-white truncate">{player.name}</div>
-                        <div className="flex items-center gap-2">
-                          <Badge className={`${getPositionColor(player.position)} text-white text-xs px-2 py-0`}>
-                            {player.position}
-                          </Badge>
-                          <span className="font-body text-xs text-white/40">{player.team}</span>
+                  {dashboardData?.top_performers?.slice(0, 5).map((item, idx) => {
+                    const player = item.player || item;
+                    const playerName = player.roblox_username || player.name || 'Unknown';
+                    return (
+                      <Link 
+                        key={player.id} 
+                        to={`/player/${player.id}`}
+                        className="flex items-center gap-4 p-4 table-row-hover"
+                        data-testid={`top-performer-${idx}`}
+                      >
+                        <div className="font-heading font-black text-2xl text-white/20 w-8">
+                          {String(idx + 1).padStart(2, '0')}
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-heading font-black text-xl text-neon-blue">
-                          {player.stats?.fantasy_points?.toFixed(1)}
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center">
+                          <span className="font-heading font-bold">{playerName.charAt(0)}</span>
                         </div>
-                        <div className="font-body text-xs text-white/40">PTS</div>
-                      </div>
-                    </Link>
-                  ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-heading font-bold text-white truncate">{playerName}</div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={`${getPositionColor(player.position)} text-white text-xs px-2 py-0`}>
+                              {player.position}
+                            </Badge>
+                            <span className="font-body text-xs text-white/40">{player.team}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-heading font-black text-xl text-neon-blue">
+                            {item.points?.toFixed(1) || player.fantasy_points?.toFixed(1)}
+                          </div>
+                          <div className="font-body text-xs text-white/40">PTS</div>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
