@@ -11,7 +11,8 @@ const Schedule = () => {
   const [scheduleData, setScheduleData] = useState({ games: [], weekly_stats: {} });
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedWeek, setSelectedWeek] = useState(13);
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [totalWeeks, setTotalWeeks] = useState(8);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -22,6 +23,10 @@ const Schedule = () => {
         ]);
         setScheduleData(scheduleRes.data);
         setTeams(teamsRes.data);
+        // Set total weeks from data and select the latest week with games
+        const maxWeek = scheduleRes.data.total_weeks || Math.max(...(scheduleRes.data.games || []).map(g => g.week), 1);
+        setTotalWeeks(maxWeek);
+        setSelectedWeek(maxWeek);
       } catch (error) {
         console.error('Error fetching schedule:', error);
       } finally {
