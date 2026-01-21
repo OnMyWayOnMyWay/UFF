@@ -232,23 +232,22 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-white/5">
-                  {dashboardData?.power_rankings_preview?.map((pr, idx) => (
+                  {dashboardData?.power_rankings?.slice(0, 5).map((pr, idx) => (
                     <Link 
                       key={pr.team_id} 
                       to={`/team/${pr.team_id}`}
                       className="flex items-center gap-3 p-3 table-row-hover"
                     >
                       <div className="font-heading font-black text-lg text-white/30 w-6">{pr.rank}</div>
-                      {getTrendIcon(pr.trend)}
+                      {getTrendIcon(pr.change)}
                       <div 
-                        className="w-8 h-8 rounded-md flex items-center justify-center font-heading font-bold text-sm text-white"
-                        style={{ backgroundColor: pr.team_color }}
+                        className="w-8 h-8 rounded-md flex items-center justify-center font-heading font-bold text-sm text-white bg-neon-blue/30"
                       >
-                        {pr.team_abbr?.charAt(0)}
+                        {pr.team_name?.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-heading font-bold text-sm text-white truncate">{pr.team_name}</div>
-                        <div className="font-body text-xs text-white/40">{pr.record}</div>
+                        <div className="font-body text-xs text-white/40 truncate">{pr.analysis?.slice(0, 40)}...</div>
                       </div>
                     </Link>
                   ))}
