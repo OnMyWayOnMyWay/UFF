@@ -36,10 +36,26 @@ const Schedule = () => {
     fetchData();
   }, []);
 
-  const getTeamById = (id) => teams.find(t => t.id === id) || { name: id, abbreviation: id.toUpperCase(), color: '#333' };
+  const getTeamById = (id) => teams.find(t => t.id === id) || { name: id || 'Unknown', abbreviation: (id || 'U').toUpperCase(), color: '#333' };
 
-  const weekGames = scheduleData.games.filter(g => g.week === selectedWeek);
-  const weekStats = scheduleData.weekly_stats[selectedWeek] || {};
+  // Only compute these after data is loaded
+  const weekGames = loading ? [] : (scheduleData.games || []).filter(g => g.week === selectedWeek);
+  
+  // Calculate weekly stats from games since API doesn't provide them
+  const weekStats = loading ? {} : (() => {
+    const games = weekGames;
+    if (games.length === 0) return {};
+    const totalPoints = games.reduce((sum, g) => sum + (g.home_score || 0) + (g.away_score || 0), 0);
+    const scores = games.flatMap(g => [g.home_score || 0, g.away_score || 0]);
+    const highScore = Math.max(...scores, 0);
+    const highScorerGame = games.find(g => g.home_score === highScore || g.away_score === highScore);
+    return {
+      total_points: totalPoints,
+      avg_points: totalPoints / (games.length * 2),
+      high_score: highScore,
+      high_scorer: highScorerGame?.player_of_game || '-'
+    };
+  })();
 
   if (loading) {
     return (
