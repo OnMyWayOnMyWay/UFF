@@ -67,9 +67,9 @@ const Dashboard = () => {
     return colors[pos] || 'bg-gray-500';
   };
 
-  const getTrendIcon = (trend) => {
-    if (trend === 'up') return <TrendingUp className="w-3 h-3 text-green-500" />;
-    if (trend === 'down') return <TrendingUp className="w-3 h-3 text-red-500 rotate-180" />;
+  const getTrendIcon = (change) => {
+    if (change > 0) return <TrendingUp className="w-3 h-3 text-green-500" />;
+    if (change < 0) return <TrendingUp className="w-3 h-3 text-red-500 rotate-180" />;
     return <span className="w-3 h-3 text-white/40">—</span>;
   };
 
