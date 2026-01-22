@@ -872,21 +872,23 @@ async def seed_database():
             game_id += 1
     await db.games.insert_many(games)
 
-    # Playoffs - Complete 10-team bracket
+    # Playoffs - Complete bracket with week assignments
+    # Conference Championships: Week 9
+    # Main Championship: Week 10
     playoffs = [
-        {"id": "po1", "round": "Playins", "matchup_name": "Play-In Game 1", "team1_id": "rd5", "team2_id": "rd6", "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po2", "round": "Playins", "matchup_name": "Play-In Game 2", "team1_id": "gc5", "team2_id": "gc6", "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po3", "round": "Wildcard", "matchup_name": "Wildcard 1 (Ridge)", "team1_id": "rd3", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po4", "round": "Wildcard", "matchup_name": "Wildcard 2 (Ridge)", "team1_id": "rd4", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po5", "round": "Wildcard", "matchup_name": "Wildcard 3 (GC)", "team1_id": "gc3", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po6", "round": "Wildcard", "matchup_name": "Wildcard 4 (GC)", "team1_id": "gc4", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po7", "round": "Divisional", "matchup_name": "Divisional 1 (Ridge)", "team1_id": "rd1", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po8", "round": "Divisional", "matchup_name": "Divisional 2 (Ridge)", "team1_id": "rd2", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po9", "round": "Divisional", "matchup_name": "Divisional 3 (GC)", "team1_id": "gc1", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po10", "round": "Divisional", "matchup_name": "Divisional 4 (GC)", "team1_id": "gc2", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po11", "round": "Conference", "matchup_name": "Ridge Championship", "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po12", "round": "Conference", "matchup_name": "Grand Central Championship", "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po13", "round": "Championship", "matchup_name": "United Flag Bowl", "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po1", "round": "Playins", "matchup_name": "Play-In Game 1", "week": 8, "team1_id": "rd5", "team2_id": "rd6", "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po2", "round": "Playins", "matchup_name": "Play-In Game 2", "week": 8, "team1_id": "gc5", "team2_id": "gc6", "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po3", "round": "Wildcard", "matchup_name": "Wildcard 1 (Ridge)", "week": 8, "team1_id": "rd3", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po4", "round": "Wildcard", "matchup_name": "Wildcard 2 (Ridge)", "week": 8, "team1_id": "rd4", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po5", "round": "Wildcard", "matchup_name": "Wildcard 3 (GC)", "week": 8, "team1_id": "gc3", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po6", "round": "Wildcard", "matchup_name": "Wildcard 4 (GC)", "week": 8, "team1_id": "gc4", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po7", "round": "Divisional", "matchup_name": "Divisional 1 (Ridge)", "week": 8, "team1_id": "rd1", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po8", "round": "Divisional", "matchup_name": "Divisional 2 (Ridge)", "week": 8, "team1_id": "rd2", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po9", "round": "Divisional", "matchup_name": "Divisional 3 (GC)", "week": 8, "team1_id": "gc1", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po10", "round": "Divisional", "matchup_name": "Divisional 4 (GC)", "week": 8, "team1_id": "gc2", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po11", "round": "Conference", "matchup_name": "Ridge Championship", "week": 9, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po12", "round": "Conference", "matchup_name": "Grand Central Championship", "week": 9, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po13", "round": "Championship", "matchup_name": "United Flag Bowl", "week": 10, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
     ]
     await db.playoffs.insert_many(playoffs)
 
@@ -1249,7 +1251,20 @@ async def get_stat_leaders():
 async def get_dashboard():
     games = await db.games.find({}, {"_id": 0}).sort("week", -1).to_list(100)
     latest_week = max((g["week"] for g in games), default=1) if games else 1
-    playoff_week = latest_week + 1  # Playoffs typically start the week after regular season
+    
+    # Get playoff weeks from playoff data
+    playoffs = await db.playoffs.find({}, {"_id": 0}).to_list(20)
+    conference_week = 9  # Default
+    championship_week = 10  # Default
+    if playoffs:
+        conference_matchups = [p for p in playoffs if p.get("round") == "Conference"]
+        championship_matchups = [p for p in playoffs if p.get("round") == "Championship"]
+        if conference_matchups:
+            conference_week = conference_matchups[0].get("week", 9)
+        if championship_matchups:
+            championship_week = championship_matchups[0].get("week", 10)
+    
+    playoff_week = conference_week  # Show conference week as playoff week
     
     weekly = await db.weekly_stats.find({"week": latest_week}, {"_id": 0}).sort("points", -1).to_list(10)
     players = await db.players.find({}, {"_id": 0}).to_list(100)
@@ -1839,42 +1854,26 @@ async def create_trade(trade: TradeSetup, admin_key: str = Header(None, alias="X
 # Season Admin
 @api_router.post("/admin/season/reset")
 async def reset_season(admin_key: str = Header(None, alias="X-Admin-Key")):
-    """Reset season data (games, standings) but keep teams, players, and all player stats intact."""
+    """Reset ALL season data - wipe everything except admins. Fresh start."""
     if not verify_admin(admin_key):
         raise HTTPException(status_code=401, detail="Invalid admin key")
     
-    # Only reset team standings/records, not the teams themselves
-    await db.teams.update_many(
-        {},
-        {"$set": {
-            "wins": 0,
-            "losses": 0,
-            "points_for": 0,
-            "points_against": 0,
-            "seed": None,
-            "playoff_status": ""
-        }}
-    )
-    
-    # DO NOT reset player stats - keep all player data intact
-    # Players and their stats remain unchanged
-    
-    # Delete all game-related data
+    # Delete ALL data except admins
+    await db.teams.delete_many({})
+    await db.players.delete_many({})
     await db.games.delete_many({})
     await db.game_player_stats.delete_many({})
     await db.weekly_stats.delete_many({})
-    
-    # Reset season-specific data
     await db.trades.delete_many({})
     await db.watchlist.delete_many({})
     await db.power_rankings.delete_many({})
     await db.awards.delete_many({})
+    await db.playoffs.delete_many({})
     await db.activity_log.delete_many({})
-    await db.playoffs.update_many({}, {"$set": {"team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"}})
     
-    # Note: Teams and Players collections are NOT touched - they remain completely intact
-    await log_admin_activity("admin", "RESET_SEASON", "Season reset - games and standings cleared, teams and players preserved")
-    return {"success": True, "message": "Season reset complete - teams and players (with all stats) preserved"}
+    # Note: Admins collection is NOT touched - admins remain intact
+    await log_admin_activity("admin", "RESET_SEASON", "Season reset - ALL data wiped except admins")
+    return {"success": True, "message": "Season reset complete - all data wiped except admins. Fresh start."}
 
 @api_router.get("/admin/validate")
 async def validate_data(admin_key: str = Header(None, alias="X-Admin-Key")):
