@@ -1832,6 +1832,13 @@ if STATIC_DIR.exists():
 else:
     logger.warning(f"Static directory not found at {STATIC_DIR}")
 
+    @app.get("/")
+    async def root_fallback():
+        return {
+            "message": "Frontend build not found.",
+            "hint": "Deploy frontend build or visit /api/ for API root."
+        }
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get('PORT', 8001))
