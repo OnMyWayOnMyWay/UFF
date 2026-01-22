@@ -28,6 +28,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[db_name]
 
 ADMIN_KEY = os.environ.get('ADMIN_KEY', 'BacconIsCool1@')
+CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '*')
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -1556,9 +1557,15 @@ async def get_player_game_log(player_id: str, admin_key: str = Header(None, alia
 async def startup_event():
     await init_database()
 
+def parse_cors_origins(raw: str) -> List[str]:
+    """Parse comma-separated origins; '*' enables all."""
+    if not raw or raw.strip() == "*":
+        return ["*"]
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=parse_cors_origins(CORS_ORIGINS),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
