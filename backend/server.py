@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Header, Query, BackgroundTasks
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -1191,9 +1191,14 @@ async def submit_game(payload: RobloxGamePayload, background_tasks: BackgroundTa
             stat_payload: Dict[str, Any] = {"player_id": player_id}
             if isinstance(categories, dict):
                 for category, stats in categories.items():
-                    stat_payload.update(map_roblox_stats(category, stats))
+                    mapped = map_roblox_stats(category, stats)
+                    stat_payload.update(mapped)
 
-            player_stats.append(PlayerGameStats(**stat_payload))
+            try:
+                player_stats.append(PlayerGameStats(**stat_payload))
+            except Exception as e:
+                logger.warning(f"Failed to create PlayerGameStats for {player_key}: {e}, payload: {stat_payload}")
+                missing_players.append(f"{player_key} (validation error)")
 
     await process_team_stats(payload.home_stats or {}, home_team)
     await process_team_stats(payload.away_stats or {}, away_team)
@@ -1827,17 +1832,35 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
-if STATIC_DIR.exists():
-    app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
-else:
-    logger.warning(f"Static directory not found at {STATIC_DIR}")
 
-    @app.get("/")
-    async def root_fallback():
-        return {
-            "message": "Frontend build not found.",
-            "hint": "Deploy frontend build or visit /api/ for API root."
-        }
+# Serve static files and handle React Router
+index_path = STATIC_DIR / "index.html" if STATIC_DIR.exists() else None
+static_assets_dir = STATIC_DIR / "static" if STATIC_DIR.exists() else None
+
+if STATIC_DIR.exists() and static_assets_dir and static_assets_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_assets_dir)), name="static_assets")
+
+# Catch-all route for React Router - serve index.html for all non-API routes
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    # Don't interfere with API routes (these are handled by api_router)
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="Not Found")
+    
+    # Static assets should be handled by mount above
+    if full_path.startswith("static/"):
+        raise HTTPException(status_code=404, detail="Asset not found")
+    
+    # Serve index.html for all other routes (React Router handles client-side routing)
+    if index_path and index_path.exists():
+        return FileResponse(str(index_path))
+    
+    # Fallback if static files not built
+    return {
+        "message": "Frontend build not found.",
+        "hint": "Deploy frontend build or visit /api/ for API root.",
+        "path": full_path
+    }
 
 if __name__ == "__main__":
     import uvicorn

@@ -47,8 +47,8 @@ local STAT_DEFINITIONS = {
 }
 
 local SUBMISSION_STATS = {
-	passing = {"Completions", "Attempts", "Yards", "Touchdowns", "Interceptions", "Rating", "Average", "Longest"},
-	rushing = {"Attempts", "Yards", "Touchdowns", "Yards Per Carry", "Fumbles", "20+ Yards", "Longest"},
+	passing = {"Completions", "Attempts", "Yards", "Touchdowns", "Interceptions", "Longest"},
+	rushing = {"Attempts", "Yards", "Touchdowns", "Fumbles", "Longest"},
 	receiving = {"Receptions", "Yards", "Touchdowns", "Drops", "Longest"},
 	defense = {"Tackles", "Tackles For Loss", "Sacks", "Safeties", "swat", "Interceptions", "Pass Deflections", "td"}
 }
@@ -81,8 +81,10 @@ local function toPascalCase(str)
 end
 
 local function getTeamData(teamKey)
-	if teamKey == TeamManager:getHome().Name then return submissionData.home_stats end
-	if teamKey == TeamManager:getAway().Name then return submissionData.away_stats end
+	local homeTeam = TeamManager:getHome()
+	local awayTeam = TeamManager:getAway()
+	if homeTeam and teamKey == homeTeam.Name then return submissionData.home_stats end
+	if awayTeam and teamKey == awayTeam.Name then return submissionData.away_stats end
 	return nil
 end
 
@@ -102,10 +104,12 @@ local function getPlayerTeam(userId)
 	if player and player.Team then
 		local teamName = player.Team.Name
 		local currentTeamKey = nil
+		local homeTeam = TeamManager:getHome()
+		local awayTeam = TeamManager:getAway()
 
-		if string.upper(teamName) == string.upper(TeamManager:getHome().Name) then
+		if homeTeam and string.upper(teamName) == string.upper(homeTeam.Name) then
 			currentTeamKey = player.Team.Name
-		elseif string.upper(teamName) == string.upper(TeamManager:getAway().Name) then
+		elseif awayTeam and string.upper(teamName) == string.upper(awayTeam.Name) then
 			currentTeamKey = player.Team.Name
 		end
 
@@ -271,7 +275,8 @@ local function gatherPlayerStatsForAPI(userId, category)
 	local apiStats = {}
 
 	for _, statName in ipairs(requiredStats) do
-		if statName == "Completion %" or statName == "Average" then
+		-- Skip calculated stats that shouldn't be sent to API
+		if statName == "Completion %" or statName == "Average" or statName == "Rating" or statName == "Yards Per Carry" then
 			-- skip calculated stats
 		else
 			local value = getStatValue(folder, statName)
