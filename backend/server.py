@@ -1174,6 +1174,11 @@ async def submit_game(payload: RobloxGamePayload, background_tasks: BackgroundTa
         response["missing_players"] = sorted(set(missing_players))
     return response
 
+@api_router.post("/game/submit")
+async def submit_game_alias(payload: RobloxGamePayload, background_tasks: BackgroundTasks):
+    """Alias for Roblox stats submission."""
+    return await submit_game(payload, background_tasks)
+
 # Watchlist
 @api_router.get("/watchlist")
 async def get_watchlist():
