@@ -1119,26 +1119,33 @@ const AdminPanel = () => {
             <TabsContent value="games" className="space-y-6">
               {/* Create Game */}
               <Card className="glass-panel border-white/10">
-                <CardHeader><CardTitle className="font-heading font-bold text-lg uppercase flex items-center gap-2"><Plus className="w-5 h-5" /> Create Game</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="font-heading font-bold text-lg uppercase flex items-center gap-2"><Plus className="w-5 h-5" /> Create Game (Auto-Updates Standings)</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <Input type="number" placeholder="Week" value={gameForm.week} onChange={(e) => setGameForm({...gameForm, week: parseInt(e.target.value)})} className="bg-white/5 border-white/10" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                    <Input type="number" placeholder="Week" value={gameForm.week} onChange={(e) => setGameForm({...gameForm, week: parseInt(e.target.value) || 1})} className="bg-white/5 border-white/10" />
                     <Select value={gameForm.home_team_id} onValueChange={(v) => setGameForm({...gameForm, home_team_id: v})}>
                       <SelectTrigger className="bg-white/5 border-white/10"><SelectValue placeholder="Home Team" /></SelectTrigger>
-                      <SelectContent>{teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+                      <SelectContent>{teams.map(t => <SelectItem key={t.id} value={t.id}>{t.abbreviation || t.name}</SelectItem>)}</SelectContent>
                     </Select>
+                    <Input type="number" step="0.1" placeholder="Home Score" value={gameForm.home_score} onChange={(e) => setGameForm({...gameForm, home_score: parseFloat(e.target.value) || 0})} className="bg-white/5 border-white/10" />
+                    <Input type="number" step="0.1" placeholder="Away Score" value={gameForm.away_score} onChange={(e) => setGameForm({...gameForm, away_score: parseFloat(e.target.value) || 0})} className="bg-white/5 border-white/10" />
                     <Select value={gameForm.away_team_id} onValueChange={(v) => setGameForm({...gameForm, away_team_id: v})}>
                       <SelectTrigger className="bg-white/5 border-white/10"><SelectValue placeholder="Away Team" /></SelectTrigger>
-                      <SelectContent>{teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+                      <SelectContent>{teams.map(t => <SelectItem key={t.id} value={t.id}>{t.abbreviation || t.name}</SelectItem>)}</SelectContent>
                     </Select>
-                    <Select value={gameForm.mode} onValueChange={(v) => setGameForm({...gameForm, mode: v})}>
-                      <SelectTrigger className="bg-white/5 border-white/10"><SelectValue placeholder="Mode" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="simple">Simple</SelectItem>
-                        <SelectItem value="full">Full</SelectItem>
-                      </SelectContent>
+                    <Select value={gameForm.player_of_game} onValueChange={(v) => setGameForm({...gameForm, player_of_game: v})}>
+                      <SelectTrigger className="bg-white/5 border-white/10"><SelectValue placeholder="POG (optional)" /></SelectTrigger>
+                      <SelectContent>{players.slice(0, 30).map(p => <SelectItem key={p.id} value={p.roblox_username}>{p.roblox_username}</SelectItem>)}</SelectContent>
                     </Select>
                     <Button onClick={createGame} className="bg-neon-blue"><Plus className="w-4 h-4 mr-1" /> Create</Button>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <Button onClick={recalculateStandings} variant="outline" size="sm" className="border-neon-volt/50 text-neon-volt">
+                      <RefreshCw className="w-4 h-4 mr-1" /> Recalc Standings
+                    </Button>
+                    <Button onClick={recalculateAll} variant="outline" size="sm" className="border-neon-blue/50 text-neon-blue">
+                      <RefreshCw className="w-4 h-4 mr-1" /> Recalc All Stats
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
