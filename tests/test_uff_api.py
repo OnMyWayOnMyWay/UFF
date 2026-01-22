@@ -11,7 +11,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://united-league.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://pigskin-analytics.preview.emergentagent.com').rstrip('/')
 ADMIN_KEY = "BacconIsCool1@"
 
 

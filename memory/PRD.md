@@ -174,7 +174,7 @@ Stats are now organized in 4 categories matching the user's schema:
 ## Credentials
 
 - **Admin Key**: `BacconIsCool1@`
-- **Backend URL**: `https://united-league.preview.emergentagent.com`
+- **Backend URL**: `https://pigskin-analytics.preview.emergentagent.com`
 
 ## Files Structure
 
