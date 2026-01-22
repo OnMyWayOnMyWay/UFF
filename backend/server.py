@@ -20,6 +20,7 @@ import asyncio
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+STATIC_DIR = (ROOT_DIR / ".." / "static").resolve()
 
 # MongoDB Setup
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
@@ -424,8 +425,12 @@ async def recalculate_all_standings():
 # ==================== DATABASE INITIALIZATION ====================
 async def init_database():
     """Initialize database - seeding disabled for production"""
-    teams_count = await db.teams.count_documents({})
-    logger.info(f"Database connected. Teams: {teams_count}")
+    try:
+        teams_count = await db.teams.count_documents({})
+        logger.info(f"Database connected. Teams: {teams_count}")
+    except Exception as exc:
+        logger.error(f"Database initialization failed: {exc}")
+        return
     # Auto-seeding disabled - use Admin Panel to add data
     # if teams_count == 0:
     #     logger.info("Initializing database with seed data...")
@@ -1572,7 +1577,10 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+if STATIC_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+else:
+    logger.warning(f"Static directory not found at {STATIC_DIR}")
 
 if __name__ == "__main__":
     import uvicorn
