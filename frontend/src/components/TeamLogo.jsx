@@ -20,8 +20,22 @@ const TeamLogo = ({ team, size = 'md', className = '', showName = false, style =
   const sizeClass = typeof size === 'string' && sizeClasses[size] ? sizeClasses[size] : size;
   const logoUrl = team.logo || team.team_logo;
   const teamColor = team.color || team.team_color || '#111827';
-  const abbreviation = team.abbreviation || team.team_abbr || team.team_abbreviation || team.name?.charAt(0) || '?';
-  const hasLogo = logoUrl && (logoUrl.startsWith('http') || logoUrl.startsWith('/uploads/') || logoUrl.startsWith('/'));
+  
+  // Safely get abbreviation
+  let abbreviation = '?';
+  if (team.abbreviation) {
+    abbreviation = String(team.abbreviation);
+  } else if (team.team_abbr) {
+    abbreviation = String(team.team_abbr);
+  } else if (team.team_abbreviation) {
+    abbreviation = String(team.team_abbreviation);
+  } else if (team.name) {
+    abbreviation = String(team.name).charAt(0) || '?';
+  } else if (team.team_name) {
+    abbreviation = String(team.team_name).charAt(0) || '?';
+  }
+  
+  const hasLogo = logoUrl && typeof logoUrl === 'string' && (logoUrl.startsWith('http') || logoUrl.startsWith('/uploads/') || logoUrl.startsWith('/'));
 
   const logoElement = (
     <div
@@ -61,7 +75,7 @@ const TeamLogo = ({ team, size = 'md', className = '', showName = false, style =
       <div className={`flex flex-col items-center ${className}`} style={style}>
         {logoElement}
         <span className="mt-1 text-xs text-white/60 text-center truncate max-w-[80px]">
-          {team.name || team.team_name}
+          {team.name || team.team_name || 'Team'}
         </span>
       </div>
     );

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import TeamLogo from '../components/TeamLogo';
 
 import API from '../lib/api';
 
@@ -63,6 +64,7 @@ const GameSimulator = () => {
   }, []);
 
   const generatePlay = () => {
+    if (!team1 || !team2) return null;
     const offenseTeam = gameState.possession === 1 ? team1 : team2;
     const defenseTeam = gameState.possession === 1 ? team2 : team1;
     
@@ -76,7 +78,7 @@ const GameSimulator = () => {
         // Punt (simplified as turnover)
         return {
           type: 'punt',
-          text: `${offenseTeam?.name} punts the ball`,
+          text: `${offenseTeam?.name || 'Team'} punts the ball`,
           yards: 0,
           turnover: true,
           newPosition: 100 - gameState.ballPosition - 40,
@@ -96,7 +98,7 @@ const GameSimulator = () => {
     let yards = success ? Math.floor(Math.random() * (play.yards[1] - play.yards[0])) + play.yards[0] : Math.floor(Math.random() * 3) - 1;
     
     // Check for touchdown
-    const newPosition = gameState.ballPosition + yards;
+    const newPosition = gameState.ballPosition + (yards || 0);
     let touchdown = false;
     let fieldGoal = false;
     
@@ -131,10 +133,12 @@ const GameSimulator = () => {
   };
 
   const simulatePlay = () => {
-    if (gameState.gameOver) return;
+    if (gameState.gameOver || !team1 || !team2) return;
 
     const play = generatePlay();
-    const newBallPosition = Math.max(0, Math.min(100, gameState.ballPosition + play.yards));
+    if (!play) return;
+    
+    const newBallPosition = Math.max(0, Math.min(100, gameState.ballPosition + (play.yards || 0)));
     
     let newState = { ...gameState };
     let playText = play.text;
@@ -392,14 +396,20 @@ const GameSimulator = () => {
               <div className="flex items-center justify-between">
                 {/* Team 1 */}
                 <div className="flex items-center gap-4">
-                  <TeamLogo team={team1} size="xl" />
-                  <div>
-                    <div className="font-heading font-bold text-xl text-white">{team1?.name || 'Team 1'}</div>
-                    <div className="text-white/50 text-sm">{team1?.wins || 0}-{team1?.losses || 0}</div>
-                  </div>
-                  <div className="font-heading font-black text-6xl text-white ml-4" style={{ textShadow: `0 0 30px ${team1?.color || '#3B82F6'}50` }}>
-                    {gameState.score1}
-                  </div>
+                  {team1 ? (
+                    <>
+                      <TeamLogo team={team1} size="xl" />
+                      <div>
+                        <div className="font-heading font-bold text-xl text-white">{team1.name || 'Team 1'}</div>
+                        <div className="text-white/50 text-sm">{team1.wins || 0}-{team1.losses || 0}</div>
+                      </div>
+                      <div className="font-heading font-black text-6xl text-white ml-4" style={{ textShadow: `0 0 30px ${team1.color || '#3B82F6'}50` }}>
+                        {gameState.score1}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-white/50">Select Team 1</div>
+                  )}
                 </div>
 
                 {/* Game Info */}
@@ -420,14 +430,20 @@ const GameSimulator = () => {
 
                 {/* Team 2 */}
                 <div className="flex items-center gap-4">
-                  <div className="font-heading font-black text-6xl text-white mr-4" style={{ textShadow: `0 0 30px ${team2?.color || '#EF4444'}50` }}>
-                    {gameState.score2}
-                  </div>
-                  <div className="text-right">
-                    <div className="font-heading font-bold text-xl text-white">{team2?.name || 'Team 2'}</div>
-                    <div className="text-white/50 text-sm">{team2?.wins || 0}-{team2?.losses || 0}</div>
-                  </div>
-                  <TeamLogo team={team2} size="xl" />
+                  {team2 ? (
+                    <>
+                      <div className="font-heading font-black text-6xl text-white mr-4" style={{ textShadow: `0 0 30px ${team2.color || '#EF4444'}50` }}>
+                        {gameState.score2}
+                      </div>
+                      <div className="text-right">
+                        <div className="font-heading font-bold text-xl text-white">{team2.name || 'Team 2'}</div>
+                        <div className="text-white/50 text-sm">{team2.wins || 0}-{team2.losses || 0}</div>
+                      </div>
+                      <TeamLogo team={team2} size="xl" />
+                    </>
+                  ) : (
+                    <div className="text-white/50">Select Team 2</div>
+                  )}
                 </div>
               </div>
 
@@ -443,8 +459,8 @@ const GameSimulator = () => {
                     />
                   ))}
                   {/* End zones */}
-                  <div className="absolute left-0 top-0 bottom-0 w-[10%] bg-blue-600/30" style={{ backgroundColor: `${team1?.color}30` }} />
-                  <div className="absolute right-0 top-0 bottom-0 w-[10%] bg-red-600/30" style={{ backgroundColor: `${team2?.color}30` }} />
+                  {team1 && <div className="absolute left-0 top-0 bottom-0 w-[10%] bg-blue-600/30" style={{ backgroundColor: `${team1.color || '#3B82F6'}30` }} />}
+                  {team2 && <div className="absolute right-0 top-0 bottom-0 w-[10%] bg-red-600/30" style={{ backgroundColor: `${team2.color || '#EF4444'}30` }} />}
                   {/* Ball marker */}
                   <div 
                     className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-yellow-500 shadow-lg transition-all duration-500"
@@ -458,7 +474,7 @@ const GameSimulator = () => {
                     style={{ 
                       left: gameState.possession === 1 ? '0' : '50%',
                       width: '50%',
-                      backgroundColor: gameState.possession === 1 ? team1?.color : team2?.color 
+                      backgroundColor: gameState.possession === 1 ? (team1?.color || '#3B82F6') : (team2?.color || '#EF4444') 
                     }}
                   />
                 </div>
@@ -472,7 +488,7 @@ const GameSimulator = () => {
               {/* Momentum Bar */}
               <div className="mt-4">
                 <div className="flex justify-between text-xs text-white/50 mb-1">
-                  <span>{team1?.abbreviation} Momentum</span>
+                  <span>{team1?.abbreviation || 'Team 1'} Momentum</span>
                   <span>{team2?.abbreviation} Momentum</span>
                 </div>
                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">

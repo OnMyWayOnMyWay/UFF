@@ -38,28 +38,33 @@ const Schedule = () => {
   }, []);
 
   const getTeamById = (id) => {
+    if (!id) return { name: 'Unknown', abbreviation: '?', color: '#333', logo: null };
+    
     const team = teams.find(t => t.id === id);
     if (team) return team;
+    
     // Try to get from game data if available
-    const game = scheduleData.games?.find(g => g.home_team_id === id || g.away_team_id === id);
+    const game = scheduleData?.games?.find(g => g.home_team_id === id || g.away_team_id === id);
     if (game) {
       if (game.home_team_id === id) {
         return { 
+          id: id,
           name: game.home_team_name || id || 'Unknown', 
           abbreviation: game.home_team_abbr || (id || 'U').toUpperCase(), 
           color: game.home_team_color || '#333',
-          logo: game.home_team_logo
+          logo: game.home_team_logo || null
         };
       } else {
         return { 
+          id: id,
           name: game.away_team_name || id || 'Unknown', 
           abbreviation: game.away_team_abbr || (id || 'U').toUpperCase(), 
           color: game.away_team_color || '#333',
-          logo: game.away_team_logo
+          logo: game.away_team_logo || null
         };
       }
     }
-    return { name: id || 'Unknown', abbreviation: (id || 'U').toUpperCase(), color: '#333' };
+    return { id: id, name: id || 'Unknown', abbreviation: (id || 'U').toUpperCase(), color: '#333', logo: null };
   };
 
   // Only compute these after data is loaded
@@ -184,9 +189,9 @@ const Schedule = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {weekGames.map((game, idx) => {
-                const homeTeam = getTeamById(game.home_team_id);
-                const awayTeam = getTeamById(game.away_team_id);
-                const homeWins = game.home_score > game.away_score;
+                const homeTeam = getTeamById(game?.home_team_id);
+                const awayTeam = getTeamById(game?.away_team_id);
+                const homeWins = (game?.home_score || 0) > (game?.away_score || 0);
                 
                 return (
                   <Card 
@@ -216,12 +221,12 @@ const Schedule = () => {
                           <div className="flex items-center gap-3">
                             <TeamLogo team={awayTeam} size="md" />
                             <div>
-                              <div className="font-heading font-bold text-white">{awayTeam.name}</div>
-                              <div className="font-body text-xs text-white/40">{awayTeam.wins}-{awayTeam.losses}</div>
+                              <div className="font-heading font-bold text-white">{awayTeam?.name || 'Unknown'}</div>
+                              <div className="font-body text-xs text-white/40">{awayTeam?.wins || 0}-{awayTeam?.losses || 0}</div>
                             </div>
                           </div>
                           <div className={`font-heading font-black text-2xl ${!homeWins ? 'text-neon-volt' : 'text-white/40'}`}>
-                            {game.away_score.toFixed(1)}
+                            {(game?.away_score || 0).toFixed(1)}
                           </div>
                         </div>
 
@@ -233,12 +238,12 @@ const Schedule = () => {
                           <div className="flex items-center gap-3">
                             <TeamLogo team={homeTeam} size="md" />
                             <div>
-                              <div className="font-heading font-bold text-white">{homeTeam.name}</div>
-                              <div className="font-body text-xs text-white/40">{homeTeam.wins}-{homeTeam.losses}</div>
+                              <div className="font-heading font-bold text-white">{homeTeam?.name || 'Unknown'}</div>
+                              <div className="font-body text-xs text-white/40">{homeTeam?.wins || 0}-{homeTeam?.losses || 0}</div>
                             </div>
                           </div>
                           <div className={`font-heading font-black text-2xl ${homeWins ? 'text-neon-volt' : 'text-white/40'}`}>
-                            {game.home_score.toFixed(1)}
+                            {(game?.home_score || 0).toFixed(1)}
                           </div>
                         </div>
                       </div>

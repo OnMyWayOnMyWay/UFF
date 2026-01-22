@@ -242,24 +242,27 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-white/5">
-                  {dashboardData?.power_rankings?.slice(0, 5).map((pr, idx) => (
-                    <Link 
-                      key={pr.team_id} 
-                      to={`/team/${pr.team_id}`}
-                      className="flex items-center gap-3 p-3 table-row-hover"
-                    >
-                      <div className="font-heading font-black text-lg text-white/30 w-6">{pr.rank}</div>
-                      {getTrendIcon(pr.change)}
-                      <TeamLogo 
-                        team={{ name: pr.team_name, color: pr.team_color, abbreviation: pr.team_abbr, logo: pr.team_logo }} 
-                        size="sm" 
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-heading font-bold text-sm text-white truncate">{pr.team_name}</div>
-                        <div className="font-body text-xs text-white/40 truncate">{pr.analysis?.slice(0, 40)}...</div>
-                      </div>
-                    </Link>
-                  ))}
+                  {dashboardData?.power_rankings?.slice(0, 5).map((pr, idx) => {
+                    if (!pr || !pr.team_id) return null;
+                    return (
+                      <Link 
+                        key={pr.team_id} 
+                        to={`/team/${pr.team_id}`}
+                        className="flex items-center gap-3 p-3 table-row-hover"
+                      >
+                        <div className="font-heading font-black text-lg text-white/30 w-6">{pr.rank}</div>
+                        {getTrendIcon(pr.change)}
+                        <TeamLogo 
+                          team={{ name: pr.team_name, color: pr.team_color, abbreviation: pr.team_abbr, logo: pr.team_logo }} 
+                          size="sm" 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-heading font-bold text-sm text-white truncate">{pr.team_name || 'Unknown'}</div>
+                          <div className="font-body text-xs text-white/40 truncate">{pr.analysis?.slice(0, 40) || ''}...</div>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -325,40 +328,44 @@ const Dashboard = () => {
                 </div>
               </CardHeader>
               <CardContent className="p-4 space-y-4">
-                <Link to={`/team/${dashboardData?.standings_preview?.grand_central_leader?.id}`} className="block p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                  <div className="font-body text-xs uppercase tracking-widest text-neon-blue mb-2">Grand Central</div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-heading font-bold text-lg text-white">
-                        {dashboardData?.standings_preview?.grand_central_leader?.name}
+                {dashboardData?.standings_preview?.grand_central_leader && (
+                  <Link to={`/team/${dashboardData.standings_preview.grand_central_leader.id}`} className="block p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                    <div className="font-body text-xs uppercase tracking-widest text-neon-blue mb-2">Grand Central</div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-heading font-bold text-lg text-white">
+                          {dashboardData.standings_preview.grand_central_leader.name}
+                        </div>
+                        <div className="font-body text-sm text-white/50">
+                          {dashboardData.standings_preview.grand_central_leader.wins}-{dashboardData.standings_preview.grand_central_leader.losses}
+                        </div>
                       </div>
-                      <div className="font-body text-sm text-white/50">
-                        {dashboardData?.standings_preview?.grand_central_leader?.wins}-{dashboardData?.standings_preview?.grand_central_leader?.losses}
-                      </div>
-                    </div>
                       <TeamLogo 
-                        team={dashboardData?.standings_preview?.grand_central_leader} 
+                        team={dashboardData.standings_preview.grand_central_leader} 
                         size="md" 
                       />
-                  </div>
-                </Link>
-                <Link to={`/team/${dashboardData?.standings_preview?.ridge_leader?.id}`} className="block p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                  <div className="font-body text-xs uppercase tracking-widest text-neon-volt mb-2">Ridge</div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-heading font-bold text-lg text-white">
-                        {dashboardData?.standings_preview?.ridge_leader?.name}
-                      </div>
-                      <div className="font-body text-sm text-white/50">
-                        {dashboardData?.standings_preview?.ridge_leader?.wins}-{dashboardData?.standings_preview?.ridge_leader?.losses}
-                      </div>
                     </div>
-                    <TeamLogo 
-                      team={dashboardData?.standings_preview?.ridge_leader} 
-                      size="md" 
-                    />
-                  </div>
-                </Link>
+                  </Link>
+                )}
+                {dashboardData?.standings_preview?.ridge_leader && (
+                  <Link to={`/team/${dashboardData.standings_preview.ridge_leader.id}`} className="block p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                    <div className="font-body text-xs uppercase tracking-widest text-neon-volt mb-2">Ridge</div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-heading font-bold text-lg text-white">
+                          {dashboardData.standings_preview.ridge_leader.name}
+                        </div>
+                        <div className="font-body text-sm text-white/50">
+                          {dashboardData.standings_preview.ridge_leader.wins}-{dashboardData.standings_preview.ridge_leader.losses}
+                        </div>
+                      </div>
+                      <TeamLogo 
+                        team={dashboardData.standings_preview.ridge_leader} 
+                        size="md" 
+                      />
+                    </div>
+                  </Link>
+                )}
               </CardContent>
             </Card>
 
