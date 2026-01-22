@@ -89,6 +89,60 @@ class PlayerCreate(BaseModel):
     is_elite: bool = False
     image: Optional[str] = None
 
+# ==================== GAME-CENTRIC MODELS ====================
+class PlayerGameStats(BaseModel):
+    """Stats for a single player in a single game"""
+    player_id: str
+    # Passing
+    pass_completions: int = 0
+    pass_attempts: int = 0
+    pass_yards: int = 0
+    pass_tds: int = 0
+    interceptions: int = 0
+    # Rushing
+    rush_attempts: int = 0
+    rush_yards: int = 0
+    rush_tds: int = 0
+    fumbles: int = 0
+    longest_rush: int = 0
+    # Receiving
+    receptions: int = 0
+    rec_yards: int = 0
+    rec_tds: int = 0
+    drops: int = 0
+    longest_rec: int = 0
+    # Defense
+    tackles: int = 0
+    tackles_for_loss: int = 0
+    sacks: float = 0
+    def_interceptions: int = 0
+    pass_deflections: int = 0
+    def_tds: int = 0
+    safeties: int = 0
+
+class GameWithStats(BaseModel):
+    """Create a game with full player stats"""
+    week: int
+    home_team_id: str
+    away_team_id: str
+    home_score: float = 0
+    away_score: float = 0
+    is_completed: bool = True
+    player_of_game: Optional[str] = None
+    player_of_game_stats: Optional[str] = None
+    date: Optional[str] = None
+    # Player performances in this game
+    player_stats: List[PlayerGameStats] = []
+
+class QuickGameCreate(BaseModel):
+    """Quick game creation with just scores"""
+    week: int
+    home_team_id: str
+    away_team_id: str
+    home_score: float
+    away_score: float
+    player_of_game: Optional[str] = None
+
 # ==================== HELPER FUNCTIONS ====================
 def verify_admin(admin_key: str):
     if admin_key == ADMIN_KEY:
