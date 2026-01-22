@@ -878,9 +878,14 @@ const AdminPanel = () => {
             <TabsContent value="players">
               <Card className="glass-panel border-white/10">
                 <CardHeader className="border-b border-white/5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
                     <CardTitle className="font-heading font-bold text-lg uppercase">Manage Players</CardTitle>
-                    <Input placeholder="Search players..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-64 bg-white/5 border-white/10" />
+                    <div className="flex gap-2 items-center">
+                      <Button onClick={fetchAllAvatars} variant="outline" size="sm" className="border-neon-volt/50 text-neon-volt">
+                        <Camera className="w-4 h-4 mr-1" /> Fetch All Avatars
+                      </Button>
+                      <Input placeholder="Search players..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-64 bg-white/5 border-white/10" />
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0 max-h-[600px] overflow-auto">
@@ -897,7 +902,7 @@ const AdminPanel = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {players.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(player => (
+                      {players.filter(p => !searchQuery || p.name?.toLowerCase().includes(searchQuery.toLowerCase()) || p.roblox_username?.toLowerCase().includes(searchQuery.toLowerCase())).map(player => (
                         <tr key={player.id} className="border-b border-white/5 table-row-hover">
                           <td className="p-3">
                             <div className="flex items-center gap-3">
@@ -905,20 +910,36 @@ const AdminPanel = () => {
                                 <img src={player.image} alt={player.name} className="w-8 h-8 rounded-full object-cover" />
                               ) : (
                                 <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                                  <span className="text-xs font-bold">{player.name.charAt(0)}</span>
+                                  <span className="text-xs font-bold">{(player.name || player.roblox_username || '?').charAt(0)}</span>
                                 </div>
                               )}
-                              <span className="font-heading font-bold text-white">{player.name}</span>
+                              <span className="font-heading font-bold text-white">{player.name || player.roblox_username}</span>
                               {player.is_elite && <Badge className="bg-neon-volt/20 text-neon-volt text-xs">ELITE</Badge>}
                             </div>
                           </td>
                           <td className="p-3 font-body text-xs text-white/50">{player.roblox_username || player.roblox_id || '-'}</td>
                           <td className="p-3 text-center"><Badge className={`${getPositionColor(player.position)} text-white text-xs`}>{player.position}</Badge></td>
                           <td className="p-3 text-white/60 text-sm">{player.team}</td>
-                          <td className="p-3 text-right font-heading font-bold text-neon-blue">{player.stats?.fantasy_points?.toFixed(1)}</td>
+                          <td className="p-3 text-right font-heading font-bold text-neon-blue">{player.fantasy_points?.toFixed(1)}</td>
                           <td className="p-3 text-center text-white/60">{player.games_played || 0}</td>
                           <td className="p-3 text-center">
                             <div className="flex gap-1 justify-center">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => fetchPlayerAvatar(player.id)}
+                                disabled={fetchingAvatar[player.id] || !!player.image}
+                                className={player.image ? 'text-green-500' : 'text-neon-volt hover:bg-neon-volt/10'}
+                                title={player.image ? 'Has avatar' : 'Fetch Roblox avatar'}
+                              >
+                                {fetchingAvatar[player.id] ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : player.image ? (
+                                  <Check className="w-4 h-4" />
+                                ) : (
+                                  <Camera className="w-4 h-4" />
+                                )}
+                              </Button>
                               <Button size="sm" variant="ghost" onClick={() => setEditPlayerModal({ open: true, player: { ...player } })}><Edit className="w-4 h-4" /></Button>
                               <Button size="sm" variant="ghost" onClick={() => deletePlayer(player.id)} className="text-red-500 hover:bg-red-500/10"><Trash2 className="w-4 h-4" /></Button>
                             </div>
