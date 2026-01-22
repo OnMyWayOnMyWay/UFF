@@ -4,9 +4,9 @@ import axios from 'axios';
 import { Trophy, Crown, Sparkles, Calendar, ChevronRight, Zap, Award, Target, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import UFFLogo from '../assets/uff-logo.svg';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const UFF_LOGO = "https://customer-assets.emergentagent.com/job_elite-league-hub/artifacts/g9a4t1r6_image.png";
 
 const Playoffs = () => {
   const [playoffData, setPlayoffData] = useState({ matchups: [], rounds: [] });
@@ -286,7 +286,7 @@ const Playoffs = () => {
           <div className="flex flex-col md:flex-row items-center gap-6 animate-slide-up">
             <div className="relative">
               <img 
-                src={UFF_LOGO} 
+                src={UFFLogo} 
                 alt="UFF Logo" 
                 className="w-20 h-20 md:w-24 md:h-24 object-contain drop-shadow-[0_0_30px_rgba(204,255,0,0.3)]" 
               />
@@ -407,7 +407,7 @@ const Playoffs = () => {
                   <div className="text-center mb-8">
                     <div className="relative inline-block">
                       <img 
-                        src={UFF_LOGO} 
+                        src={UFFLogo} 
                         alt="UFF Logo" 
                         className="w-24 h-24 mx-auto opacity-30 animate-pulse" 
                       />

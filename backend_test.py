@@ -1,9 +1,12 @@
+import os
 import requests
 import sys
 from datetime import datetime
 
 class FantasyFootballAPITester:
-    def __init__(self, base_url="https://pigskin-analytics.preview.emergentagent.com/api"):
+    def __init__(self, base_url=None):
+        if base_url is None:
+            base_url = os.environ.get("BACKEND_URL", "http://localhost:8001/api")
         self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0

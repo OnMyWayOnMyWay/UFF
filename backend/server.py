@@ -55,16 +55,6 @@ class TradeSetup(BaseModel):
     team1_receives: List[str]
     team2_receives: List[str]
 
-class GameCreate(BaseModel):
-    week: int
-    home_team_id: str
-    away_team_id: str
-    home_score: float = 0
-    away_score: float = 0
-    is_completed: bool = False
-    player_of_game: Optional[str] = None
-    player_of_game_stats: Optional[str] = None
-    mode: str = "simple"
 
 class BulkDeleteGames(BaseModel):
     start_week: int
@@ -135,14 +125,6 @@ class GameWithStats(BaseModel):
     # Player performances in this game
     player_stats: List[PlayerGameStats] = []
 
-class QuickGameCreate(BaseModel):
-    """Quick game creation with just scores"""
-    week: int
-    home_team_id: str
-    away_team_id: str
-    home_score: float
-    away_score: float
-    player_of_game: Optional[str] = None
 
 # ==================== HELPER FUNCTIONS ====================
 def verify_admin(admin_key: str):
@@ -1266,13 +1248,69 @@ async def update_team_branding(team_id: str, color: str = "", logo: str = "", ad
 
 # Game Admin
 @api_router.post("/admin/game")
-async def create_game(game: GameCreate, admin_key: str = Header(None, alias="X-Admin-Key")):
+async def create_game(game: GameWithStats, background_tasks: BackgroundTasks, admin_key: str = Header(None, alias="X-Admin-Key")):
+    """Create a game with optional player stats in one request."""
     if not verify_admin(admin_key):
         raise HTTPException(status_code=401, detail="Invalid admin key")
+    
     count = await db.games.count_documents({})
-    new_game = {"id": f"g{count + 1}", "week": game.week, "home_team_id": game.home_team_id, "away_team_id": game.away_team_id, "home_score": game.home_score, "away_score": game.away_score, "is_completed": game.is_completed, "player_of_game": game.player_of_game, "player_of_game_stats": game.player_of_game_stats, "date": datetime.now(timezone.utc).strftime("%Y-%m-%d")}
+    game_id = f"g{count + 1}"
+    
+    new_game = {
+        "id": game_id,
+        "week": game.week,
+        "home_team_id": game.home_team_id,
+        "away_team_id": game.away_team_id,
+        "home_score": game.home_score,
+        "away_score": game.away_score,
+        "is_completed": game.is_completed,
+        "player_of_game": game.player_of_game,
+        "player_of_game_stats": game.player_of_game_stats,
+        "date": game.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    }
     await db.games.insert_one(new_game)
-    await log_admin_activity("admin", "CREATE_GAME", f"Created game: Week {game.week}")
+    
+    affected_players = set()
+    for ps in game.player_stats:
+        game_stat = {
+            "game_id": game_id,
+            "week": game.week,
+            "player_id": ps.player_id,
+            "pass_completions": ps.pass_completions,
+            "pass_attempts": ps.pass_attempts,
+            "pass_yards": ps.pass_yards,
+            "pass_tds": ps.pass_tds,
+            "interceptions": ps.interceptions,
+            "rush_attempts": ps.rush_attempts,
+            "rush_yards": ps.rush_yards,
+            "rush_tds": ps.rush_tds,
+            "fumbles": ps.fumbles,
+            "longest_rush": ps.longest_rush,
+            "receptions": ps.receptions,
+            "rec_yards": ps.rec_yards,
+            "rec_tds": ps.rec_tds,
+            "drops": ps.drops,
+            "longest_rec": ps.longest_rec,
+            "tackles": ps.tackles,
+            "tackles_for_loss": ps.tackles_for_loss,
+            "sacks": ps.sacks,
+            "def_interceptions": ps.def_interceptions,
+            "pass_deflections": ps.pass_deflections,
+            "def_tds": ps.def_tds,
+            "safeties": ps.safeties
+        }
+        await db.game_player_stats.insert_one(game_stat)
+        affected_players.add(ps.player_id)
+    
+    for player_id in affected_players:
+        await recalculate_player_stats(player_id)
+    
+    if game.is_completed:
+        await recalculate_team_record(game.home_team_id)
+        await recalculate_team_record(game.away_team_id)
+        background_tasks.add_task(recalculate_all_standings)
+    
+    await log_admin_activity("admin", "CREATE_GAME", f"Created game: Week {game.week} ({len(game.player_stats)} player stats)")
     new_game.pop("_id", None)
     return new_game
 
@@ -1374,109 +1412,6 @@ async def validate_data(admin_key: str = Header(None, alias="X-Admin-Key")):
     return {"valid": len(issues) == 0, "issues": issues}
 
 # ==================== GAME-CENTRIC ENDPOINTS ====================
-@api_router.post("/admin/game/with-stats")
-async def create_game_with_stats(game: GameWithStats, background_tasks: BackgroundTasks, admin_key: str = Header(None, alias="X-Admin-Key")):
-    """Create a game with full player statistics - stats flow up to players and standings"""
-    if not verify_admin(admin_key):
-        raise HTTPException(status_code=401, detail="Invalid admin key")
-    
-    # Create the game
-    count = await db.games.count_documents({})
-    game_id = f"g{count + 1}"
-    
-    new_game = {
-        "id": game_id,
-        "week": game.week,
-        "home_team_id": game.home_team_id,
-        "away_team_id": game.away_team_id,
-        "home_score": game.home_score,
-        "away_score": game.away_score,
-        "is_completed": game.is_completed,
-        "player_of_game": game.player_of_game,
-        "player_of_game_stats": game.player_of_game_stats,
-        "date": game.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    }
-    await db.games.insert_one(new_game)
-    
-    # Save individual player stats for this game
-    affected_players = set()
-    for ps in game.player_stats:
-        game_stat = {
-            "game_id": game_id,
-            "week": game.week,
-            "player_id": ps.player_id,
-            "pass_completions": ps.pass_completions,
-            "pass_attempts": ps.pass_attempts,
-            "pass_yards": ps.pass_yards,
-            "pass_tds": ps.pass_tds,
-            "interceptions": ps.interceptions,
-            "rush_attempts": ps.rush_attempts,
-            "rush_yards": ps.rush_yards,
-            "rush_tds": ps.rush_tds,
-            "fumbles": ps.fumbles,
-            "longest_rush": ps.longest_rush,
-            "receptions": ps.receptions,
-            "rec_yards": ps.rec_yards,
-            "rec_tds": ps.rec_tds,
-            "drops": ps.drops,
-            "longest_rec": ps.longest_rec,
-            "tackles": ps.tackles,
-            "tackles_for_loss": ps.tackles_for_loss,
-            "sacks": ps.sacks,
-            "def_interceptions": ps.def_interceptions,
-            "pass_deflections": ps.pass_deflections,
-            "def_tds": ps.def_tds,
-            "safeties": ps.safeties
-        }
-        await db.game_player_stats.insert_one(game_stat)
-        affected_players.add(ps.player_id)
-    
-    # Recalculate stats for all affected players
-    for player_id in affected_players:
-        await recalculate_player_stats(player_id)
-    
-    # Recalculate team standings if game is completed
-    if game.is_completed:
-        await recalculate_team_record(game.home_team_id)
-        await recalculate_team_record(game.away_team_id)
-        background_tasks.add_task(recalculate_all_standings)
-    
-    await log_admin_activity("admin", "CREATE_GAME_WITH_STATS", f"Week {game.week}: {len(game.player_stats)} player stats")
-    new_game.pop("_id", None)
-    return {"game": new_game, "player_stats_count": len(game.player_stats)}
-
-@api_router.post("/admin/game/quick")
-async def create_quick_game(game: QuickGameCreate, background_tasks: BackgroundTasks, admin_key: str = Header(None, alias="X-Admin-Key")):
-    """Quick game creation - just scores, auto-updates team records and standings"""
-    if not verify_admin(admin_key):
-        raise HTTPException(status_code=401, detail="Invalid admin key")
-    
-    count = await db.games.count_documents({})
-    game_id = f"g{count + 1}"
-    
-    new_game = {
-        "id": game_id,
-        "week": game.week,
-        "home_team_id": game.home_team_id,
-        "away_team_id": game.away_team_id,
-        "home_score": game.home_score,
-        "away_score": game.away_score,
-        "is_completed": True,
-        "player_of_game": game.player_of_game,
-        "player_of_game_stats": None,
-        "date": datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    }
-    await db.games.insert_one(new_game)
-    
-    # Recalculate team records and standings
-    await recalculate_team_record(game.home_team_id)
-    await recalculate_team_record(game.away_team_id)
-    background_tasks.add_task(recalculate_all_standings)
-    
-    await log_admin_activity("admin", "CREATE_QUICK_GAME", f"Week {game.week}")
-    new_game.pop("_id", None)
-    return new_game
-
 @api_router.post("/admin/game/{game_id}/player-stats")
 async def add_player_game_stats(game_id: str, stats: PlayerGameStats, admin_key: str = Header(None, alias="X-Admin-Key")):
     """Add or update player stats for an existing game"""

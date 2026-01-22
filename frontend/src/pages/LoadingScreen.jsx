@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Zap } from 'lucide-react';
+import UFFLogo from '../assets/uff-logo.svg';
 
-const UFF_LOGO = "https://customer-assets.emergentagent.com/job_elite-league-hub/artifacts/g9a4t1r6_image.png";
 
 const LoadingScreen = ({ onComplete }) => {
   const [progress, setProgress] = useState(0);
@@ -44,7 +44,7 @@ const LoadingScreen = ({ onComplete }) => {
         {/* UFF Logo */}
         <div className="relative w-32 h-32 flex items-center justify-center">
           <img 
-            src={UFF_LOGO} 
+            src={UFFLogo} 
             alt="UFF Logo" 
             className="w-32 h-32 object-contain"
           />

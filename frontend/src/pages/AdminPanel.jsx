@@ -244,13 +244,14 @@ const AdminPanel = () => {
       return;
     }
     try {
-      await axios.post(`${API}/admin/game/quick`, {
+      await axios.post(`${API}/admin/game`, {
         week: gameForm.week,
         home_team_id: gameForm.home_team_id,
         away_team_id: gameForm.away_team_id,
         home_score: gameForm.home_score || 0,
         away_score: gameForm.away_score || 0,
-        player_of_game: gameForm.player_of_game || null
+        player_of_game: gameForm.player_of_game || null,
+        is_completed: true
       }, { headers });
       toast.success('Game created - standings updated!');
       fetchAllData();

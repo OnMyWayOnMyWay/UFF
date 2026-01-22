@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
+import UFFLogo from '../assets/uff-logo.svg';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const UFF_LOGO = "https://customer-assets.emergentagent.com/job_elite-league-hub/artifacts/g9a4t1r6_image.png";
 
 const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -88,7 +88,7 @@ const Dashboard = () => {
         <div className="max-w-7xl mx-auto">
           {/* UFF Logo and Title */}
           <div className="flex items-center gap-4 mb-6 animate-slide-up">
-            <img src={UFF_LOGO} alt="UFF Logo" className="w-16 h-16 md:w-20 md:h-20 object-contain" />
+            <img src={UFFLogo} alt="UFF Logo" className="w-16 h-16 md:w-20 md:h-20 object-contain" />
             <div>
               <h1 className="font-heading font-black text-3xl md:text-5xl lg:text-6xl tracking-tighter uppercase text-white">
                 UNITED FOOTBALL
