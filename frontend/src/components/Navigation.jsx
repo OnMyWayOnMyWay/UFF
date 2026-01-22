@@ -107,7 +107,7 @@ const Navigation = ({ currentPath }) => {
             className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 nav-dock border border-white/10 rounded-xl p-2 min-w-[280px] animate-slide-up"
             data-testid="more-menu"
           >
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-4 gap-1">
               {moreNavItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.path);
