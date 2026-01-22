@@ -690,12 +690,36 @@ const AdminPanel = () => {
               </div>
               <div className="space-y-2">
                 <Label className="text-white/60">Player Image URL</Label>
-                <Input
-                  value={editPlayerModal.player.image || ''}
-                  onChange={(e) => setEditPlayerModal({ ...editPlayerModal, player: { ...editPlayerModal.player, image: e.target.value } })}
-                  placeholder="https://example.com/player.png"
-                  className="bg-white/5 border-white/10"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    value={editPlayerModal.player.image || ''}
+                    onChange={(e) => setEditPlayerModal({ ...editPlayerModal, player: { ...editPlayerModal.player, image: e.target.value } })}
+                    placeholder="https://example.com/player.png"
+                    className="bg-white/5 border-white/10 flex-1"
+                  />
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    className="border-neon-volt/50 text-neon-volt"
+                    onClick={async () => {
+                      const playerId = editPlayerModal.player.id;
+                      try {
+                        const res = await axios.post(`${API}/admin/player/${playerId}/fetch-avatar`, {}, { headers });
+                        if (res.data.avatar_url) {
+                          setEditPlayerModal({ 
+                            ...editPlayerModal, 
+                            player: { ...editPlayerModal.player, image: res.data.avatar_url } 
+                          });
+                          toast.success('Avatar fetched!');
+                        }
+                      } catch (error) {
+                        toast.error('Failed to fetch avatar');
+                      }
+                    }}
+                  >
+                    <Camera className="w-4 h-4 mr-1" /> Auto
+                  </Button>
+                </div>
                 {editPlayerModal.player.image && (
                   <div className="mt-2 p-2 bg-white/5 rounded-lg">
                     <img src={editPlayerModal.player.image} alt="Player preview" className="w-20 h-20 object-cover rounded-full mx-auto" />
