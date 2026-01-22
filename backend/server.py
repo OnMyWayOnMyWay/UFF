@@ -1372,6 +1372,249 @@ async def validate_data(admin_key: str = Header(None, alias="X-Admin-Key")):
             issues.append(f"Player {p.get('roblox_username')} has invalid team")
     return {"valid": len(issues) == 0, "issues": issues}
 
+# ==================== GAME-CENTRIC ENDPOINTS ====================
+@api_router.post("/admin/game/with-stats")
+async def create_game_with_stats(game: GameWithStats, background_tasks: BackgroundTasks, admin_key: str = Header(None, alias="X-Admin-Key")):
+    """Create a game with full player statistics - stats flow up to players and standings"""
+    if not verify_admin(admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    # Create the game
+    count = await db.games.count_documents({})
+    game_id = f"g{count + 1}"
+    
+    new_game = {
+        "id": game_id,
+        "week": game.week,
+        "home_team_id": game.home_team_id,
+        "away_team_id": game.away_team_id,
+        "home_score": game.home_score,
+        "away_score": game.away_score,
+        "is_completed": game.is_completed,
+        "player_of_game": game.player_of_game,
+        "player_of_game_stats": game.player_of_game_stats,
+        "date": game.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    }
+    await db.games.insert_one(new_game)
+    
+    # Save individual player stats for this game
+    affected_players = set()
+    for ps in game.player_stats:
+        game_stat = {
+            "game_id": game_id,
+            "week": game.week,
+            "player_id": ps.player_id,
+            "pass_completions": ps.pass_completions,
+            "pass_attempts": ps.pass_attempts,
+            "pass_yards": ps.pass_yards,
+            "pass_tds": ps.pass_tds,
+            "interceptions": ps.interceptions,
+            "rush_attempts": ps.rush_attempts,
+            "rush_yards": ps.rush_yards,
+            "rush_tds": ps.rush_tds,
+            "fumbles": ps.fumbles,
+            "longest_rush": ps.longest_rush,
+            "receptions": ps.receptions,
+            "rec_yards": ps.rec_yards,
+            "rec_tds": ps.rec_tds,
+            "drops": ps.drops,
+            "longest_rec": ps.longest_rec,
+            "tackles": ps.tackles,
+            "tackles_for_loss": ps.tackles_for_loss,
+            "sacks": ps.sacks,
+            "def_interceptions": ps.def_interceptions,
+            "pass_deflections": ps.pass_deflections,
+            "def_tds": ps.def_tds,
+            "safeties": ps.safeties
+        }
+        await db.game_player_stats.insert_one(game_stat)
+        affected_players.add(ps.player_id)
+    
+    # Recalculate stats for all affected players
+    for player_id in affected_players:
+        await recalculate_player_stats(player_id)
+    
+    # Recalculate team standings if game is completed
+    if game.is_completed:
+        await recalculate_team_record(game.home_team_id)
+        await recalculate_team_record(game.away_team_id)
+        background_tasks.add_task(recalculate_all_standings)
+    
+    await log_admin_activity("admin", "CREATE_GAME_WITH_STATS", f"Week {game.week}: {len(game.player_stats)} player stats")
+    new_game.pop("_id", None)
+    return {"game": new_game, "player_stats_count": len(game.player_stats)}
+
+@api_router.post("/admin/game/quick")
+async def create_quick_game(game: QuickGameCreate, background_tasks: BackgroundTasks, admin_key: str = Header(None, alias="X-Admin-Key")):
+    """Quick game creation - just scores, auto-updates team records and standings"""
+    if not verify_admin(admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    count = await db.games.count_documents({})
+    game_id = f"g{count + 1}"
+    
+    new_game = {
+        "id": game_id,
+        "week": game.week,
+        "home_team_id": game.home_team_id,
+        "away_team_id": game.away_team_id,
+        "home_score": game.home_score,
+        "away_score": game.away_score,
+        "is_completed": True,
+        "player_of_game": game.player_of_game,
+        "player_of_game_stats": None,
+        "date": datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    }
+    await db.games.insert_one(new_game)
+    
+    # Recalculate team records and standings
+    await recalculate_team_record(game.home_team_id)
+    await recalculate_team_record(game.away_team_id)
+    background_tasks.add_task(recalculate_all_standings)
+    
+    await log_admin_activity("admin", "CREATE_QUICK_GAME", f"Week {game.week}")
+    new_game.pop("_id", None)
+    return new_game
+
+@api_router.post("/admin/game/{game_id}/player-stats")
+async def add_player_game_stats(game_id: str, stats: PlayerGameStats, admin_key: str = Header(None, alias="X-Admin-Key")):
+    """Add or update player stats for an existing game"""
+    if not verify_admin(admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    game = await db.games.find_one({"id": game_id})
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    # Check if stats already exist for this player/game
+    existing = await db.game_player_stats.find_one({"game_id": game_id, "player_id": stats.player_id})
+    
+    game_stat = {
+        "game_id": game_id,
+        "week": game["week"],
+        "player_id": stats.player_id,
+        "pass_completions": stats.pass_completions,
+        "pass_attempts": stats.pass_attempts,
+        "pass_yards": stats.pass_yards,
+        "pass_tds": stats.pass_tds,
+        "interceptions": stats.interceptions,
+        "rush_attempts": stats.rush_attempts,
+        "rush_yards": stats.rush_yards,
+        "rush_tds": stats.rush_tds,
+        "fumbles": stats.fumbles,
+        "longest_rush": stats.longest_rush,
+        "receptions": stats.receptions,
+        "rec_yards": stats.rec_yards,
+        "rec_tds": stats.rec_tds,
+        "drops": stats.drops,
+        "longest_rec": stats.longest_rec,
+        "tackles": stats.tackles,
+        "tackles_for_loss": stats.tackles_for_loss,
+        "sacks": stats.sacks,
+        "def_interceptions": stats.def_interceptions,
+        "pass_deflections": stats.pass_deflections,
+        "def_tds": stats.def_tds,
+        "safeties": stats.safeties
+    }
+    
+    if existing:
+        await db.game_player_stats.replace_one({"game_id": game_id, "player_id": stats.player_id}, game_stat)
+    else:
+        await db.game_player_stats.insert_one(game_stat)
+    
+    # Recalculate player's season stats
+    await recalculate_player_stats(stats.player_id)
+    
+    fp = calculate_game_fantasy_points(game_stat)
+    await log_admin_activity("admin", "ADD_PLAYER_GAME_STATS", f"Player {stats.player_id} in game {game_id}: {fp} FP")
+    
+    return {"success": True, "fantasy_points": fp}
+
+@api_router.get("/admin/game/{game_id}/stats")
+async def get_game_stats(game_id: str, admin_key: str = Header(None, alias="X-Admin-Key")):
+    """Get all player stats for a specific game"""
+    if not verify_admin(admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    game = await db.games.find_one({"id": game_id}, {"_id": 0})
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    stats = await db.game_player_stats.find({"game_id": game_id}, {"_id": 0}).to_list(50)
+    
+    # Enrich with player info
+    player_ids = [s["player_id"] for s in stats]
+    players = await db.players.find({"id": {"$in": player_ids}}, {"_id": 0}).to_list(50)
+    players_map = {p["id"]: p for p in players}
+    
+    enriched_stats = []
+    for s in stats:
+        player = players_map.get(s["player_id"], {})
+        s["player_name"] = player.get("roblox_username", "Unknown")
+        s["position"] = player.get("position", "")
+        s["team"] = player.get("team", "")
+        s["fantasy_points"] = calculate_game_fantasy_points(s)
+        enriched_stats.append(s)
+    
+    return {"game": game, "player_stats": enriched_stats}
+
+@api_router.post("/admin/recalculate/all")
+async def recalculate_all(background_tasks: BackgroundTasks, admin_key: str = Header(None, alias="X-Admin-Key")):
+    """Recalculate all player stats and team standings from games"""
+    if not verify_admin(admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    # Get all players with game stats
+    player_ids = await db.game_player_stats.distinct("player_id")
+    
+    # Recalculate each player
+    for player_id in player_ids:
+        await recalculate_player_stats(player_id)
+    
+    # Recalculate all standings
+    await recalculate_all_standings()
+    
+    await log_admin_activity("admin", "RECALCULATE_ALL", f"Recalculated {len(player_ids)} players")
+    return {"success": True, "players_updated": len(player_ids)}
+
+@api_router.post("/admin/recalculate/player/{player_id}")
+async def recalculate_single_player(player_id: str, admin_key: str = Header(None, alias="X-Admin-Key")):
+    """Recalculate a single player's stats from their game performances"""
+    if not verify_admin(admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    await recalculate_player_stats(player_id)
+    player = await db.players.find_one({"id": player_id}, {"_id": 0})
+    return player
+
+@api_router.post("/admin/recalculate/standings")
+async def recalculate_standings_endpoint(admin_key: str = Header(None, alias="X-Admin-Key")):
+    """Recalculate all team standings from games"""
+    if not verify_admin(admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    await recalculate_all_standings()
+    teams = await db.teams.find({}, {"_id": 0}).to_list(20)
+    return {"success": True, "teams": teams}
+
+@api_router.get("/admin/player/{player_id}/game-log")
+async def get_player_game_log(player_id: str, admin_key: str = Header(None, alias="X-Admin-Key")):
+    """Get all game-by-game stats for a player"""
+    if not verify_admin(admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    player = await db.players.find_one({"id": player_id}, {"_id": 0})
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    
+    game_stats = await db.game_player_stats.find({"player_id": player_id}, {"_id": 0}).sort("week", 1).to_list(100)
+    
+    # Add fantasy points to each game
+    for gs in game_stats:
+        gs["fantasy_points"] = calculate_game_fantasy_points(gs)
+    
+    return {"player": player, "game_log": game_stats}
+
 # ==================== APP SETUP ====================
 @app.on_event("startup")
 async def startup_event():
