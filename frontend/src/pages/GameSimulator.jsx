@@ -27,7 +27,7 @@ const GameSimulator = () => {
   const [team2, setTeam2] = useState(null);
   const [gameState, setGameState] = useState({
     quarter: 1,
-    time: '15:00',
+    time: '8:00',
     score1: 0,
     score2: 0,
     possession: 1,
@@ -38,6 +38,9 @@ const GameSimulator = () => {
     isRunning: false,
     gameOver: false,
     momentum: 50, // 0-100, 50 is neutral
+    conversionAttempts: 0, // Track 2-point conversion attempts (max 2)
+    inOvertime: false,
+    overtimeQuarter: 0,
   });
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -137,14 +140,37 @@ const GameSimulator = () => {
     newState.plays = [{ ...play, time: gameState.time, quarter: gameState.quarter }, ...gameState.plays].slice(0, 20);
     
     if (play.touchdown) {
-      // Touchdown!
-      if (gameState.possession === 1) newState.score1 += 7;
-      else newState.score2 += 7;
+      // Touchdown! - Flag Football: Can attempt 2-point conversion (max 2 times)
+      const baseScore = 6; // Touchdown is 6 points
+      let conversionPoints = 0;
+      
+      // Attempt 2-point conversion if under limit (50% success rate)
+      if (newState.conversionAttempts < 2 && Math.random() < 0.5) {
+        conversionPoints = 2;
+        newState.conversionAttempts += 1;
+      } else if (newState.conversionAttempts < 2) {
+        // Failed conversion attempt still counts
+        newState.conversionAttempts += 1;
+      }
+      
+      if (gameState.possession === 1) {
+        newState.score1 += baseScore + conversionPoints;
+      } else {
+        newState.score2 += baseScore + conversionPoints;
+      }
+      
       newState.ballPosition = 25;
       newState.possession = gameState.possession === 1 ? 2 : 1;
       newState.down = 1;
       newState.yardsToGo = 10;
       newState.momentum = gameState.possession === 1 ? Math.min(100, gameState.momentum + 15) : Math.max(0, gameState.momentum - 15);
+      
+      // Update play text to show conversion
+      if (conversionPoints > 0) {
+        play.text += ' + 2-point conversion good!';
+      } else if (newState.conversionAttempts <= 2) {
+        play.text += ' (2-point conversion failed)';
+      }
     } else if (play.turnover) {
       // Turnover
       newState.possession = gameState.possession === 1 ? 2 : 1;
@@ -153,30 +179,42 @@ const GameSimulator = () => {
       newState.yardsToGo = 10;
       newState.momentum = gameState.possession === 1 ? Math.max(0, gameState.momentum - 20) : Math.min(100, gameState.momentum + 20);
     } else {
-      // Normal play
+      // Normal play - Flag Football Rules
       newState.ballPosition = newBallPosition;
-      const newYardsToGo = gameState.yardsToGo - play.yards;
       
-      if (newYardsToGo <= 0) {
-        // First down!
+      // Flag Football: Middle of field (50 yard line) = automatic first down
+      if (newBallPosition >= 45 && newBallPosition <= 55) {
+        // Crossed midfield - automatic first down
         newState.down = 1;
         newState.yardsToGo = 10;
-      } else if (gameState.down >= 4) {
-        // Turnover on downs
-        newState.possession = gameState.possession === 1 ? 2 : 1;
-        newState.ballPosition = 100 - newBallPosition;
-        newState.down = 1;
-        newState.yardsToGo = 10;
+        // Adjust position to exactly 50 if close
+        if (newBallPosition >= 50) {
+          newState.ballPosition = 50;
+        }
       } else {
-        newState.down = gameState.down + 1;
-        newState.yardsToGo = newYardsToGo;
+        const newYardsToGo = gameState.yardsToGo - play.yards;
+        
+        if (newYardsToGo <= 0) {
+          // First down!
+          newState.down = 1;
+          newState.yardsToGo = 10;
+        } else if (gameState.down >= 4) {
+          // Turnover on downs
+          newState.possession = gameState.possession === 1 ? 2 : 1;
+          newState.ballPosition = 100 - newBallPosition;
+          newState.down = 1;
+          newState.yardsToGo = 10;
+        } else {
+          newState.down = gameState.down + 1;
+          newState.yardsToGo = newYardsToGo;
+        }
       }
     }
 
-    // Update time
+    // Update time - Flag Football: 8 min quarters, 2 min overtime
     const [mins, secs] = gameState.time.split(':').map(Number);
     let newMins = mins;
-    let newSecs = secs - Math.floor(Math.random() * 30 + 15);
+    let newSecs = secs - Math.floor(Math.random() * 20 + 10); // 10-30 seconds per play
     
     if (newSecs < 0) {
       newMins -= 1;
@@ -184,13 +222,38 @@ const GameSimulator = () => {
     }
     
     if (newMins < 0) {
-      if (gameState.quarter < 4) {
+      const isOvertime = newState.inOvertime || (newState.quarter > 2 && newState.score1 === newState.score2);
+      
+      if (isOvertime) {
+        // Overtime: 2 minute quarters, max 3 overtime quarters
+        if (newState.overtimeQuarter < 3) {
+          newState.overtimeQuarter += 1;
+          newMins = 2;
+          newSecs = 0;
+          newState.inOvertime = true;
+        } else {
+          // Game ends after 3 overtime quarters
+          newState.gameOver = true;
+          newState.isRunning = false;
+        }
+      } else if (newState.quarter < 2) {
+        // Regular game: 2 quarters of 8 minutes
         newState.quarter += 1;
-        newMins = 15;
+        newMins = 8;
         newSecs = 0;
       } else {
-        newState.gameOver = true;
-        newState.isRunning = false;
+        // End of regulation - check for tie
+        if (newState.score1 === newState.score2) {
+          // Tie game - go to overtime
+          newState.inOvertime = true;
+          newState.overtimeQuarter = 1;
+          newMins = 2;
+          newSecs = 0;
+        } else {
+          // Game over
+          newState.gameOver = true;
+          newState.isRunning = false;
+        }
       }
     }
     
@@ -213,7 +276,7 @@ const GameSimulator = () => {
     clearInterval(intervalRef.current);
     setGameState({
       quarter: 1,
-      time: '15:00',
+      time: '8:00',
       score1: 0,
       score2: 0,
       possession: 1,
@@ -224,6 +287,9 @@ const GameSimulator = () => {
       isRunning: false,
       gameOver: false,
       momentum: 50,
+      conversionAttempts: 0,
+      inOvertime: false,
+      overtimeQuarter: 0,
     });
   };
 
@@ -343,12 +409,17 @@ const GameSimulator = () => {
                 {/* Game Info */}
                 <div className="text-center">
                   <div className="text-3xl font-heading font-bold text-white mb-1">{gameState.time}</div>
-                  <Badge className={`${gameState.gameOver ? 'bg-red-500' : 'bg-neon-volt'} text-black font-bold`}>
-                    {gameState.gameOver ? 'FINAL' : `Q${gameState.quarter}`}
+                  <Badge className={`${gameState.gameOver ? 'bg-red-500' : gameState.inOvertime ? 'bg-orange-500' : 'bg-neon-volt'} text-black font-bold`}>
+                    {gameState.gameOver ? 'FINAL' : gameState.inOvertime ? `OT${gameState.overtimeQuarter}` : `Q${gameState.quarter}`}
                   </Badge>
                   <div className="text-white/40 text-xs mt-2">
                     {gameState.down && !gameState.gameOver && `${gameState.down}${['st','nd','rd','th'][gameState.down-1] || 'th'} & ${gameState.yardsToGo}`}
                   </div>
+                  {gameState.conversionAttempts > 0 && (
+                    <div className="text-white/40 text-xs mt-1">
+                      Conversions: {gameState.conversionAttempts}/2
+                    </div>
+                  )}
                 </div>
 
                 {/* Team 2 */}
@@ -487,7 +558,7 @@ const GameSimulator = () => {
                 Play-by-Play
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0 max-h-[300px] overflow-auto">
+            <CardContent className="p-0 max-h-[400px] overflow-y-auto">
               {gameState.plays.length === 0 ? (
                 <div className="p-8 text-center text-white/40">
                   Press Start to begin the simulation
