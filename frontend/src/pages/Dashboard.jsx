@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
 import UFFLogo from '../assets/uff-logo.svg';
+import TeamLogo from '../components/TeamLogo';
 import API from '../lib/api';
 
 const Dashboard = () => {
@@ -249,11 +250,10 @@ const Dashboard = () => {
                     >
                       <div className="font-heading font-black text-lg text-white/30 w-6">{pr.rank}</div>
                       {getTrendIcon(pr.change)}
-                      <div 
-                        className="w-8 h-8 rounded-md flex items-center justify-center font-heading font-bold text-sm text-white bg-neon-blue/30"
-                      >
-                        {pr.team_name?.charAt(0)}
-                      </div>
+                      <TeamLogo 
+                        team={{ name: pr.team_name, color: pr.team_color, abbreviation: pr.team_abbr, logo: pr.team_logo }} 
+                        size="sm" 
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="font-heading font-bold text-sm text-white truncate">{pr.team_name}</div>
                         <div className="font-body text-xs text-white/40 truncate">{pr.analysis?.slice(0, 40)}...</div>
@@ -287,11 +287,23 @@ const Dashboard = () => {
                       </Badge>
                     </div>
                     <div className="space-y-1">
-                      <div className="text-white/60">
-                        <span className="text-white font-semibold">{trade.team1_id.toUpperCase()}</span>: {trade.team1_receives.join(', ')}
+                      <div className="text-white/60 flex items-center gap-2">
+                        {trade.team1_logo || trade.team1_color ? (
+                          <TeamLogo 
+                            team={{ name: trade.team1_name, logo: trade.team1_logo, color: trade.team1_color, abbreviation: trade.team1_abbr }} 
+                            size="sm" 
+                          />
+                        ) : null}
+                        <span className="text-white font-semibold">{trade.team1_name || trade.team1_id?.toUpperCase()}</span>: {trade.team1_receives?.join(', ') || 'N/A'}
                       </div>
-                      <div className="text-white/60">
-                        <span className="text-white font-semibold">{trade.team2_id.toUpperCase()}</span>: {trade.team2_receives.join(', ')}
+                      <div className="text-white/60 flex items-center gap-2">
+                        {trade.team2_logo || trade.team2_color ? (
+                          <TeamLogo 
+                            team={{ name: trade.team2_name, logo: trade.team2_logo, color: trade.team2_color, abbreviation: trade.team2_abbr }} 
+                            size="sm" 
+                          />
+                        ) : null}
+                        <span className="text-white font-semibold">{trade.team2_name || trade.team2_id?.toUpperCase()}</span>: {trade.team2_receives?.join(', ') || 'N/A'}
                       </div>
                     </div>
                   </div>
@@ -324,12 +336,10 @@ const Dashboard = () => {
                         {dashboardData?.standings_preview?.grand_central_leader?.wins}-{dashboardData?.standings_preview?.grand_central_leader?.losses}
                       </div>
                     </div>
-                    <div 
-                      className="w-10 h-10 rounded-lg flex items-center justify-center font-heading font-bold"
-                      style={{ backgroundColor: dashboardData?.standings_preview?.grand_central_leader?.color }}
-                    >
-                      {dashboardData?.standings_preview?.grand_central_leader?.abbreviation?.charAt(0)}
-                    </div>
+                      <TeamLogo 
+                        team={dashboardData?.standings_preview?.grand_central_leader} 
+                        size="md" 
+                      />
                   </div>
                 </Link>
                 <Link to={`/team/${dashboardData?.standings_preview?.ridge_leader?.id}`} className="block p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
@@ -343,12 +353,10 @@ const Dashboard = () => {
                         {dashboardData?.standings_preview?.ridge_leader?.wins}-{dashboardData?.standings_preview?.ridge_leader?.losses}
                       </div>
                     </div>
-                    <div 
-                      className="w-10 h-10 rounded-lg flex items-center justify-center font-heading font-bold"
-                      style={{ backgroundColor: dashboardData?.standings_preview?.ridge_leader?.color }}
-                    >
-                      {dashboardData?.standings_preview?.ridge_leader?.abbreviation?.charAt(0)}
-                    </div>
+                    <TeamLogo 
+                      team={dashboardData?.standings_preview?.ridge_leader} 
+                      size="md" 
+                    />
                   </div>
                 </Link>
               </CardContent>

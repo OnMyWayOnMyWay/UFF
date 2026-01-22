@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Trophy, Crown, Sparkles, Calendar, ChevronRight, Zap, Award, Target, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import TeamLogo from '../components/TeamLogo';
 import UFFLogo from '../assets/uff-logo.svg';
 
 import API from '../lib/api';
@@ -107,19 +108,13 @@ const Playoffs = () => {
         )}
         
         {/* Team Logo/Initial */}
-        <div 
-          className="w-9 h-9 rounded-lg flex items-center justify-center font-heading font-black text-sm text-white relative z-10 shadow-lg"
+        <TeamLogo 
+          team={team} 
+          size="sm" 
           style={{ 
-            backgroundColor: team.color,
             boxShadow: isWinner ? `0 0 20px ${team.color}50` : 'none'
           }}
-        >
-          {team.logo ? (
-            <img src={team.logo} alt={team.name} className="w-7 h-7 object-contain" />
-          ) : (
-            team.abbreviation?.substring(0, 2) || team.name?.charAt(0)
-          )}
-        </div>
+        />
         
         {/* Team Info */}
         <div className="flex-1 min-w-0 relative z-10">

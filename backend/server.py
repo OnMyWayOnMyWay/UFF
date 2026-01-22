@@ -879,11 +879,23 @@ async def get_players(position: Optional[str] = None, team_id: Optional[str] = N
     
     players = await db.players.find(query, {"_id": 0}).sort("fantasy_points", -1).skip(offset).limit(limit).to_list(limit)
     
-    # Add weekly scores
+    # Add weekly scores and team info (logo, color)
+    team_ids = list(set(p.get("team_id") for p in players if p.get("team_id")))
+    teams_map = {}
+    if team_ids:
+        teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0, "id": 1, "logo": 1, "color": 1, "abbreviation": 1}).to_list(100)
+        teams_map = {t["id"]: t for t in teams}
+    
     for p in players:
         weekly = await db.weekly_stats.find({"player_id": p["id"]}, {"_id": 0}).to_list(20)
         p["weekly_scores"] = [{"week": w["week"], "points": w["points"]} for w in weekly]
         p["name"] = p.get("roblox_username", "Unknown")
+        # Add team logo and color if team exists
+        if p.get("team_id") and p["team_id"] in teams_map:
+            team = teams_map[p["team_id"]]
+            p["team_logo"] = team.get("logo")
+            p["team_color"] = team.get("color")
+            p["team_abbreviation"] = team.get("abbreviation")
     
     return players
 
@@ -895,6 +907,13 @@ async def get_player(player_id: str):
     weekly = await db.weekly_stats.find({"player_id": player_id}, {"_id": 0}).to_list(20)
     player["weekly_scores"] = [{"week": w["week"], "points": w["points"]} for w in weekly]
     player["name"] = player.get("roblox_username", "Unknown")
+    # Add team logo and color if team exists
+    if player.get("team_id"):
+        team = await db.teams.find_one({"id": player["team_id"]}, {"_id": 0, "logo": 1, "color": 1, "abbreviation": 1})
+        if team:
+            player["team_logo"] = team.get("logo")
+            player["team_color"] = team.get("color")
+            player["team_abbreviation"] = team.get("abbreviation")
     return player
 
 @api_router.get("/players/{player_id}/analysis")
@@ -945,7 +964,27 @@ async def get_playoffs():
 # Other endpoints
 @api_router.get("/trades")
 async def get_trades():
-    return await db.trades.find({}, {"_id": 0}).sort("date", -1).to_list(50)
+    trades = await db.trades.find({}, {"_id": 0}).sort("date", -1).to_list(50)
+    # Add team logos and colors
+    team_ids = list(set([t.get("team1_id") for t in trades if t.get("team1_id")] + [t.get("team2_id") for t in trades if t.get("team2_id")]))
+    teams_map = {}
+    if team_ids:
+        teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0, "id": 1, "logo": 1, "color": 1, "abbreviation": 1}).to_list(100)
+        teams_map = {t["id"]: t for t in teams}
+    
+    for trade in trades:
+        if trade.get("team1_id") and trade["team1_id"] in teams_map:
+            team = teams_map[trade["team1_id"]]
+            trade["team1_logo"] = team.get("logo")
+            trade["team1_color"] = team.get("color")
+            trade["team1_abbr"] = team.get("abbreviation")
+        if trade.get("team2_id") and trade["team2_id"] in teams_map:
+            team = teams_map[trade["team2_id"]]
+            trade["team2_logo"] = team.get("logo")
+            trade["team2_color"] = team.get("color")
+            trade["team2_abbr"] = team.get("abbreviation")
+    
+    return trades
 
 @api_router.get("/awards")
 async def get_awards():
@@ -953,14 +992,35 @@ async def get_awards():
 
 @api_router.get("/power-rankings")
 async def get_power_rankings():
-    return await db.power_rankings.find({}, {"_id": 0}).sort("rank", 1).to_list(20)
+    rankings = await db.power_rankings.find({}, {"_id": 0}).sort("rank", 1).to_list(20)
+    # Add team logos and colors
+    team_ids = [r.get("team_id") for r in rankings if r.get("team_id")]
+    teams_map = {}
+    if team_ids:
+        teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0, "id": 1, "logo": 1, "color": 1, "abbreviation": 1}).to_list(100)
+        teams_map = {t["id"]: t for t in teams}
+    
+    for ranking in rankings:
+        if ranking.get("team_id") and ranking["team_id"] in teams_map:
+            team = teams_map[ranking["team_id"]]
+            ranking["team_logo"] = team.get("logo")
+            ranking["team_color"] = team.get("color")
+            ranking["team_abbr"] = team.get("abbreviation")
+    
+    return rankings
 
 @api_router.get("/stat-leaders")
 async def get_stat_leaders():
     players = await db.players.find({}, {"_id": 0}).to_list(100)
     qbs = [p for p in players if p.get("position") == "QB"]
     
-    # Calculate total touchdowns for each player
+    # Calculate total touchdowns for each player and add team logos/colors
+    team_ids = list(set(p.get("team_id") for p in players if p.get("team_id")))
+    teams_map = {}
+    if team_ids:
+        teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0, "id": 1, "logo": 1, "color": 1, "abbreviation": 1}).to_list(100)
+        teams_map = {t["id"]: t for t in teams}
+    
     for p in players:
         total_tds = (
             p.get("passing", {}).get("touchdowns", 0) +
@@ -969,6 +1029,12 @@ async def get_stat_leaders():
             p.get("defense", {}).get("td", 0)
         )
         p["total_touchdowns"] = total_tds
+        # Add team logo and color if team exists
+        if p.get("team_id") and p["team_id"] in teams_map:
+            team = teams_map[p["team_id"]]
+            p["team_logo"] = team.get("logo")
+            p["team_color"] = team.get("color")
+            p["team_abbreviation"] = team.get("abbreviation")
     
     return {
         "fantasy_points": sorted(players, key=lambda x: x.get("fantasy_points", 0), reverse=True)[:5],
@@ -1009,7 +1075,37 @@ async def get_dashboard():
             top_performers.append({"player": player, "points": ws["points"], "week": ws["week"]})
     
     power_rankings = await db.power_rankings.find({}, {"_id": 0}).sort("rank", 1).to_list(5)
+    # Add team logos and colors to power rankings
+    team_ids = [r.get("team_id") for r in power_rankings if r.get("team_id")]
+    teams_map = {}
+    if team_ids:
+        teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0, "id": 1, "logo": 1, "color": 1, "abbreviation": 1}).to_list(100)
+        teams_map = {t["id"]: t for t in teams}
+    for ranking in power_rankings:
+        if ranking.get("team_id") and ranking["team_id"] in teams_map:
+            team = teams_map[ranking["team_id"]]
+            ranking["team_logo"] = team.get("logo")
+            ranking["team_color"] = team.get("color")
+            ranking["team_abbr"] = team.get("abbreviation")
+    
     trades = await db.trades.find({}, {"_id": 0}).sort("date", -1).to_list(3)
+    # Add team logos and colors to trades
+    trade_team_ids = list(set([t.get("team1_id") for t in trades if t.get("team1_id")] + [t.get("team2_id") for t in trades if t.get("team2_id")]))
+    trade_teams_map = {}
+    if trade_team_ids:
+        trade_teams = await db.teams.find({"id": {"$in": trade_team_ids}}, {"_id": 0, "id": 1, "logo": 1, "color": 1, "abbreviation": 1}).to_list(100)
+        trade_teams_map = {t["id"]: t for t in trade_teams}
+    for trade in trades:
+        if trade.get("team1_id") and trade["team1_id"] in trade_teams_map:
+            team = trade_teams_map[trade["team1_id"]]
+            trade["team1_logo"] = team.get("logo")
+            trade["team1_color"] = team.get("color")
+            trade["team1_abbr"] = team.get("abbreviation")
+        if trade.get("team2_id") and trade["team2_id"] in trade_teams_map:
+            team = trade_teams_map[trade["team2_id"]]
+            trade["team2_logo"] = team.get("logo")
+            trade["team2_color"] = team.get("color")
+            trade["team2_abbr"] = team.get("abbreviation")
     
     # Get #1 seed team
     teams = await db.teams.find({}, {"_id": 0}).to_list(20)
@@ -1022,14 +1118,48 @@ async def get_dashboard():
             "abbreviation": top_seed.get("abbreviation", ""),
             "wins": top_seed.get("wins", 0),
             "losses": top_seed.get("losses", 0),
-            "record": f"{top_seed.get('wins', 0)}-{top_seed.get('losses', 0)}"
+            "record": f"{top_seed.get('wins', 0)}-{top_seed.get('losses', 0)}",
+            "logo": top_seed.get("logo"),
+            "color": top_seed.get("color")
         }
+    
+    # Get standings preview (conference leaders)
+    standings_preview = {}
+    if teams_sorted:
+        # Get Grand Central leader
+        gc_teams = [t for t in teams_sorted if t.get("conference") == "Grand Central"]
+        if gc_teams:
+            gc_leader = gc_teams[0]
+            standings_preview["grand_central_leader"] = {
+                "id": gc_leader.get("id"),
+                "name": gc_leader.get("name", ""),
+                "abbreviation": gc_leader.get("abbreviation", ""),
+                "wins": gc_leader.get("wins", 0),
+                "losses": gc_leader.get("losses", 0),
+                "logo": gc_leader.get("logo"),
+                "color": gc_leader.get("color")
+            }
+        
+        # Get Ridge leader
+        ridge_teams = [t for t in teams_sorted if t.get("conference") == "Ridge"]
+        if ridge_teams:
+            ridge_leader = ridge_teams[0]
+            standings_preview["ridge_leader"] = {
+                "id": ridge_leader.get("id"),
+                "name": ridge_leader.get("name", ""),
+                "abbreviation": ridge_leader.get("abbreviation", ""),
+                "wins": ridge_leader.get("wins", 0),
+                "losses": ridge_leader.get("losses", 0),
+                "logo": ridge_leader.get("logo"),
+                "color": ridge_leader.get("color")
+            }
     
     return {
         "top_performers": top_performers,
         "recent_games": games[:6],
         "power_rankings": power_rankings,
         "recent_trades": trades,
+        "standings_preview": standings_preview,
         "league_stats": {
             "total_teams": len(teams) or 12,
             "total_players": len(players),
@@ -1151,6 +1281,20 @@ async def get_watchlist():
     watchlist = await db.watchlist.find({}, {"_id": 0}).to_list(50)
     player_ids = [w["player_id"] for w in watchlist]
     players = await db.players.find({"id": {"$in": player_ids}}, {"_id": 0}).to_list(50)
+    # Add team logos and colors
+    team_ids = list(set(p.get("team_id") for p in players if p.get("team_id")))
+    teams_map = {}
+    if team_ids:
+        teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0, "id": 1, "logo": 1, "color": 1, "abbreviation": 1}).to_list(100)
+        teams_map = {t["id"]: t for t in teams}
+    
+    for p in players:
+        if p.get("team_id") and p["team_id"] in teams_map:
+            team = teams_map[p["team_id"]]
+            p["team_logo"] = team.get("logo")
+            p["team_color"] = team.get("color")
+            p["team_abbreviation"] = team.get("abbreviation")
+    
     return players
 
 @api_router.post("/watchlist")

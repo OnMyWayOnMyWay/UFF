@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { toast } from 'sonner';
+import TeamLogo from '../components/TeamLogo';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar 
@@ -250,7 +251,27 @@ const PlayerProfile = () => {
                       <span className="font-heading font-bold text-neon-volt">{player.fantasy_points?.toFixed(1)} FP</span>
                     </div>
                     <div className="flex items-center gap-2 mt-2">
-                      <Badge className="bg-white/10 text-white/80">{player.team}</Badge>
+                      {player.team_logo || player.team_color ? (
+                        <Link to={player.team_id ? `/team/${player.team_id}` : '#'} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                          <TeamLogo 
+                            team={{ name: player.team, logo: player.team_logo, color: player.team_color, abbreviation: player.team_abbreviation }} 
+                            size="sm" 
+                          />
+                          {player.team_logo || player.team_color ? (
+                            <div className="flex items-center gap-2">
+                              <TeamLogo 
+                                team={{ name: player.team, logo: player.team_logo, color: player.team_color, abbreviation: player.team_abbreviation }} 
+                                size="sm" 
+                              />
+                              <Badge className="bg-white/10 text-white/80">{player.team}</Badge>
+                            </div>
+                          ) : (
+                            <Badge className="bg-white/10 text-white/80">{player.team}</Badge>
+                          )}
+                        </Link>
+                      ) : (
+                        <Badge className="bg-white/10 text-white/80">{player.team}</Badge>
+                      )}
                       {player.roblox_id && (
                         <Badge className="bg-sky-500/20 text-sky-400">Roblox: {player.roblox_id}</Badge>
                       )}
@@ -515,7 +536,17 @@ const PlayerProfile = () => {
                           <span className="font-heading font-bold text-neon-blue">Week {week.week}</span>
                         </td>
                         <td className="p-4">
-                          <Badge className="bg-white/10 text-white/80">{player.team}</Badge>
+                          {player.team_logo || player.team_color ? (
+                            <div className="flex items-center gap-2">
+                              <TeamLogo 
+                                team={{ name: player.team, logo: player.team_logo, color: player.team_color, abbreviation: player.team_abbreviation }} 
+                                size="sm" 
+                              />
+                              <Badge className="bg-white/10 text-white/80">{player.team}</Badge>
+                            </div>
+                          ) : (
+                            <Badge className="bg-white/10 text-white/80">{player.team}</Badge>
+                          )}
                         </td>
                         <td className="p-4 text-right">
                           <span className={`font-heading font-bold text-lg ${week.points > ((player.fantasy_points || 0) / (player.games_played || 1)) ? 'text-neon-volt' : 'text-white'}`}>

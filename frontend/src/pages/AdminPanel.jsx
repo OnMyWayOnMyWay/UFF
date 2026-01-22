@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
+import TeamLogo from '../components/TeamLogo';
 
 import API from '../lib/api';
 
@@ -1087,7 +1088,17 @@ const AdminPanel = () => {
                           </td>
                           <td className="p-3 font-body text-xs text-white/50">{player.roblox_username || player.roblox_id || '-'}</td>
                           <td className="p-3 text-center"><Badge className={`${getPositionColor(player.position)} text-white text-xs`}>{player.position}</Badge></td>
-                          <td className="p-3 text-white/60 text-sm">{player.team}</td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              {player.team_logo || player.team_color ? (
+                                <TeamLogo 
+                                  team={{ name: player.team, logo: player.team_logo, color: player.team_color, abbreviation: player.team_abbreviation }} 
+                                  size="sm" 
+                                />
+                              ) : null}
+                              <span className="text-white/60 text-sm">{player.team}</span>
+                            </div>
+                          </td>
                           <td className="p-3 text-right font-heading font-bold text-neon-blue">{player.fantasy_points?.toFixed(1)}</td>
                           <td className="p-3 text-center text-white/60">{player.games_played || 0}</td>
                           <td className="p-3 text-center">

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import TeamLogo from '../components/TeamLogo';
 
 import API from '../lib/api';
 
@@ -126,6 +127,12 @@ const PlayerComparison = () => {
               <h3 className="font-heading font-bold text-xl text-white">{player.roblox_username || player.name}</h3>
               <div className="flex items-center gap-2 mt-1">
                 <Badge style={{ backgroundColor: getPositionColor(player.position) }}>{player.position}</Badge>
+                {player.team_logo || player.team_color ? (
+                  <TeamLogo 
+                    team={{ name: player.team, logo: player.team_logo, color: player.team_color, abbreviation: player.team_abbreviation }} 
+                    size="sm" 
+                  />
+                ) : null}
                 <span className="text-white/50 text-sm">{player.team}</span>
               </div>
               <div className="text-neon-volt font-bold mt-1">{player.fantasy_points?.toFixed(1)} FP</div>

@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import TeamLogo from '../components/TeamLogo';
 import API from '../lib/api';
 
 const Standings = () => {
@@ -106,12 +107,7 @@ const Standings = () => {
                 </TableCell>
                 <TableCell>
                   <Link to={`/team/${team.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                    <div 
-                      className="w-10 h-10 rounded-lg flex items-center justify-center font-heading font-bold text-white shadow-lg"
-                      style={{ backgroundColor: team.color }}
-                    >
-                      {team.abbreviation?.charAt(0)}
-                    </div>
+                    <TeamLogo team={team} size="md" />
                     <div className="flex items-center gap-2">
                       {playoffBadge && (
                         <Badge className={`${playoffBadge.color} text-xs px-1.5 py-0`}>
@@ -229,12 +225,7 @@ const Standings = () => {
                           >
                             <div className="flex items-center gap-3">
                               <span className="font-heading font-bold text-white/40 w-6">#{idx + 1}</span>
-                              <div 
-                                className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-white"
-                                style={{ backgroundColor: team.color }}
-                              >
-                                {team.abbreviation?.charAt(0)}
-                              </div>
+                              <TeamLogo team={team} size="sm" />
                               <span className="font-heading font-bold text-white">{team.name}</span>
                             </div>
                             <span className="font-heading font-bold text-neon-blue">{team.wins}-{team.losses}</span>
@@ -255,12 +246,7 @@ const Standings = () => {
                           >
                             <div className="flex items-center gap-3">
                               <span className="font-heading font-bold text-white/40 w-6">#{idx + 1}</span>
-                              <div 
-                                className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-white"
-                                style={{ backgroundColor: team.color }}
-                              >
-                                {team.abbreviation?.charAt(0)}
-                              </div>
+                              <TeamLogo team={team} size="sm" />
                               <span className="font-heading font-bold text-white">{team.name}</span>
                             </div>
                             <span className="font-heading font-bold text-neon-volt">{team.wins}-{team.losses}</span>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { Star, Award, TrendingUp, User } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
+import TeamLogo from '../components/TeamLogo';
 import API from '../lib/api';
 
 const ElitePlayers = () => {
@@ -136,7 +137,15 @@ const ElitePlayers = () => {
                     {player.position}
                   </Badge>
                   <h3 className="font-heading font-bold text-2xl text-white mb-1">{player.name || player.roblox_username}</h3>
-                  <p className="font-body text-sm text-white/50 mb-4">{player.team}</p>
+                  <div className="flex items-center gap-2 mb-4">
+                    {player.team_logo || player.team_color ? (
+                      <TeamLogo 
+                        team={{ name: player.team, logo: player.team_logo, color: player.team_color, abbreviation: player.team_abbreviation }} 
+                        size="sm" 
+                      />
+                    ) : null}
+                    <p className="font-body text-sm text-white/50">{player.team}</p>
+                  </div>
 
                   {/* Stats */}
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">

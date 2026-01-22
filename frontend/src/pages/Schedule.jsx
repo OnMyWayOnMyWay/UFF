@@ -4,6 +4,7 @@ import { Calendar, Trophy, TrendingUp, Star } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { ScrollArea, ScrollBar } from '../components/ui/scroll-area';
+import TeamLogo from '../components/TeamLogo';
 
 import API from '../lib/api';
 
@@ -36,7 +37,30 @@ const Schedule = () => {
     fetchData();
   }, []);
 
-  const getTeamById = (id) => teams.find(t => t.id === id) || { name: id || 'Unknown', abbreviation: (id || 'U').toUpperCase(), color: '#333' };
+  const getTeamById = (id) => {
+    const team = teams.find(t => t.id === id);
+    if (team) return team;
+    // Try to get from game data if available
+    const game = scheduleData.games?.find(g => g.home_team_id === id || g.away_team_id === id);
+    if (game) {
+      if (game.home_team_id === id) {
+        return { 
+          name: game.home_team_name || id || 'Unknown', 
+          abbreviation: game.home_team_abbr || (id || 'U').toUpperCase(), 
+          color: game.home_team_color || '#333',
+          logo: game.home_team_logo
+        };
+      } else {
+        return { 
+          name: game.away_team_name || id || 'Unknown', 
+          abbreviation: game.away_team_abbr || (id || 'U').toUpperCase(), 
+          color: game.away_team_color || '#333',
+          logo: game.away_team_logo
+        };
+      }
+    }
+    return { name: id || 'Unknown', abbreviation: (id || 'U').toUpperCase(), color: '#333' };
+  };
 
   // Only compute these after data is loaded
   const weekGames = loading ? [] : (scheduleData.games || []).filter(g => g.week === selectedWeek);
@@ -190,12 +214,7 @@ const Schedule = () => {
                         {/* Away Team */}
                         <div className={`flex items-center justify-between ${!homeWins ? 'opacity-100' : 'opacity-50'}`}>
                           <div className="flex items-center gap-3">
-                            <div 
-                              className="w-10 h-10 rounded-lg flex items-center justify-center font-heading font-bold text-white"
-                              style={{ backgroundColor: awayTeam.color }}
-                            >
-                              {awayTeam.abbreviation?.charAt(0)}
-                            </div>
+                            <TeamLogo team={awayTeam} size="md" />
                             <div>
                               <div className="font-heading font-bold text-white">{awayTeam.name}</div>
                               <div className="font-body text-xs text-white/40">{awayTeam.wins}-{awayTeam.losses}</div>
@@ -212,12 +231,7 @@ const Schedule = () => {
                         {/* Home Team */}
                         <div className={`flex items-center justify-between ${homeWins ? 'opacity-100' : 'opacity-50'}`}>
                           <div className="flex items-center gap-3">
-                            <div 
-                              className="w-10 h-10 rounded-lg flex items-center justify-center font-heading font-bold text-white"
-                              style={{ backgroundColor: homeTeam.color }}
-                            >
-                              {homeTeam.abbreviation?.charAt(0)}
-                            </div>
+                            <TeamLogo team={homeTeam} size="md" />
                             <div>
                               <div className="font-heading font-bold text-white">{homeTeam.name}</div>
                               <div className="font-body text-xs text-white/40">{homeTeam.wins}-{homeTeam.losses}</div>

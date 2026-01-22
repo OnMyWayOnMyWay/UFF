@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
+import TeamLogo from '../components/TeamLogo';
 
 import API from '../lib/api';
 
@@ -125,6 +126,12 @@ const Watchlist = () => {
                             <Badge className={`${getPositionColor(player.position)} text-white text-xs`}>
                               {player.position}
                             </Badge>
+                            {player.team_logo || player.team_color ? (
+                              <TeamLogo 
+                                team={{ name: player.team, logo: player.team_logo, color: player.team_color, abbreviation: player.team_abbreviation }} 
+                                size="sm" 
+                              />
+                            ) : null}
                             <span className="font-body text-xs text-white/40">{player.team}</span>
                             {player.injury_status && (
                               <Badge variant="outline" className="border-red-500/50 text-red-500 text-xs">

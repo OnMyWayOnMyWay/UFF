@@ -3,6 +3,7 @@ import axios from 'axios';
 import { ArrowRightLeft, ArrowRight } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
+import TeamLogo from '../components/TeamLogo';
 
 import API from '../lib/api';
 
@@ -80,12 +81,10 @@ const Trades = () => {
                   {/* Team 1 */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <div 
-                        className="w-12 h-12 rounded-lg flex items-center justify-center font-heading font-bold text-white text-xl"
-                        style={{ backgroundColor: trade.team1_color }}
-                      >
-                        {trade.team1_abbr?.charAt(0)}
-                      </div>
+                      <TeamLogo 
+                        team={{ name: trade.team1_name, color: trade.team1_color, abbreviation: trade.team1_abbr, logo: trade.team1_logo }} 
+                        size="lg" 
+                      />
                       <div>
                         <div className="font-heading font-bold text-white">{trade.team1_name}</div>
                         <div className="font-body text-xs text-white/40 uppercase">Receives</div>
@@ -111,12 +110,10 @@ const Trades = () => {
                   {/* Team 2 */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <div 
-                        className="w-12 h-12 rounded-lg flex items-center justify-center font-heading font-bold text-white text-xl"
-                        style={{ backgroundColor: trade.team2_color }}
-                      >
-                        {trade.team2_abbr?.charAt(0)}
-                      </div>
+                      <TeamLogo 
+                        team={{ name: trade.team2_name, color: trade.team2_color, abbreviation: trade.team2_abbr, logo: trade.team2_logo }} 
+                        size="lg" 
+                      />
                       <div>
                         <div className="font-heading font-bold text-white">{trade.team2_name}</div>
                         <div className="font-body text-xs text-white/40 uppercase">Receives</div>

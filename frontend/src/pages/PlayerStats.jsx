@@ -5,6 +5,7 @@ import { Users, User } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import TeamLogo from '../components/TeamLogo';
 import API from '../lib/api';
 
 const POSITIONS = ['QB', 'WR', 'RB', 'DEF'];
@@ -186,7 +187,19 @@ const PlayerStats = () => {
                                   </div>
                                 </Link>
                               </TableCell>
-                              <TableCell className="font-body text-white/60">{player.team}</TableCell>
+                              <TableCell>
+                                {player.team_logo || player.team_color ? (
+                                  <div className="flex items-center gap-2">
+                                    <TeamLogo 
+                                      team={{ name: player.team, logo: player.team_logo, color: player.team_color, abbreviation: player.team_abbreviation }} 
+                                      size="sm" 
+                                    />
+                                    <span className="font-body text-white/60">{player.team}</span>
+                                  </div>
+                                ) : (
+                                  <span className="font-body text-white/60">{player.team}</span>
+                                )}
+                              </TableCell>
                               {getStatsColumns(pos).map((col) => (
                                 <TableCell key={col} className={`text-right font-heading font-bold ${col === 'Fantasy Pts' ? 'text-neon-blue text-lg' : 'text-white'}`}>
                                   {getStatValue(player, col)}

@@ -5,6 +5,7 @@ import { ArrowLeft, Trophy, TrendingUp, AlertCircle, Users, Star, Shield, Zap, C
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import TeamLogo from '../components/TeamLogo';
 
 import API from '../lib/api';
 
@@ -170,12 +171,7 @@ const TeamAnalysis = () => {
         <div className="max-w-7xl mx-auto">
           {/* Logo */}
           <div className="flex flex-col items-center mb-6">
-            <div 
-              className="w-24 h-24 rounded-xl flex items-center justify-center border-2 border-white/20 shadow-lg mb-4"
-              style={{ backgroundColor: team.color }}
-            >
-              <span className="font-heading font-black text-4xl text-white">{team.abbreviation?.charAt(0)}</span>
-            </div>
+            <TeamLogo team={team} size="2xl" className="mb-4" />
             <div className="text-center">
               <span className="font-body text-sm text-white/60 uppercase tracking-widest">
                 {team.conference} • {team.division || 'Division'}

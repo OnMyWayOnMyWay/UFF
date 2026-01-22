@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { BarChart3, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import TeamLogo from '../components/TeamLogo';
 
 import API from '../lib/api';
 
@@ -121,12 +122,10 @@ const PowerRankings = () => {
 
                     {/* Team */}
                     <div className="flex items-center gap-3 flex-1">
-                      <div 
-                        className="w-10 h-10 rounded-lg flex items-center justify-center font-heading font-bold text-white"
-                        style={{ backgroundColor: team.team_color }}
-                      >
-                        {team.team_abbr?.charAt(0)}
-                      </div>
+                      <TeamLogo 
+                        team={{ name: team.team_name, color: team.team_color, abbreviation: team.team_abbr, logo: team.team_logo }} 
+                        size="md" 
+                      />
                       <div>
                         <div className="font-heading font-bold text-white">{team.team_name}</div>
                         <div className="font-body text-xs text-white/40">{team.record}</div>
@@ -155,12 +154,10 @@ const PowerRankings = () => {
               <Card key={team.team_id} className="glass-panel border-white/10">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3 mb-3">
-                    <div 
-                      className="w-8 h-8 rounded-md flex items-center justify-center font-heading font-bold text-white text-sm"
-                      style={{ backgroundColor: team.team_color }}
-                    >
-                      {team.team_abbr?.charAt(0)}
-                    </div>
+                    <TeamLogo 
+                      team={{ name: team.team_name, color: team.team_color, abbreviation: team.team_abbr, logo: team.team_logo }} 
+                      size="sm" 
+                    />
                     <span className="font-heading font-bold text-white">{team.team_name}</span>
                   </div>
                   <p className="font-body text-sm text-white/60">{team.analysis}</p>

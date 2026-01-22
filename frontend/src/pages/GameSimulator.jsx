@@ -392,12 +392,7 @@ const GameSimulator = () => {
               <div className="flex items-center justify-between">
                 {/* Team 1 */}
                 <div className="flex items-center gap-4">
-                  <div 
-                    className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-black text-white shadow-xl"
-                    style={{ backgroundColor: team1?.color || '#3B82F6' }}
-                  >
-                    {team1?.abbreviation || 'T1'}
-                  </div>
+                  <TeamLogo team={team1} size="xl" />
                   <div>
                     <div className="font-heading font-bold text-xl text-white">{team1?.name || 'Team 1'}</div>
                     <div className="text-white/50 text-sm">{team1?.wins || 0}-{team1?.losses || 0}</div>
@@ -432,12 +427,7 @@ const GameSimulator = () => {
                     <div className="font-heading font-bold text-xl text-white">{team2?.name || 'Team 2'}</div>
                     <div className="text-white/50 text-sm">{team2?.wins || 0}-{team2?.losses || 0}</div>
                   </div>
-                  <div 
-                    className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-black text-white shadow-xl"
-                    style={{ backgroundColor: team2?.color || '#EF4444' }}
-                  >
-                    {team2?.abbreviation || 'T2'}
-                  </div>
+                  <TeamLogo team={team2} size="xl" />
                 </div>
               </div>
 

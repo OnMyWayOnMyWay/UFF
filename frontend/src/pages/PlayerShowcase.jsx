@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { Star, Trophy, Flame, Zap, Eye, Crown, Sparkles } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
+import TeamLogo from '../components/TeamLogo';
 
 import API from '../lib/api';
 
@@ -157,7 +158,15 @@ const PlayerShowcase = () => {
                           <h3 className="font-heading font-black text-xl text-white truncate">
                             {player.roblox_username || player.name}
                           </h3>
-                          <p className="text-white/50 text-sm mt-1">{player.team}</p>
+                          <div className="flex items-center justify-center gap-2 mt-1">
+                            {player.team_logo || player.team_color ? (
+                              <TeamLogo 
+                                team={{ name: player.team, logo: player.team_logo, color: player.team_color, abbreviation: player.team_abbreviation }} 
+                                size="sm" 
+                              />
+                            ) : null}
+                            <p className="text-white/50 text-sm">{player.team}</p>
+                          </div>
                           
                           {/* Badges */}
                           <div className="flex justify-center gap-2 mt-3 flex-wrap">

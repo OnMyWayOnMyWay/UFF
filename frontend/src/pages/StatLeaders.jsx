@@ -4,6 +4,7 @@ import axios from 'axios';
 import { TrendingUp, Trophy, Zap, Target, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import TeamLogo from '../components/TeamLogo';
 
 import API from '../lib/api';
 
@@ -130,7 +131,14 @@ const StatLeaders = () => {
                               <Badge className={`${getPositionColor(player.position)} text-white text-xs px-1.5 py-0`}>
                                 {player.position}
                               </Badge>
-                              <span className="font-body text-xs text-white/40 truncate">{player.team}</span>
+                              {player.team_logo || player.team_color ? (
+                                <TeamLogo 
+                                  team={{ name: player.team, logo: player.team_logo, color: player.team_color, abbreviation: player.team_abbreviation }} 
+                                  size="sm" 
+                                />
+                              ) : (
+                                <span className="font-body text-xs text-white/40 truncate">{player.team}</span>
+                              )}
                             </div>
                           </div>
                           <div className={`font-heading font-black text-lg ${idx === 0 ? category.color : 'text-white'}`}>
