@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || ''}/api`;
 
 const AdminPanel = () => {
   const [adminKey, setAdminKey] = useState('');
@@ -45,12 +45,13 @@ const AdminPanel = () => {
   const [editGameModal, setEditGameModal] = useState({ open: false, game: null });
   const [editPlayerModal, setEditPlayerModal] = useState({ open: false, player: null });
   
-  const headers = { 'X-Admin-Key': adminKey };
+  const normalizedAdminKey = adminKey.trim();
+  const headers = { 'X-Admin-Key': normalizedAdminKey };
 
   const authenticate = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API}/admin/stats`, { headers: { 'X-Admin-Key': adminKey } });
+      const response = await axios.get(`${API}/admin/stats`, { headers: { 'X-Admin-Key': normalizedAdminKey } });
       setStats(response.data);
       setIsAuthenticated(true);
       setCurrentAdmin({ username: 'admin' });
@@ -534,7 +535,7 @@ const AdminPanel = () => {
               className="bg-white/5 border-white/10"
               data-testid="admin-key-input"
             />
-            <Button onClick={authenticate} disabled={loading || !adminKey} className="w-full bg-neon-blue hover:bg-neon-blue/80" data-testid="admin-login-btn">
+            <Button onClick={authenticate} disabled={loading || !normalizedAdminKey} className="w-full bg-neon-blue hover:bg-neon-blue/80" data-testid="admin-login-btn">
               {loading ? 'Authenticating...' : 'Access Admin Panel'}
             </Button>
           </CardContent>

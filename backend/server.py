@@ -23,12 +23,12 @@ load_dotenv(ROOT_DIR / '.env')
 STATIC_DIR = (ROOT_DIR / ".." / "static").resolve()
 
 # MongoDB Setup
-mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+mongo_url = os.environ.get('MONGO_URL', 'mongodb+srv://UFFstats:KamIsCool1@cluster0.5qos1zx.mongodb.net/')
 db_name = os.environ.get('DB_NAME', 'uffstats')
 client = AsyncIOMotorClient(mongo_url)
 db = client[db_name]
 
-ADMIN_KEY = os.environ.get('ADMIN_KEY', 'BacconIsCool1@')
+ADMIN_KEY = os.environ.get('ADMIN_KEY', 'BacconIsCool1@').strip()
 CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '*')
 
 app = FastAPI()
@@ -129,8 +129,13 @@ class GameWithStats(BaseModel):
 
 
 # ==================== HELPER FUNCTIONS ====================
-def verify_admin(admin_key: str):
-    if admin_key == ADMIN_KEY:
+def verify_admin(admin_key: Optional[str]):
+    if not admin_key:
+        return None
+    normalized = admin_key.strip()
+    if normalized.lower().startswith("bearer "):
+        normalized = normalized[7:].strip()
+    if normalized == ADMIN_KEY:
         return "admin"
     return None
 
