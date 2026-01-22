@@ -1400,11 +1400,26 @@ async def create_trade(trade: TradeSetup, admin_key: str = Header(None, alias="X
 async def reset_season(admin_key: str = Header(None, alias="X-Admin-Key")):
     if not verify_admin(admin_key):
         raise HTTPException(status_code=401, detail="Invalid admin key")
-    await db.teams.update_many({}, {"$set": {"wins": 0, "losses": 0, "points_for": 0, "points_against": 0}})
+    await db.teams.update_many(
+        {},
+        {"$set": {
+            "wins": 0,
+            "losses": 0,
+            "points_for": 0,
+            "points_against": 0,
+            "seed": None,
+            "playoff_status": ""
+        }}
+    )
     await db.players.update_many({}, {"$set": {"games_played": 0, "fantasy_points": 0, "passing": {"completions": 0, "attempts": 0, "yards": 0, "touchdowns": 0, "interceptions": 0, "rating": 0, "completion_pct": 0, "average": 0, "longest": 0}, "rushing": {"attempts": 0, "yards": 0, "touchdowns": 0, "yards_per_carry": 0, "fumbles": 0, "twenty_plus": 0, "longest": 0}, "receiving": {"receptions": 0, "yards": 0, "touchdowns": 0, "drops": 0, "longest": 0}, "defense": {"tackles": 0, "tackles_for_loss": 0, "sacks": 0, "safeties": 0, "swat": 0, "interceptions": 0, "pass_deflections": 0, "td": 0}}})
     await db.games.delete_many({})
-    await db.trades.delete_many({})
+    await db.game_player_stats.delete_many({})
     await db.weekly_stats.delete_many({})
+    await db.trades.delete_many({})
+    await db.watchlist.delete_many({})
+    await db.power_rankings.delete_many({})
+    await db.awards.delete_many({})
+    await db.activity_log.delete_many({})
     await db.playoffs.update_many({}, {"$set": {"team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"}})
     await log_admin_activity("admin", "RESET_SEASON", "Season data reset")
     return {"success": True, "message": "Season reset complete"}
