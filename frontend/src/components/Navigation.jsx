@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Home, Star, Users, Trophy, Calendar, Award, Zap, BarChart3, Eye, ArrowRightLeft, TrendingUp, Shield, MoreHorizontal, X } from 'lucide-react';
+import { Home, Star, Users, Trophy, Calendar, Award, Zap, BarChart3, Eye, ArrowRightLeft, TrendingUp, Shield, MoreHorizontal, X, Activity, Sparkles, GitCompare } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 
 const Navigation = ({ currentPath }) => {
@@ -8,14 +8,17 @@ const Navigation = ({ currentPath }) => {
 
   const mainNavItems = [
     { path: '/', icon: Home, label: 'Dashboard' },
-    { path: '/elite', icon: Star, label: 'Elite' },
-    { path: '/players', icon: Users, label: 'Players' },
+    { path: '/showcase', icon: Sparkles, label: 'Showcase' },
+    { path: '/compare', icon: GitCompare, label: 'Compare' },
     { path: '/standings', icon: Trophy, label: 'Standings' },
     { path: '/schedule', icon: Calendar, label: 'Schedule' },
     { path: '/playoffs', icon: Zap, label: 'Playoffs' },
   ];
 
   const moreNavItems = [
+    { path: '/feed', icon: Activity, label: 'Activity Feed' },
+    { path: '/elite', icon: Star, label: 'Elite Players' },
+    { path: '/players', icon: Users, label: 'All Players' },
     { path: '/leaders', icon: TrendingUp, label: 'Stat Leaders' },
     { path: '/rankings', icon: BarChart3, label: 'Power Rankings' },
     { path: '/trades', icon: ArrowRightLeft, label: 'Trades' },
