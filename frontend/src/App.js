@@ -63,6 +63,9 @@ const AppContent = () => {
           <Route path="/compare" element={<PlayerComparison />} />
           <Route path="/feed" element={<ActivityFeed />} />
           <Route path="/showcase" element={<PlayerShowcase />} />
+          <Route path="/simulator" element={<GameSimulator />} />
+          <Route path="/trade-machine" element={<TradeMachine />} />
+          <Route path="/achievements" element={<Achievements />} />
         </Routes>
       </main>
       <Navigation currentPath={location.pathname} />
