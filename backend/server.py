@@ -242,6 +242,201 @@ def calculate_fantasy_points(player: dict) -> float:
     
     return round(fp, 1)
 
+def calculate_game_fantasy_points(stats: dict) -> float:
+    """Calculate fantasy points for a single game performance"""
+    fp = 0.0
+    # Passing: 1 pt per 25 yards, 4 pts per TD, -2 per INT
+    fp += stats.get("pass_yards", 0) / 25
+    fp += stats.get("pass_tds", 0) * 4
+    fp -= stats.get("interceptions", 0) * 2
+    # Rushing: 1 pt per 10 yards, 6 pts per TD, -2 per fumble
+    fp += stats.get("rush_yards", 0) / 10
+    fp += stats.get("rush_tds", 0) * 6
+    fp -= stats.get("fumbles", 0) * 2
+    # Receiving: 1 pt per reception, 1 pt per 10 yards, 6 pts per TD
+    fp += stats.get("receptions", 0)
+    fp += stats.get("rec_yards", 0) / 10
+    fp += stats.get("rec_tds", 0) * 6
+    # Defense: 1 pt per tackle, 2 pts per sack, 3 pts per INT, 6 pts per TD, 2 pts per safety
+    fp += stats.get("tackles", 0)
+    fp += stats.get("sacks", 0) * 2
+    fp += stats.get("def_interceptions", 0) * 3
+    fp += stats.get("def_tds", 0) * 6
+    fp += stats.get("safeties", 0) * 2
+    return round(fp, 1)
+
+async def recalculate_player_stats(player_id: str):
+    """Recalculate a player's season stats from all their game performances"""
+    # Get all game stats for this player
+    game_stats = await db.game_player_stats.find({"player_id": player_id}).to_list(100)
+    
+    if not game_stats:
+        return
+    
+    # Aggregate stats
+    totals = {
+        "passing": {"completions": 0, "attempts": 0, "yards": 0, "touchdowns": 0, "interceptions": 0, "longest": 0},
+        "rushing": {"attempts": 0, "yards": 0, "touchdowns": 0, "fumbles": 0, "longest": 0, "twenty_plus": 0},
+        "receiving": {"receptions": 0, "yards": 0, "touchdowns": 0, "drops": 0, "longest": 0},
+        "defense": {"tackles": 0, "tackles_for_loss": 0, "sacks": 0, "interceptions": 0, "pass_deflections": 0, "td": 0, "safeties": 0}
+    }
+    
+    weekly_scores = []
+    games_played = 0
+    
+    for gs in game_stats:
+        games_played += 1
+        game_fp = calculate_game_fantasy_points(gs)
+        weekly_scores.append({"week": gs.get("week", games_played), "points": game_fp})
+        
+        # Passing
+        totals["passing"]["completions"] += gs.get("pass_completions", 0)
+        totals["passing"]["attempts"] += gs.get("pass_attempts", 0)
+        totals["passing"]["yards"] += gs.get("pass_yards", 0)
+        totals["passing"]["touchdowns"] += gs.get("pass_tds", 0)
+        totals["passing"]["interceptions"] += gs.get("interceptions", 0)
+        totals["passing"]["longest"] = max(totals["passing"]["longest"], gs.get("longest_pass", 0))
+        
+        # Rushing
+        totals["rushing"]["attempts"] += gs.get("rush_attempts", 0)
+        totals["rushing"]["yards"] += gs.get("rush_yards", 0)
+        totals["rushing"]["touchdowns"] += gs.get("rush_tds", 0)
+        totals["rushing"]["fumbles"] += gs.get("fumbles", 0)
+        totals["rushing"]["longest"] = max(totals["rushing"]["longest"], gs.get("longest_rush", 0))
+        if gs.get("rush_yards", 0) >= 20:
+            totals["rushing"]["twenty_plus"] += 1
+        
+        # Receiving
+        totals["receiving"]["receptions"] += gs.get("receptions", 0)
+        totals["receiving"]["yards"] += gs.get("rec_yards", 0)
+        totals["receiving"]["touchdowns"] += gs.get("rec_tds", 0)
+        totals["receiving"]["drops"] += gs.get("drops", 0)
+        totals["receiving"]["longest"] = max(totals["receiving"]["longest"], gs.get("longest_rec", 0))
+        
+        # Defense
+        totals["defense"]["tackles"] += gs.get("tackles", 0)
+        totals["defense"]["tackles_for_loss"] += gs.get("tackles_for_loss", 0)
+        totals["defense"]["sacks"] += gs.get("sacks", 0)
+        totals["defense"]["interceptions"] += gs.get("def_interceptions", 0)
+        totals["defense"]["pass_deflections"] += gs.get("pass_deflections", 0)
+        totals["defense"]["td"] += gs.get("def_tds", 0)
+        totals["defense"]["safeties"] += gs.get("safeties", 0)
+    
+    # Calculate derived stats
+    if totals["passing"]["attempts"] > 0:
+        totals["passing"]["completion_pct"] = round(totals["passing"]["completions"] / totals["passing"]["attempts"] * 100, 1)
+        totals["passing"]["average"] = round(totals["passing"]["yards"] / totals["passing"]["attempts"], 1)
+        # Simplified passer rating
+        totals["passing"]["rating"] = round(
+            ((totals["passing"]["completion_pct"] - 30) * 0.05 +
+             (totals["passing"]["touchdowns"] / totals["passing"]["attempts"] * 100) * 0.2 +
+             (totals["passing"]["yards"] / totals["passing"]["attempts"]) * 0.083 -
+             (totals["passing"]["interceptions"] / totals["passing"]["attempts"] * 100) * 0.1) * 10, 1
+        )
+    
+    if totals["rushing"]["attempts"] > 0:
+        totals["rushing"]["yards_per_carry"] = round(totals["rushing"]["yards"] / totals["rushing"]["attempts"], 1)
+    
+    total_fp = sum(ws["points"] for ws in weekly_scores)
+    
+    # Update player document
+    await db.players.update_one(
+        {"id": player_id},
+        {"$set": {
+            "passing": totals["passing"],
+            "rushing": totals["rushing"],
+            "receiving": totals["receiving"],
+            "defense": totals["defense"],
+            "fantasy_points": round(total_fp, 1),
+            "games_played": games_played
+        }}
+    )
+    
+    # Update weekly stats
+    await db.weekly_stats.delete_many({"player_id": player_id})
+    if weekly_scores:
+        await db.weekly_stats.insert_many([{"player_id": player_id, **ws} for ws in weekly_scores])
+
+async def recalculate_team_record(team_id: str):
+    """Recalculate a team's W-L record from games"""
+    # Get all completed games for this team
+    games = await db.games.find({
+        "$or": [{"home_team_id": team_id}, {"away_team_id": team_id}],
+        "is_completed": True
+    }).to_list(100)
+    
+    wins = 0
+    losses = 0
+    points_for = 0
+    points_against = 0
+    
+    for game in games:
+        is_home = game["home_team_id"] == team_id
+        team_score = game["home_score"] if is_home else game["away_score"]
+        opp_score = game["away_score"] if is_home else game["home_score"]
+        
+        points_for += team_score
+        points_against += opp_score
+        
+        if team_score > opp_score:
+            wins += 1
+        else:
+            losses += 1
+    
+    # Update team
+    await db.teams.update_one(
+        {"id": team_id},
+        {"$set": {
+            "wins": wins,
+            "losses": losses,
+            "points_for": round(points_for, 1),
+            "points_against": round(points_against, 1)
+        }}
+    )
+
+async def recalculate_all_standings():
+    """Recalculate standings for all teams and update seeds"""
+    teams = await db.teams.find().to_list(100)
+    
+    # Recalculate each team's record
+    for team in teams:
+        await recalculate_team_record(team["id"])
+    
+    # Fetch updated teams and assign seeds by conference
+    updated_teams = await db.teams.find().to_list(100)
+    
+    for conference in ["Ridge", "Grand Central"]:
+        conf_teams = [t for t in updated_teams if t.get("conference") == conference]
+        # Sort by wins (desc), then points_for (desc)
+        conf_teams.sort(key=lambda t: (t.get("wins", 0), t.get("points_for", 0)), reverse=True)
+        
+        for i, team in enumerate(conf_teams):
+            seed = i + 1
+            playoff_status = "x" if seed <= 2 else "y" if seed <= 6 else "z" if seed <= 8 else ""
+            await db.teams.update_one(
+                {"id": team["id"]},
+                {"$set": {"seed": seed, "playoff_status": playoff_status}}
+            )
+    
+    # Update power rankings
+    all_teams = await db.teams.find().to_list(100)
+    all_teams.sort(key=lambda t: (t.get("wins", 0), t.get("points_for", 0)), reverse=True)
+    
+    await db.power_rankings.delete_many({})
+    rankings = []
+    for i, team in enumerate(all_teams):
+        rankings.append({
+            "rank": i + 1,
+            "team_id": team["id"],
+            "team_name": team.get("name"),
+            "previous_rank": i + 1,
+            "record": f"{team.get('wins', 0)}-{team.get('losses', 0)}",
+            "trend": "same",
+            "analysis": f"{team.get('name')} currently ranked #{i+1}"
+        })
+    if rankings:
+        await db.power_rankings.insert_many(rankings)
+
 # ==================== DATABASE INITIALIZATION ====================
 async def init_database():
     """Initialize database - seeding disabled for production"""
