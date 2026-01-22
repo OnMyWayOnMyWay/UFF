@@ -383,7 +383,7 @@ async def seed_database():
     
     await db.players.insert_many(players)
 
-    # Generate weekly stats
+    # Generate weekly stats for all players
     weekly_stats = []
     for p in players:
         base_fp = p["fantasy_points"] / p["games_played"] if p["games_played"] > 0 else 0
@@ -396,17 +396,26 @@ async def seed_database():
             })
     await db.weekly_stats.insert_many(weekly_stats)
 
-    # Generate games
+    # Generate comprehensive games (6 games per week for 8 weeks = 48 games)
     games = []
     game_id = 1
     team_list = [t["id"] for t in teams]
+    
     for week in range(1, 9):
-        team_pairs = [(team_list[i], team_list[(i + week) % len(team_list)]) for i in range(0, len(team_list), 2)]
-        for home_id, away_id in team_pairs[:6]:
-            home_score = round(random.uniform(18, 45), 1)
-            away_score = round(random.uniform(14, 42), 1)
+        # Create matchups rotating teams
+        shuffled = team_list.copy()
+        random.shuffle(shuffled)
+        pairs = [(shuffled[i], shuffled[i + 1]) for i in range(0, 12, 2)]
+        
+        for home_id, away_id in pairs:
+            home_score = round(random.uniform(18, 48), 1)
+            away_score = round(random.uniform(14, 45), 1)
             winning_team_id = home_id if home_score > away_score else away_id
-            pog = random.choice([p for p in players if p["team_id"] == winning_team_id]) if any(p["team_id"] == winning_team_id for p in players) else None
+            
+            # Select player of game from winning team
+            winning_players = [p for p in players if p["team_id"] == winning_team_id]
+            pog = random.choice(winning_players) if winning_players else None
+            
             games.append({
                 "id": f"g{game_id}",
                 "week": week,
@@ -416,41 +425,55 @@ async def seed_database():
                 "away_score": away_score,
                 "is_completed": True,
                 "player_of_game": pog["roblox_username"] if pog else None,
-                "player_of_game_stats": f"{random.randint(15, 35)} pts, {random.randint(1, 4)} TD" if pog else None,
+                "player_of_game_stats": f"{random.randint(18, 42)} pts, {random.randint(1, 5)} TD" if pog else None,
                 "date": f"2025-{10 + (week // 5):02d}-{(week * 3) % 28 + 1:02d}"
             })
             game_id += 1
     await db.games.insert_many(games)
 
-    # Playoffs
+    # Playoffs - Complete 10-team bracket
     playoffs = [
         {"id": "po1", "round": "Playins", "matchup_name": "Play-In Game 1", "team1_id": "rd5", "team2_id": "rd6", "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
         {"id": "po2", "round": "Playins", "matchup_name": "Play-In Game 2", "team1_id": "gc5", "team2_id": "gc6", "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po3", "round": "Wildcard", "matchup_name": "Wildcard 1", "team1_id": "rd3", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po4", "round": "Wildcard", "matchup_name": "Wildcard 2", "team1_id": "gc3", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po5", "round": "Divisional", "matchup_name": "Divisional 1", "team1_id": "rd1", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po6", "round": "Divisional", "matchup_name": "Divisional 2", "team1_id": "gc1", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po7", "round": "Conference", "matchup_name": "Ridge Championship", "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po8", "round": "Conference", "matchup_name": "Grand Central Championship", "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po9", "round": "Championship", "matchup_name": "United Flag Bowl", "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po3", "round": "Wildcard", "matchup_name": "Wildcard 1 (Ridge)", "team1_id": "rd3", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po4", "round": "Wildcard", "matchup_name": "Wildcard 2 (Ridge)", "team1_id": "rd4", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po5", "round": "Wildcard", "matchup_name": "Wildcard 3 (GC)", "team1_id": "gc3", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po6", "round": "Wildcard", "matchup_name": "Wildcard 4 (GC)", "team1_id": "gc4", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po7", "round": "Divisional", "matchup_name": "Divisional 1 (Ridge)", "team1_id": "rd1", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po8", "round": "Divisional", "matchup_name": "Divisional 2 (Ridge)", "team1_id": "rd2", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po9", "round": "Divisional", "matchup_name": "Divisional 3 (GC)", "team1_id": "gc1", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po10", "round": "Divisional", "matchup_name": "Divisional 4 (GC)", "team1_id": "gc2", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po11", "round": "Conference", "matchup_name": "Ridge Championship", "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po12", "round": "Conference", "matchup_name": "Grand Central Championship", "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po13", "round": "Championship", "matchup_name": "United Flag Bowl", "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
     ]
     await db.playoffs.insert_many(playoffs)
 
-    # Trades
+    # More trades
     trades = [
         {"id": "t1", "team1_id": "rd1", "team1_name": "Vicksburg Vortex", "team2_id": "gc1", "team2_name": "Columbus Colts",
-         "team1_receives": ["Draft Pick #12"], "team2_receives": ["Future 1st"], "date": datetime.now(timezone.utc).isoformat(), "status": "completed"},
+         "team1_receives": ["Draft Pick #12"], "team2_receives": ["Future 1st Round Pick"], "date": datetime.now(timezone.utc).isoformat(), "status": "completed"},
         {"id": "t2", "team1_id": "rd2", "team1_name": "New York Guardians", "team2_id": "gc3", "team2_name": "Nashville Nightmares",
          "team1_receives": ["Backup QB"], "team2_receives": ["Draft Pick #24"], "date": datetime.now(timezone.utc).isoformat(), "status": "completed"},
+        {"id": "t3", "team1_id": "rd3", "team1_name": "Saskatoon Stampede", "team2_id": "gc2", "team2_name": "Evergreen Stags",
+         "team1_receives": ["2nd Round Pick"], "team2_receives": ["3rd Round Pick", "Future 4th"], "date": datetime.now(timezone.utc).isoformat(), "status": "completed"},
+        {"id": "t4", "team1_id": "rd4", "team1_name": "Boston Blitz", "team2_id": "gc4", "team2_name": "Seattle Skyclaws",
+         "team1_receives": ["WR Depth"], "team2_receives": ["RB Prospect"], "date": datetime.now(timezone.utc).isoformat(), "status": "completed"},
+        {"id": "t5", "team1_id": "rd5", "team1_name": "Miami Surge", "team2_id": "gc5", "team2_name": "Phoenix Flames",
+         "team1_receives": ["Draft Pick #36"], "team2_receives": ["Draft Pick #42", "Draft Pick #48"], "date": datetime.now(timezone.utc).isoformat(), "status": "completed"},
     ]
     await db.trades.insert_many(trades)
 
-    # Awards
+    # More awards
     awards = [
-        {"id": "a1", "name": "League MVP", "player_id": "p1", "player_name": "n4w", "team": "Vicksburg Vortex", "season": "2025"},
-        {"id": "a2", "name": "Offensive Player of the Year", "player_id": "p9", "player_name": "RushKing_RB", "team": "New York Guardians", "season": "2025"},
-        {"id": "a3", "name": "Defensive Player of the Year", "player_id": "p13", "player_name": "VortexDefender", "team": "Vicksburg Vortex", "season": "2025"},
-        {"id": "a4", "name": "Rookie of the Year", "player_id": "p7", "player_name": "NightmareWR1", "team": "Nashville Nightmares", "season": "2025"},
+        {"id": "a1", "name": "League MVP", "player_id": "p1", "player_name": "n4w", "team": "Vicksburg Vortex", "season": "2025", "description": "Led league in passing TDs and fantasy points"},
+        {"id": "a2", "name": "Offensive Player of the Year", "player_id": "p27", "player_name": "RushKing_RB", "team": "New York Guardians", "season": "2025", "description": "Rushed for 1456 yards and 16 TDs"},
+        {"id": "a3", "name": "Defensive Player of the Year", "player_id": "p37", "player_name": "VortexDefender", "team": "Vicksburg Vortex", "season": "2025", "description": "98 tackles, 14.5 sacks, 3 INTs"},
+        {"id": "a4", "name": "Rookie of the Year", "player_id": "p21", "player_name": "NightmareWR1", "team": "Nashville Nightmares", "season": "2025", "description": "79 receptions for 1145 yards in debut season"},
+        {"id": "a5", "name": "Comeback Player of the Year", "player_id": "p8", "player_name": "StagsQB1", "team": "Evergreen Stags", "season": "2025", "description": "Returned from injury to lead team to playoffs"},
+        {"id": "a6", "name": "Best Duo", "player_id": "p2", "player_name": "ThunderQB99 & ColtsCatcher", "team": "Columbus Colts", "season": "2025", "description": "QB-WR connection: 98 receptions, 12 TDs"},
+        {"id": "a7", "name": "Most Improved Player", "player_id": "p33", "player_name": "NightmareRB", "team": "Nashville Nightmares", "season": "2025", "description": "Doubled production from previous season"},
+        {"id": "a8", "name": "Iron Man Award", "player_id": "p1", "player_name": "n4w", "team": "Vicksburg Vortex", "season": "2025", "description": "Started all 8 games, never missed a snap"},
     ]
     await db.awards.insert_many(awards)
 
