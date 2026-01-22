@@ -19,6 +19,9 @@ import AdminPanel from "./pages/AdminPanel";
 import PlayerComparison from "./pages/PlayerComparison";
 import ActivityFeed from "./pages/ActivityFeed";
 import PlayerShowcase from "./pages/PlayerShowcase";
+import GameSimulator from "./pages/GameSimulator";
+import TradeMachine from "./pages/TradeMachine";
+import Achievements from "./pages/Achievements";
 import Navigation from "./components/Navigation";
 import { Toaster } from "./components/ui/sonner";
 
