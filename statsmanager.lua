@@ -18,7 +18,7 @@ local PLAYER_STAT_TEMPLATE = ReplicatedStorage:FindFirstChild("PlayerStatsTempla
 
 -- API endpoint for stats submission
 -- Update this URL to match your deployed backend URL
-local API_URL = "https://uffstats-37e418b3f8e1.herokuapp.com/api/game/submit"
+local API_URL = "https://uffstats-61cef3c41bef.herokuapp.com/api/game/submit"
 
 local STAT_DEFINITIONS = {
 	Passing = {
