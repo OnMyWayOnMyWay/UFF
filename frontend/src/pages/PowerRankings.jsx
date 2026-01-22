@@ -56,6 +56,18 @@ const PowerRankings = () => {
     );
   }
 
+  if (!rankings || rankings.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="glass-panel border-white/10">
+          <CardContent className="p-8 text-center">
+            <p className="text-white/70">No power rankings available. Rankings are calculated automatically when games are played.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div data-testid="power-rankings-page" className="min-h-screen">
       {/* Header */}
@@ -104,7 +116,7 @@ const PowerRankings = () => {
 
                     {/* Trend */}
                     <div className="w-12">
-                      {getTrendIcon(team.trend, team.prev_rank, team.rank)}
+                      {getTrendIcon(team.trend, team.previous_rank || team.prev_rank, team.rank)}
                     </div>
 
                     {/* Team */}
@@ -129,7 +141,7 @@ const PowerRankings = () => {
                     {/* Previous Rank */}
                     <div className="text-right">
                       <div className="font-body text-xs text-white/40 uppercase">Prev</div>
-                      <div className="font-heading font-bold text-white/60">#{team.prev_rank}</div>
+                      <div className="font-heading font-bold text-white/60">#{team.previous_rank || team.prev_rank || team.rank}</div>
                     </div>
                   </div>
                 ))}

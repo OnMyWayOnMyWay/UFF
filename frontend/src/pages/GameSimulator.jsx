@@ -137,7 +137,7 @@ const GameSimulator = () => {
     const newBallPosition = Math.max(0, Math.min(100, gameState.ballPosition + play.yards));
     
     let newState = { ...gameState };
-    newState.plays = [{ ...play, time: gameState.time, quarter: gameState.quarter }, ...gameState.plays].slice(0, 20);
+    let playText = play.text;
     
     if (play.touchdown) {
       // Touchdown! - Flag Football: Can attempt 2-point conversion (max 2 times)
@@ -148,9 +148,11 @@ const GameSimulator = () => {
       if (newState.conversionAttempts < 2 && Math.random() < 0.5) {
         conversionPoints = 2;
         newState.conversionAttempts += 1;
+        playText += ' + 2-point conversion good!';
       } else if (newState.conversionAttempts < 2) {
         // Failed conversion attempt still counts
         newState.conversionAttempts += 1;
+        playText += ' (2-point conversion failed)';
       }
       
       if (gameState.possession === 1) {
@@ -164,13 +166,6 @@ const GameSimulator = () => {
       newState.down = 1;
       newState.yardsToGo = 10;
       newState.momentum = gameState.possession === 1 ? Math.min(100, gameState.momentum + 15) : Math.max(0, gameState.momentum - 15);
-      
-      // Update play text to show conversion
-      if (conversionPoints > 0) {
-        play.text += ' + 2-point conversion good!';
-      } else if (newState.conversionAttempts <= 2) {
-        play.text += ' (2-point conversion failed)';
-      }
     } else if (play.turnover) {
       // Turnover
       newState.possession = gameState.possession === 1 ? 2 : 1;
@@ -183,14 +178,12 @@ const GameSimulator = () => {
       newState.ballPosition = newBallPosition;
       
       // Flag Football: Middle of field (50 yard line) = automatic first down
-      if (newBallPosition >= 45 && newBallPosition <= 55) {
+      if (gameState.ballPosition < 50 && newBallPosition >= 50) {
         // Crossed midfield - automatic first down
+        newState.ballPosition = 50;
         newState.down = 1;
         newState.yardsToGo = 10;
-        // Adjust position to exactly 50 if close
-        if (newBallPosition >= 50) {
-          newState.ballPosition = 50;
-        }
+        playText += ' - First down at midfield!';
       } else {
         const newYardsToGo = gameState.yardsToGo - play.yards;
         
@@ -222,19 +215,22 @@ const GameSimulator = () => {
     }
     
     if (newMins < 0) {
-      const isOvertime = newState.inOvertime || (newState.quarter > 2 && newState.score1 === newState.score2);
-      
-      if (isOvertime) {
+      if (newState.inOvertime) {
         // Overtime: 2 minute quarters, max 3 overtime quarters
         if (newState.overtimeQuarter < 3) {
           newState.overtimeQuarter += 1;
           newMins = 2;
           newSecs = 0;
-          newState.inOvertime = true;
         } else {
-          // Game ends after 3 overtime quarters
-          newState.gameOver = true;
-          newState.isRunning = false;
+          // Game ends after 3 overtime quarters (or if someone is ahead)
+          if (newState.score1 !== newState.score2) {
+            newState.gameOver = true;
+            newState.isRunning = false;
+          } else {
+            // Still tied after 3 OTs - game ends
+            newState.gameOver = true;
+            newState.isRunning = false;
+          }
         }
       } else if (newState.quarter < 2) {
         // Regular game: 2 quarters of 8 minutes
@@ -242,7 +238,7 @@ const GameSimulator = () => {
         newMins = 8;
         newSecs = 0;
       } else {
-        // End of regulation - check for tie
+        // End of regulation (Q2) - check for tie
         if (newState.score1 === newState.score2) {
           // Tie game - go to overtime
           newState.inOvertime = true;
@@ -250,7 +246,7 @@ const GameSimulator = () => {
           newMins = 2;
           newSecs = 0;
         } else {
-          // Game over
+          // Game over - someone won
           newState.gameOver = true;
           newState.isRunning = false;
         }
@@ -258,6 +254,11 @@ const GameSimulator = () => {
     }
     
     newState.time = `${newMins}:${newSecs.toString().padStart(2, '0')}`;
+    
+    // Add play to history with updated text (use current quarter/time before updates)
+    const currentQuarterDisplay = gameState.inOvertime ? `OT${gameState.overtimeQuarter}` : `Q${gameState.quarter}`;
+    const playWithText = { ...play, text: playText, time: gameState.time, quarter: currentQuarterDisplay };
+    newState.plays = [playWithText, ...gameState.plays].slice(0, 100); // Keep more plays for scrolling
     
     setGameState(newState);
   };
@@ -558,39 +559,41 @@ const GameSimulator = () => {
                 Play-by-Play
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0 max-h-[400px] overflow-y-auto">
-              {gameState.plays.length === 0 ? (
-                <div className="p-8 text-center text-white/40">
-                  Press Start to begin the simulation
-                </div>
-              ) : (
-                <div className="divide-y divide-white/5">
-                  {gameState.plays.map((play, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`p-4 flex items-start gap-3 ${idx === 0 ? 'bg-white/5' : ''}`}
-                      style={{ animation: idx === 0 ? 'slideIn 0.3s ease-out' : 'none' }}
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                        {getPlayIcon(play.type)}
-                      </div>
-                      <div className="flex-1">
-                        <div className={`font-medium ${play.touchdown ? 'text-yellow-400' : play.turnover ? 'text-red-400' : 'text-white'}`}>
-                          {play.text}
+            <CardContent className="p-0">
+              <div className="max-h-[400px] overflow-y-auto overscroll-contain">
+                {gameState.plays.length === 0 ? (
+                  <div className="p-8 text-center text-white/40">
+                    Press Start to begin the simulation
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/5">
+                    {gameState.plays.map((play, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`p-4 flex items-start gap-3 ${idx === 0 ? 'bg-white/5' : ''}`}
+                        style={{ animation: idx === 0 ? 'slideIn 0.3s ease-out' : 'none' }}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                          {getPlayIcon(play.type)}
                         </div>
-                        <div className="text-white/40 text-xs mt-1">
-                          Q{play.quarter} · {play.time}
+                        <div className="flex-1 min-w-0">
+                          <div className={`font-medium ${play.touchdown ? 'text-yellow-400' : play.turnover ? 'text-red-400' : 'text-white'}`}>
+                            {play.text}
+                          </div>
+                          <div className="text-white/40 text-xs mt-1">
+                            {typeof play.quarter === 'string' ? play.quarter : `Q${play.quarter}`} · {play.time}
+                          </div>
                         </div>
+                        {play.yards !== undefined && play.yards !== 0 && (
+                          <Badge className={play.yards > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                            {play.yards > 0 ? '+' : ''}{play.yards} YDS
+                          </Badge>
+                        )}
                       </div>
-                      {play.yards !== 0 && (
-                        <Badge className={play.yards > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
-                          {play.yards > 0 ? '+' : ''}{play.yards} YDS
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

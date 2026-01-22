@@ -57,6 +57,18 @@ const Awards = () => {
     );
   }
 
+  if (!awards || awards.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="glass-panel border-white/10">
+          <CardContent className="p-8 text-center">
+            <p className="text-white/70">No awards data available. Awards are calculated automatically when games are played.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div data-testid="awards-page" className="min-h-screen">
       {/* Header */}
@@ -106,25 +118,25 @@ const Awards = () => {
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10">
                         <span className="font-heading font-black text-2xl text-white">
-                          {award.winner_name?.charAt(0) || '?'}
+                          {(award.player_name || award.winner_name || 'TBD')?.charAt(0) || '?'}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-heading font-bold text-xl text-white truncate">
-                          {award.winner_name || 'TBD'}
+                          {award.player_name || award.winner_name || 'TBD'}
                         </div>
-                        {award.winner_team && (
-                          <div className="font-body text-sm text-white/50">{award.winner_team}</div>
+                        {(award.team || award.winner_team) && (
+                          <div className="font-body text-sm text-white/50">{award.team || award.winner_team}</div>
                         )}
                       </div>
                     </div>
 
-                    {/* Stat Value */}
-                    {award.stat_value && (
+                    {/* Description/Stat Value */}
+                    {award.description && (
                       <div className="mt-4 pt-4 border-t border-white/10">
                         <div className="font-body text-xs uppercase tracking-widest text-white/40 mb-1">Achievement</div>
                         <div className="font-heading font-bold text-lg text-neon-volt">
-                          {award.stat_value}
+                          {award.description}
                         </div>
                       </div>
                     )}

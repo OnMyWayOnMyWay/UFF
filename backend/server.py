@@ -486,10 +486,13 @@ async def recalculate_all_standings():
             "rank": i + 1,
             "team_id": team["id"],
             "team_name": team.get("name"),
+            "team_abbr": team.get("abbreviation", team.get("name", "")[:3].upper()),
+            "team_color": team.get("color", "#3B82F6"),
             "previous_rank": i + 1,
+            "prev_rank": i + 1,  # Alias for frontend compatibility
             "record": f"{team.get('wins', 0)}-{team.get('losses', 0)}",
             "trend": "same",
-            "analysis": f"{team.get('name')} currently ranked #{i+1}"
+            "analysis": f"{team.get('name')} currently ranked #{i+1} with a {team.get('wins', 0)}-{team.get('losses', 0)} record"
         })
     if rankings:
         await db.power_rankings.insert_many(rankings)
@@ -1221,13 +1224,25 @@ async def get_power_rankings():
 @api_router.get("/stat-leaders")
 async def get_stat_leaders():
     players = await db.players.find({}, {"_id": 0}).to_list(100)
-    qbs = [p for p in players if p["position"] == "QB"]
+    qbs = [p for p in players if p.get("position") == "QB"]
+    
+    # Calculate total touchdowns for each player
+    for p in players:
+        total_tds = (
+            p.get("passing", {}).get("touchdowns", 0) +
+            p.get("rushing", {}).get("touchdowns", 0) +
+            p.get("receiving", {}).get("touchdowns", 0) +
+            p.get("defense", {}).get("td", 0)
+        )
+        p["total_touchdowns"] = total_tds
+    
     return {
-        "passing": sorted(qbs, key=lambda x: x.get("passing", {}).get("yards", 0), reverse=True)[:5],
-        "rushing": sorted(players, key=lambda x: x.get("rushing", {}).get("yards", 0), reverse=True)[:5],
-        "receiving": sorted([p for p in players if p["position"] == "WR"], key=lambda x: x.get("receiving", {}).get("yards", 0), reverse=True)[:5],
-        "defense": sorted([p for p in players if p["position"] == "DEF"], key=lambda x: x.get("defense", {}).get("tackles", 0), reverse=True)[:5],
-        "fantasy": sorted(players, key=lambda x: x.get("fantasy_points", 0), reverse=True)[:5]
+        "fantasy_points": sorted(players, key=lambda x: x.get("fantasy_points", 0), reverse=True)[:5],
+        "passing_yards": sorted(qbs, key=lambda x: x.get("passing", {}).get("yards", 0), reverse=True)[:5],
+        "rushing_yards": sorted(players, key=lambda x: x.get("rushing", {}).get("yards", 0), reverse=True)[:5],
+        "receiving_yards": sorted([p for p in players if p.get("position") == "WR"], key=lambda x: x.get("receiving", {}).get("yards", 0), reverse=True)[:5],
+        "touchdowns": sorted(players, key=lambda x: x.get("total_touchdowns", 0), reverse=True)[:5],
+        "sacks": sorted([p for p in players if p.get("position") == "DEF"], key=lambda x: x.get("defense", {}).get("sacks", 0), reverse=True)[:5]
     }
 
 @api_router.get("/dashboard")

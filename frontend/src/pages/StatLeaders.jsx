@@ -38,18 +38,31 @@ const StatLeaders = () => {
   };
 
   const categories = [
-    { key: 'fantasy_points', title: 'Fantasy Points', icon: Trophy, color: 'text-neon-volt', stat: 'fantasy_points', format: (v) => v?.toFixed(1) },
-    { key: 'passing_yards', title: 'Passing Yards', icon: Target, color: 'text-orange-500', stat: 'passing_yards', format: (v) => v?.toLocaleString() },
-    { key: 'rushing_yards', title: 'Rushing Yards', icon: Zap, color: 'text-sky-500', stat: 'rushing_yards', format: (v) => v?.toLocaleString() },
-    { key: 'receiving_yards', title: 'Receiving Yards', icon: TrendingUp, color: 'text-teal-500', stat: 'receiving_yards', format: (v) => v?.toLocaleString() },
-    { key: 'touchdowns', title: 'Touchdowns', icon: Trophy, color: 'text-neon-blue', stat: 'touchdowns', format: (v) => v },
-    { key: 'sacks', title: 'Sacks (DEF)', icon: Shield, color: 'text-red-500', stat: 'sacks', format: (v) => v },
+    { key: 'fantasy_points', title: 'Fantasy Points', icon: Trophy, color: 'text-neon-volt', getValue: (p) => p.fantasy_points || 0, format: (v) => v?.toFixed(1) },
+    { key: 'passing_yards', title: 'Passing Yards', icon: Target, color: 'text-orange-500', getValue: (p) => p.passing?.yards || 0, format: (v) => v?.toLocaleString() },
+    { key: 'rushing_yards', title: 'Rushing Yards', icon: Zap, color: 'text-sky-500', getValue: (p) => p.rushing?.yards || 0, format: (v) => v?.toLocaleString() },
+    { key: 'receiving_yards', title: 'Receiving Yards', icon: TrendingUp, color: 'text-teal-500', getValue: (p) => p.receiving?.yards || 0, format: (v) => v?.toLocaleString() },
+    { key: 'touchdowns', title: 'Touchdowns', icon: Trophy, color: 'text-neon-blue', getValue: (p) => (p.passing?.touchdowns || 0) + (p.rushing?.touchdowns || 0) + (p.receiving?.touchdowns || 0) + (p.defense?.td || 0), format: (v) => v },
+    { key: 'sacks', title: 'Sacks (DEF)', icon: Shield, color: 'text-red-500', getValue: (p) => p.defense?.sacks || 0, format: (v) => v },
   ];
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-neon-blue border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Ensure we have data
+  if (!leaders || Object.keys(leaders).length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="glass-panel border-white/10">
+          <CardContent className="p-8 text-center">
+            <p className="text-white/70">No stat leaders data available yet.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -110,7 +123,9 @@ const StatLeaders = () => {
                             {idx + 1}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-heading font-bold text-sm text-white truncate">{player.name}</div>
+                            <div className="font-heading font-bold text-sm text-white truncate">
+                              {player.roblox_username || player.name || 'Unknown'}
+                            </div>
                             <div className="flex items-center gap-2">
                               <Badge className={`${getPositionColor(player.position)} text-white text-xs px-1.5 py-0`}>
                                 {player.position}
@@ -119,7 +134,7 @@ const StatLeaders = () => {
                             </div>
                           </div>
                           <div className={`font-heading font-black text-lg ${idx === 0 ? category.color : 'text-white'}`}>
-                            {category.format(player.stats?.[category.stat])}
+                            {category.format(category.getValue(player))}
                           </div>
                         </Link>
                       ))}
