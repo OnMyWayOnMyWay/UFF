@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Header, Query, BackgroundTasks
+from fastapi import FastAPI, APIRouter, HTTPException, Header, Query, BackgroundTasks, UploadFile, File, Form
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
@@ -22,6 +22,8 @@ import asyncio
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 STATIC_DIR = (ROOT_DIR / ".." / "static").resolve()
+UPLOADS_DIR = (ROOT_DIR / ".." / "uploads").resolve()
+UPLOADS_DIR.mkdir(exist_ok=True)
 
 # MongoDB Setup
 mongo_url = os.environ.get('MONGO_URL', 'mongodb+srv://UFFstats:KamIsCool1@cluster0.5qos1zx.mongodb.net/')
@@ -491,6 +493,132 @@ async def recalculate_all_standings():
         })
     if rankings:
         await db.power_rankings.insert_many(rankings)
+    
+    # Auto-update awards
+    await calculate_awards()
+
+async def calculate_awards():
+    """Automatically calculate awards based on current player and team stats"""
+    players = await db.players.find({}, {"_id": 0}).to_list(200)
+    teams = await db.teams.find({}, {"_id": 0}).to_list(20)
+    
+    if not players:
+        return
+    
+    # Find MVP (highest fantasy points)
+    mvp = max(players, key=lambda p: p.get("fantasy_points", 0))
+    
+    # Find Offensive Player of the Year (most total offensive yards + TDs)
+    offensive_players = []
+    for p in players:
+        passing_yds = p.get("passing", {}).get("yards", 0)
+        rushing_yds = p.get("rushing", {}).get("yards", 0)
+        receiving_yds = p.get("receiving", {}).get("yards", 0)
+        total_yds = passing_yds + rushing_yds + receiving_yds
+        total_tds = (p.get("passing", {}).get("touchdowns", 0) + 
+                     p.get("rushing", {}).get("touchdowns", 0) + 
+                     p.get("receiving", {}).get("touchdowns", 0))
+        offensive_score = total_yds + (total_tds * 100)
+        offensive_players.append((p, offensive_score))
+    
+    opoy = max(offensive_players, key=lambda x: x[1])[0] if offensive_players else None
+    
+    # Find Defensive Player of the Year (most tackles + sacks + interceptions)
+    defensive_players = [p for p in players if p.get("position") == "DEF"]
+    if defensive_players:
+        dpoy = max(defensive_players, key=lambda p: (
+            p.get("defense", {}).get("tackles", 0) + 
+            p.get("defense", {}).get("sacks", 0) * 2 + 
+            p.get("defense", {}).get("interceptions", 0) * 3
+        ))
+    else:
+        dpoy = None
+    
+    # Find Rookie of the Year (best player with fewest games played, if applicable)
+    rookies = [p for p in players if p.get("games_played", 0) <= 8]
+    roy = max(rookies, key=lambda p: p.get("fantasy_points", 0)) if rookies else None
+    
+    # Find Comeback Player (player with high stats after low games played)
+    comeback_players = [p for p in players if p.get("games_played", 0) >= 4]
+    if comeback_players:
+        cpoy = max(comeback_players, key=lambda p: p.get("fantasy_points", 0) / max(p.get("games_played", 1), 1))
+    else:
+        cpoy = None
+    
+    # Get team names
+    teams_map = {t["id"]: t for t in teams}
+    
+    awards = []
+    if mvp and mvp.get("fantasy_points", 0) > 0:
+        awards.append({
+            "id": "a1",
+            "name": "League MVP",
+            "player_id": mvp["id"],
+            "player_name": mvp.get("roblox_username", "Unknown"),
+            "team": teams_map.get(mvp.get("team_id", ""), {}).get("name", mvp.get("team", "Unknown")),
+            "season": "2025",
+            "description": f"Led league with {mvp.get('fantasy_points', 0):.1f} fantasy points"
+        })
+    
+    if opoy:
+        passing_yds = opoy.get("passing", {}).get("yards", 0)
+        rushing_yds = opoy.get("rushing", {}).get("yards", 0)
+        receiving_yds = opoy.get("receiving", {}).get("yards", 0)
+        total_yds = passing_yds + rushing_yds + receiving_yds
+        total_tds = (opoy.get("passing", {}).get("touchdowns", 0) + 
+                     opoy.get("rushing", {}).get("touchdowns", 0) + 
+                     opoy.get("receiving", {}).get("touchdowns", 0))
+        awards.append({
+            "id": "a2",
+            "name": "Offensive Player of the Year",
+            "player_id": opoy["id"],
+            "player_name": opoy.get("roblox_username", "Unknown"),
+            "team": teams_map.get(opoy.get("team_id", ""), {}).get("name", opoy.get("team", "Unknown")),
+            "season": "2025",
+            "description": f"{total_yds} total yards, {total_tds} touchdowns"
+        })
+    
+    if dpoy:
+        tackles = dpoy.get("defense", {}).get("tackles", 0)
+        sacks = dpoy.get("defense", {}).get("sacks", 0)
+        ints = dpoy.get("defense", {}).get("interceptions", 0)
+        awards.append({
+            "id": "a3",
+            "name": "Defensive Player of the Year",
+            "player_id": dpoy["id"],
+            "player_name": dpoy.get("roblox_username", "Unknown"),
+            "team": teams_map.get(dpoy.get("team_id", ""), {}).get("name", dpoy.get("team", "Unknown")),
+            "season": "2025",
+            "description": f"{tackles} tackles, {sacks} sacks, {ints} interceptions"
+        })
+    
+    if roy and roy.get("fantasy_points", 0) > 0:
+        awards.append({
+            "id": "a4",
+            "name": "Rookie of the Year",
+            "player_id": roy["id"],
+            "player_name": roy.get("roblox_username", "Unknown"),
+            "team": teams_map.get(roy.get("team_id", ""), {}).get("name", roy.get("team", "Unknown")),
+            "season": "2025",
+            "description": f"{roy.get('fantasy_points', 0):.1f} fantasy points in {roy.get('games_played', 0)} games"
+        })
+    
+    if cpoy and cpoy.get("fantasy_points", 0) > 0:
+        awards.append({
+            "id": "a5",
+            "name": "Comeback Player of the Year",
+            "player_id": cpoy["id"],
+            "player_name": cpoy.get("roblox_username", "Unknown"),
+            "team": teams_map.get(cpoy.get("team_id", ""), {}).get("name", cpoy.get("team", "Unknown")),
+            "season": "2025",
+            "description": f"{cpoy.get('fantasy_points', 0):.1f} fantasy points"
+        })
+    
+    # Update awards in database
+    if awards:
+        await db.awards.delete_many({})
+        await db.awards.insert_many(awards)
+        logger.info(f"Calculated {len(awards)} awards")
 
 # ==================== DATABASE INITIALIZATION ====================
 async def init_database():
@@ -934,6 +1062,7 @@ async def create_game_with_stats_internal(game: GameWithStats, background_tasks:
         await recalculate_team_record(game.home_team_id)
         await recalculate_team_record(game.away_team_id)
         background_tasks.add_task(recalculate_all_standings)
+        # Awards will be recalculated in recalculate_all_standings
 
     await log_admin_activity(admin_label, "CREATE_GAME", f"Created game: Week {game.week} ({len(game.player_stats)} player stats)")
     new_game.pop("_id", None)
@@ -1105,6 +1234,8 @@ async def get_stat_leaders():
 async def get_dashboard():
     games = await db.games.find({}, {"_id": 0}).sort("week", -1).to_list(100)
     latest_week = max((g["week"] for g in games), default=1) if games else 1
+    playoff_week = latest_week + 1  # Playoffs typically start the week after regular season
+    
     weekly = await db.weekly_stats.find({"week": latest_week}, {"_id": 0}).sort("points", -1).to_list(10)
     players = await db.players.find({}, {"_id": 0}).to_list(100)
     players_map = {p["id"]: p for p in players}
@@ -1118,12 +1249,33 @@ async def get_dashboard():
     power_rankings = await db.power_rankings.find({}, {"_id": 0}).sort("rank", 1).to_list(5)
     trades = await db.trades.find({}, {"_id": 0}).sort("date", -1).to_list(3)
     
+    # Get #1 seed team
+    teams = await db.teams.find({}, {"_id": 0}).to_list(20)
+    teams_sorted = sorted(teams, key=lambda t: (t.get("wins", 0), t.get("points_for", 0)), reverse=True)
+    top_seed = teams_sorted[0] if teams_sorted else None
+    top_seed_info = None
+    if top_seed:
+        top_seed_info = {
+            "name": top_seed.get("name", ""),
+            "abbreviation": top_seed.get("abbreviation", ""),
+            "wins": top_seed.get("wins", 0),
+            "losses": top_seed.get("losses", 0),
+            "record": f"{top_seed.get('wins', 0)}-{top_seed.get('losses', 0)}"
+        }
+    
     return {
         "top_performers": top_performers,
         "recent_games": games[:6],
         "power_rankings": power_rankings,
         "recent_trades": trades,
-        "league_stats": {"total_teams": 12, "total_players": len(players), "total_games": len(games), "current_week": latest_week}
+        "league_stats": {
+            "total_teams": len(teams) or 12,
+            "total_players": len(players),
+            "total_games": len(games),
+            "current_week": latest_week,
+            "playoff_week": playoff_week,
+            "top_seed": top_seed_info
+        }
     }
 
 @api_router.post("/game")
@@ -1541,6 +1693,43 @@ async def update_team(team_id: str, updates: dict, admin_key: str = Header(None,
     await log_admin_activity("admin", "UPDATE_TEAM", f"Updated team: {team_id}")
     return await db.teams.find_one({"id": team_id}, {"_id": 0})
 
+@api_router.post("/admin/team/{team_id}/logo/upload")
+async def upload_team_logo(
+    team_id: str,
+    file: UploadFile = File(...),
+    admin_key: str = Header(None, alias="X-Admin-Key")
+):
+    """Upload a logo file for a team"""
+    if not verify_admin(admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    # Generate filename
+    file_ext = Path(file.filename).suffix if file.filename else '.png'
+    filename = f"team_{team_id}_{uuid.uuid4().hex[:8]}{file_ext}"
+    file_path = UPLOADS_DIR / filename
+    
+    # Save file
+    try:
+        contents = await file.read()
+        with open(file_path, 'wb') as f:
+            f.write(contents)
+        
+        # Generate URL (relative to static/uploads)
+        logo_url = f"/uploads/{filename}"
+        
+        # Update team
+        await db.teams.update_one({"id": team_id}, {"$set": {"logo": logo_url}})
+        await log_admin_activity("admin", "UPLOAD_TEAM_LOGO", f"Uploaded logo for team: {team_id}")
+        
+        return {"success": True, "logo_url": logo_url, "filename": filename}
+    except Exception as e:
+        logger.error(f"Error uploading logo: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload logo")
+
 @api_router.put("/admin/team/{team_id}/branding")
 async def update_team_branding(team_id: str, color: str = "", logo: str = "", admin_key: str = Header(None, alias="X-Admin-Key")):
     if not verify_admin(admin_key):
@@ -1635,8 +1824,11 @@ async def create_trade(trade: TradeSetup, admin_key: str = Header(None, alias="X
 # Season Admin
 @api_router.post("/admin/season/reset")
 async def reset_season(admin_key: str = Header(None, alias="X-Admin-Key")):
+    """Reset season data (games, standings) but keep teams, players, and all player stats intact."""
     if not verify_admin(admin_key):
         raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    # Only reset team standings/records, not the teams themselves
     await db.teams.update_many(
         {},
         {"$set": {
@@ -1648,18 +1840,26 @@ async def reset_season(admin_key: str = Header(None, alias="X-Admin-Key")):
             "playoff_status": ""
         }}
     )
-    await db.players.update_many({}, {"$set": {"games_played": 0, "fantasy_points": 0, "passing": {"completions": 0, "attempts": 0, "yards": 0, "touchdowns": 0, "interceptions": 0, "rating": 0, "completion_pct": 0, "average": 0, "longest": 0}, "rushing": {"attempts": 0, "yards": 0, "touchdowns": 0, "yards_per_carry": 0, "fumbles": 0, "twenty_plus": 0, "longest": 0}, "receiving": {"receptions": 0, "yards": 0, "touchdowns": 0, "drops": 0, "longest": 0}, "defense": {"tackles": 0, "tackles_for_loss": 0, "sacks": 0, "safeties": 0, "swat": 0, "interceptions": 0, "pass_deflections": 0, "td": 0}}})
+    
+    # DO NOT reset player stats - keep all player data intact
+    # Players and their stats remain unchanged
+    
+    # Delete all game-related data
     await db.games.delete_many({})
     await db.game_player_stats.delete_many({})
     await db.weekly_stats.delete_many({})
+    
+    # Reset season-specific data
     await db.trades.delete_many({})
     await db.watchlist.delete_many({})
     await db.power_rankings.delete_many({})
     await db.awards.delete_many({})
     await db.activity_log.delete_many({})
     await db.playoffs.update_many({}, {"$set": {"team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"}})
-    await log_admin_activity("admin", "RESET_SEASON", "Season data reset")
-    return {"success": True, "message": "Season reset complete"}
+    
+    # Note: Teams and Players collections are NOT touched - they remain completely intact
+    await log_admin_activity("admin", "RESET_SEASON", "Season reset - games and standings cleared, teams and players preserved")
+    return {"success": True, "message": "Season reset complete - teams and players (with all stats) preserved"}
 
 @api_router.get("/admin/validate")
 async def validate_data(admin_key: str = Header(None, alias="X-Admin-Key")):
@@ -1772,11 +1972,22 @@ async def recalculate_all(background_tasks: BackgroundTasks, admin_key: str = He
     for player_id in player_ids:
         await recalculate_player_stats(player_id)
     
-    # Recalculate all standings
+    # Recalculate all standings (this also updates power rankings and awards)
     await recalculate_all_standings()
     
     await log_admin_activity("admin", "RECALCULATE_ALL", f"Recalculated {len(player_ids)} players")
     return {"success": True, "players_updated": len(player_ids)}
+
+@api_router.post("/admin/recalculate/awards")
+async def recalculate_awards_endpoint(admin_key: str = Header(None, alias="X-Admin-Key")):
+    """Manually recalculate awards"""
+    if not verify_admin(admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    await calculate_awards()
+    awards = await db.awards.find({}, {"_id": 0}).to_list(20)
+    await log_admin_activity("admin", "RECALCULATE_AWARDS", "Awards recalculated")
+    return {"success": True, "awards": awards, "count": len(awards)}
 
 @api_router.post("/admin/recalculate/player/{player_id}")
 async def recalculate_single_player(player_id: str, admin_key: str = Header(None, alias="X-Admin-Key")):
@@ -1847,7 +2058,12 @@ if STATIC_DIR.exists():
     # Mount static assets (JS, CSS, images) - these must be served first
     if static_assets_dir.exists():
         app.mount("/static", StaticFiles(directory=str(static_assets_dir)), name="static_assets")
-    
+
+# Mount uploads directory for team logos (outside the static check)
+if UPLOADS_DIR.exists():
+    app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+
+if STATIC_DIR.exists():
     # Serve index.html for root
     @app.get("/")
     async def serve_index():

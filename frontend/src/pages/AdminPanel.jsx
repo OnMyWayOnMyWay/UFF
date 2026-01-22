@@ -238,6 +238,38 @@ const AdminPanel = () => {
     }
   };
 
+  const uploadTeamLogo = async (teamId, file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await axios.post(
+        `${API}/admin/team/${teamId}/logo/upload`,
+        formData,
+        {
+          headers: {
+            ...headers,
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      
+      if (response.data.logo_url) {
+        // Update the team with the new logo URL
+        await axios.put(
+          `${API}/admin/team/${teamId}/branding?logo=${encodeURIComponent(response.data.logo_url)}`,
+          {},
+          { headers }
+        );
+        toast.success('Logo uploaded successfully');
+        fetchAllData();
+      }
+    } catch (error) {
+      console.error('Logo upload error:', error);
+      toast.error('Failed to upload logo');
+    }
+  };
+
   // Game Management
   const createGame = async () => {
     if (!gameForm.home_team_id || !gameForm.away_team_id) {
@@ -630,18 +662,47 @@ const AdminPanel = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-white/60">Logo URL</Label>
-                <Input
-                  value={editTeamModal.team.logo || ''}
-                  onChange={(e) => setEditTeamModal({ ...editTeamModal, team: { ...editTeamModal.team, logo: e.target.value } })}
-                  placeholder="https://example.com/logo.png"
-                  className="bg-white/5 border-white/10"
-                />
-                {editTeamModal.team.logo && (
-                  <div className="mt-2 p-2 bg-white/5 rounded-lg">
-                    <img src={editTeamModal.team.logo} alt="Logo preview" className="w-16 h-16 object-contain mx-auto" />
-                  </div>
-                )}
+                <Label className="text-white/60">Team Logo</Label>
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        uploadTeamLogo(editTeamModal.team.id, file);
+                      }
+                    }}
+                    className="hidden"
+                    id="logo-upload"
+                  />
+                  <label
+                    htmlFor="logo-upload"
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                  >
+                    <Image className="w-4 h-4" />
+                    <span className="text-sm text-white/70">Upload from PC</span>
+                  </label>
+                  <div className="text-xs text-white/40">Or enter URL below</div>
+                  <Input
+                    value={editTeamModal.team.logo || ''}
+                    onChange={(e) => setEditTeamModal({ ...editTeamModal, team: { ...editTeamModal.team, logo: e.target.value } })}
+                    placeholder="https://example.com/logo.png"
+                    className="bg-white/5 border-white/10"
+                  />
+                  {editTeamModal.team.logo && (
+                    <div className="mt-2 p-2 bg-white/5 rounded-lg">
+                      <img 
+                        src={editTeamModal.team.logo.startsWith('http') ? editTeamModal.team.logo : editTeamModal.team.logo} 
+                        alt="Logo preview" 
+                        className="w-16 h-16 object-contain mx-auto"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

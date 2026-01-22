@@ -4,6 +4,7 @@ import { Play, Pause, SkipForward, RefreshCw, Trophy, Zap, Target, Flag, Timer, 
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 
 import API from '../lib/api';
 
@@ -280,25 +281,41 @@ const GameSimulator = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">Home Team</label>
-              <select 
+              <Select 
                 value={team1?.id || ''} 
-                onChange={(e) => setTeam1(teams.find(t => t.id === e.target.value))}
-                className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white font-heading"
+                onValueChange={(value) => setTeam1(teams.find(t => t.id === value))}
                 disabled={gameState.isRunning}
               >
-                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+                <SelectTrigger className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white font-heading hover:bg-white/10">
+                  <SelectValue placeholder="Select team" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#111827] border-white/10 text-white">
+                  {teams.map(t => (
+                    <SelectItem key={t.id} value={t.id} className="hover:bg-white/10 focus:bg-white/10">
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">Away Team</label>
-              <select 
+              <Select 
                 value={team2?.id || ''} 
-                onChange={(e) => setTeam2(teams.find(t => t.id === e.target.value))}
-                className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white font-heading"
+                onValueChange={(value) => setTeam2(teams.find(t => t.id === value))}
                 disabled={gameState.isRunning}
               >
-                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+                <SelectTrigger className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white font-heading hover:bg-white/10">
+                  <SelectValue placeholder="Select team" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#111827] border-white/10 text-white">
+                  {teams.map(t => (
+                    <SelectItem key={t.id} value={t.id} className="hover:bg-white/10 focus:bg-white/10">
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

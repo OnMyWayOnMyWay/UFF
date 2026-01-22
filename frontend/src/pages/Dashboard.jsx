@@ -140,19 +140,29 @@ const Dashboard = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 animate-slide-up stagger-2">
             <div className="glass-panel rounded-xl p-4">
               <div className="font-body text-xs uppercase tracking-widest text-white/40 mb-1">Teams</div>
-              <div className="font-heading font-black text-3xl text-white">12</div>
+              <div className="font-heading font-black text-3xl text-white">
+                {dashboardData?.league_stats?.total_teams || 12}
+              </div>
             </div>
             <div className="glass-panel rounded-xl p-4">
               <div className="font-body text-xs uppercase tracking-widest text-white/40 mb-1">Week</div>
-              <div className="font-heading font-black text-3xl text-neon-blue">8</div>
+              <div className="font-heading font-black text-3xl text-neon-blue">
+                {dashboardData?.league_stats?.current_week || 1}
+              </div>
             </div>
             <div className="glass-panel rounded-xl p-4">
               <div className="font-body text-xs uppercase tracking-widest text-white/40 mb-1">Playoffs</div>
-              <div className="font-heading font-black text-xl text-neon-volt">Week 9</div>
+              <div className="font-heading font-black text-xl text-neon-volt">
+                Week {dashboardData?.league_stats?.playoff_week || 'N/A'}
+              </div>
             </div>
             <div className="glass-panel rounded-xl p-4">
               <div className="font-body text-xs uppercase tracking-widest text-white/40 mb-1">#1 Seed</div>
-              <div className="font-heading font-bold text-lg text-white truncate">VIC 8-0</div>
+              <div className="font-heading font-bold text-lg text-white truncate">
+                {dashboardData?.league_stats?.top_seed 
+                  ? `${dashboardData.league_stats.top_seed.abbreviation || dashboardData.league_stats.top_seed.name} ${dashboardData.league_stats.top_seed.record}`
+                  : 'N/A'}
+              </div>
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 
 import API from '../lib/api';
 
@@ -194,23 +195,47 @@ const TradeMachine = () => {
           <div className="grid grid-cols-2 gap-8">
             <div>
               <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">Team 1</label>
-              <select 
+              <Select 
                 value={team1?.id || ''} 
-                onChange={(e) => { setTeam1(teams.find(t => t.id === e.target.value)); setTeam1Offers([]); setAnalysis(null); }}
-                className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white font-heading"
+                onValueChange={(value) => { 
+                  setTeam1(teams.find(t => t.id === value)); 
+                  setTeam1Offers([]); 
+                  setAnalysis(null); 
+                }}
               >
-                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+                <SelectTrigger className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white font-heading hover:bg-white/10">
+                  <SelectValue placeholder="Select team" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#111827] border-white/10 text-white">
+                  {teams.map(t => (
+                    <SelectItem key={t.id} value={t.id} className="hover:bg-white/10 focus:bg-white/10">
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">Team 2</label>
-              <select 
+              <Select 
                 value={team2?.id || ''} 
-                onChange={(e) => { setTeam2(teams.find(t => t.id === e.target.value)); setTeam2Offers([]); setAnalysis(null); }}
-                className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white font-heading"
+                onValueChange={(value) => { 
+                  setTeam2(teams.find(t => t.id === value)); 
+                  setTeam2Offers([]); 
+                  setAnalysis(null); 
+                }}
               >
-                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+                <SelectTrigger className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white font-heading hover:bg-white/10">
+                  <SelectValue placeholder="Select team" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#111827] border-white/10 text-white">
+                  {teams.map(t => (
+                    <SelectItem key={t.id} value={t.id} className="hover:bg-white/10 focus:bg-white/10">
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
