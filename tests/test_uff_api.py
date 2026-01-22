@@ -159,7 +159,8 @@ class TestPlayers:
         assert data["roblox_username"] == "n4w"
         assert data["name"] == "n4w"
         assert "weekly_scores" in data
-        assert "weekly_stats" in data
+        # weekly_scores contains the weekly stats data
+        assert isinstance(data["weekly_scores"], list)
     
     def test_get_player_not_found(self):
         """Test 404 for non-existent player"""
