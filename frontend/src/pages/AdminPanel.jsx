@@ -35,7 +35,8 @@ const AdminPanel = () => {
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [newAdminForm, setNewAdminForm] = useState({ username: '', password: '', role: 'admin' });
   const [tradeForm, setTradeForm] = useState({ team1_id: '', team2_id: '', team1_receives: '', team2_receives: '' });
-  const [gameForm, setGameForm] = useState({ week: 1, home_team_id: '', away_team_id: '', mode: 'simple' });
+  const [gameForm, setGameForm] = useState({ week: 1, home_team_id: '', away_team_id: '', home_score: 0, away_score: 0, player_of_game: '' });
+  const [gameStatsModal, setGameStatsModal] = useState({ open: false, game: null, playerStats: [] });
   const [bulkDeleteRange, setBulkDeleteRange] = useState({ start: 1, end: 1 });
   const [mergeForm, setMergeForm] = useState({ source_player_id: '', target_player_id: '', keep_name: 'target' });
   
