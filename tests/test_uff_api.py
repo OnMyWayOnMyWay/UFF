@@ -192,8 +192,8 @@ class TestPlayers:
         data = response.json()
         
         assert "name" in data
-        assert "strengths" in data
-        assert "areas_to_improve" in data
+        assert "position" in data
+        assert "fantasy_points" in data
         assert data["name"] == "n4w"
 
 
