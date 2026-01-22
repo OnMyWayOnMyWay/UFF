@@ -639,303 +639,35 @@ async def init_database():
     #     logger.info("Database initialized!")
 
 async def seed_database():
-    """Seed the database with comprehensive initial data"""
-    # Teams - 12 teams across 2 conferences
-    teams = [
-        {"id": "rd1", "name": "Vicksburg Vortex", "abbreviation": "VIC", "conference": "Ridge", "division": "East", "color": "#8B5CF6", "logo": None, "wins": 7, "losses": 1, "points_for": 312.5, "points_against": 198.2, "seed": 1, "playoff_status": "x"},
-        {"id": "rd2", "name": "New York Guardians", "abbreviation": "NYG", "conference": "Ridge", "division": "East", "color": "#3B82F6", "logo": None, "wins": 6, "losses": 2, "points_for": 289.4, "points_against": 212.1, "seed": 2, "playoff_status": "x"},
-        {"id": "rd3", "name": "Saskatoon Stampede", "abbreviation": "SAS", "conference": "Ridge", "division": "West", "color": "#EAB308", "logo": None, "wins": 5, "losses": 3, "points_for": 267.8, "points_against": 234.5, "seed": 3, "playoff_status": "y"},
-        {"id": "rd4", "name": "Boston Blitz", "abbreviation": "BOS", "conference": "Ridge", "division": "West", "color": "#DC2626", "logo": None, "wins": 5, "losses": 3, "points_for": 254.2, "points_against": 245.1, "seed": 4, "playoff_status": "y"},
-        {"id": "rd5", "name": "Miami Surge", "abbreviation": "MIA", "conference": "Ridge", "division": "East", "color": "#06B6D4", "logo": None, "wins": 4, "losses": 4, "points_for": 241.6, "points_against": 252.3, "seed": 5, "playoff_status": "z"},
-        {"id": "rd6", "name": "Denver Dynamos", "abbreviation": "DEN", "conference": "Ridge", "division": "West", "color": "#F97316", "logo": None, "wins": 3, "losses": 5, "points_for": 228.4, "points_against": 267.8, "seed": 6, "playoff_status": "z"},
-        {"id": "gc1", "name": "Columbus Colts", "abbreviation": "COL", "conference": "Grand Central", "division": "North", "color": "#10B981", "logo": None, "wins": 7, "losses": 1, "points_for": 298.7, "points_against": 187.3, "seed": 1, "playoff_status": "x"},
-        {"id": "gc2", "name": "Evergreen Stags", "abbreviation": "EVG", "conference": "Grand Central", "division": "North", "color": "#22C55E", "logo": None, "wins": 6, "losses": 2, "points_for": 276.3, "points_against": 198.4, "seed": 2, "playoff_status": "x"},
-        {"id": "gc3", "name": "Nashville Nightmares", "abbreviation": "NAS", "conference": "Grand Central", "division": "South", "color": "#1F2937", "logo": None, "wins": 5, "losses": 3, "points_for": 258.9, "points_against": 223.5, "seed": 3, "playoff_status": "y"},
-        {"id": "gc4", "name": "Seattle Skyclaws", "abbreviation": "SEA", "conference": "Grand Central", "division": "South", "color": "#7C3AED", "logo": None, "wins": 4, "losses": 4, "points_for": 234.5, "points_against": 245.2, "seed": 4, "playoff_status": "y"},
-        {"id": "gc5", "name": "Phoenix Flames", "abbreviation": "PHX", "conference": "Grand Central", "division": "North", "color": "#EF4444", "logo": None, "wins": 3, "losses": 5, "points_for": 212.8, "points_against": 256.4, "seed": 5, "playoff_status": "z"},
-        {"id": "gc6", "name": "Chicago Wolves", "abbreviation": "CHI", "conference": "Grand Central", "division": "South", "color": "#64748B", "logo": None, "wins": 2, "losses": 6, "points_for": 198.2, "points_against": 278.9, "seed": 6, "playoff_status": "z"},
-    ]
-    await db.teams.insert_many(teams)
+    """Seed the database with initial data (no preset teams, trades, or power rankings)"""
+    # Teams are created manually through admin panel - no preset teams
+    # Players are created manually through admin panel or auto-created during game submission - no preset players
+    # Games are created manually through admin panel - no preset games
 
-    # Complete player roster - 4 players per team (QB, WR, RB, DEF) = 48 players total
-    team_data = {
-        "rd1": {"name": "Vicksburg Vortex", "abbr": "VIC"},
-        "rd2": {"name": "New York Guardians", "abbr": "NYG"},
-        "rd3": {"name": "Saskatoon Stampede", "abbr": "SAS"},
-        "rd4": {"name": "Boston Blitz", "abbr": "BOS"},
-        "rd5": {"name": "Miami Surge", "abbr": "MIA"},
-        "rd6": {"name": "Denver Dynamos", "abbr": "DEN"},
-        "gc1": {"name": "Columbus Colts", "abbr": "COL"},
-        "gc2": {"name": "Evergreen Stags", "abbr": "EVG"},
-        "gc3": {"name": "Nashville Nightmares", "abbr": "NAS"},
-        "gc4": {"name": "Seattle Skyclaws", "abbr": "SEA"},
-        "gc5": {"name": "Phoenix Flames", "abbr": "PHX"},
-        "gc6": {"name": "Chicago Wolves", "abbr": "CHI"},
-    }
-    
-    player_templates = [
-        # Elite QBs
-        {"id": "p1", "roblox_username": "n4w", "position": "QB", "team_id": "rd1", "is_elite": True, "games_played": 8,
-         "passing": {"completions": 287, "attempts": 412, "yards": 4521, "touchdowns": 38, "interceptions": 8, "rating": 124.5, "completion_pct": 69.7, "average": 11.0, "longest": 78},
-         "rushing": {"attempts": 45, "yards": 234, "touchdowns": 3, "yards_per_carry": 5.2, "fumbles": 1, "twenty_plus": 2, "longest": 28}, "fantasy_points": 412.5},
-        {"id": "p2", "roblox_username": "ThunderQB99", "position": "QB", "team_id": "gc1", "is_elite": True, "games_played": 8,
-         "passing": {"completions": 265, "attempts": 389, "yards": 4234, "touchdowns": 35, "interceptions": 10, "rating": 118.2, "completion_pct": 68.1, "average": 10.9, "longest": 72},
-         "rushing": {"attempts": 38, "yards": 189, "touchdowns": 2, "yards_per_carry": 5.0, "fumbles": 0, "twenty_plus": 1, "longest": 24}, "fantasy_points": 385.2},
-        {"id": "p3", "roblox_username": "GuardianElite", "position": "QB", "team_id": "rd2", "is_elite": False, "games_played": 8,
-         "passing": {"completions": 234, "attempts": 345, "yards": 3856, "touchdowns": 29, "interceptions": 12, "rating": 108.4, "completion_pct": 67.8, "average": 11.2, "longest": 65},
-         "rushing": {"attempts": 32, "yards": 156, "touchdowns": 2, "yards_per_carry": 4.9, "fumbles": 1, "twenty_plus": 1, "longest": 22}, "fantasy_points": 342.8},
-        {"id": "p4", "roblox_username": "StampedeKing", "position": "QB", "team_id": "rd3", "is_elite": False, "games_played": 8,
-         "passing": {"completions": 212, "attempts": 312, "yards": 3654, "touchdowns": 27, "interceptions": 14, "rating": 102.6, "completion_pct": 67.9, "average": 11.7, "longest": 68},
-         "rushing": {"attempts": 28, "yards": 134, "touchdowns": 1, "yards_per_carry": 4.8, "fumbles": 2, "twenty_plus": 1, "longest": 21}, "fantasy_points": 318.4},
-        {"id": "p5", "roblox_username": "BlitzMaster", "position": "QB", "team_id": "rd4", "is_elite": False, "games_played": 8,
-         "passing": {"completions": 198, "attempts": 298, "yards": 3412, "touchdowns": 24, "interceptions": 11, "rating": 99.8, "completion_pct": 66.4, "average": 11.5, "longest": 62},
-         "rushing": {"attempts": 35, "yards": 178, "touchdowns": 2, "yards_per_carry": 5.1, "fumbles": 1, "twenty_plus": 2, "longest": 25}, "fantasy_points": 298.6},
-        {"id": "p6", "roblox_username": "SurgeQB_Miami", "position": "QB", "team_id": "rd5", "is_elite": False, "games_played": 8,
-         "passing": {"completions": 189, "attempts": 287, "yards": 3245, "touchdowns": 22, "interceptions": 13, "rating": 95.2, "completion_pct": 65.9, "average": 11.3, "longest": 58},
-         "rushing": {"attempts": 28, "yards": 145, "touchdowns": 1, "yards_per_carry": 5.2, "fumbles": 2, "twenty_plus": 1, "longest": 22}, "fantasy_points": 276.4},
-        {"id": "p7", "roblox_username": "DynamoArm", "position": "QB", "team_id": "rd6", "is_elite": False, "games_played": 8,
-         "passing": {"completions": 176, "attempts": 276, "yards": 3012, "touchdowns": 19, "interceptions": 15, "rating": 88.4, "completion_pct": 63.8, "average": 10.9, "longest": 55},
-         "rushing": {"attempts": 22, "yards": 112, "touchdowns": 1, "yards_per_carry": 5.1, "fumbles": 3, "twenty_plus": 1, "longest": 19}, "fantasy_points": 248.2},
-        {"id": "p8", "roblox_username": "StagsQB1", "position": "QB", "team_id": "gc2", "is_elite": False, "games_played": 8,
-         "passing": {"completions": 223, "attempts": 334, "yards": 3678, "touchdowns": 28, "interceptions": 11, "rating": 105.6, "completion_pct": 66.8, "average": 11.0, "longest": 64},
-         "rushing": {"attempts": 30, "yards": 145, "touchdowns": 2, "yards_per_carry": 4.8, "fumbles": 1, "twenty_plus": 1, "longest": 23}, "fantasy_points": 324.5},
-        {"id": "p9", "roblox_username": "NightmareQB", "position": "QB", "team_id": "gc3", "is_elite": False, "games_played": 8,
-         "passing": {"completions": 201, "attempts": 305, "yards": 3445, "touchdowns": 25, "interceptions": 12, "rating": 100.2, "completion_pct": 65.9, "average": 11.3, "longest": 61},
-         "rushing": {"attempts": 25, "yards": 128, "touchdowns": 1, "yards_per_carry": 5.1, "fumbles": 2, "twenty_plus": 1, "longest": 21}, "fantasy_points": 298.6},
-        {"id": "p10", "roblox_username": "SkyClawQB", "position": "QB", "team_id": "gc4", "is_elite": False, "games_played": 8,
-         "passing": {"completions": 187, "attempts": 289, "yards": 3198, "touchdowns": 21, "interceptions": 14, "rating": 92.8, "completion_pct": 64.7, "average": 11.1, "longest": 56},
-         "rushing": {"attempts": 32, "yards": 165, "touchdowns": 2, "yards_per_carry": 5.2, "fumbles": 2, "twenty_plus": 2, "longest": 24}, "fantasy_points": 268.4},
-        {"id": "p11", "roblox_username": "FlamesThrower", "position": "QB", "team_id": "gc5", "is_elite": False, "games_played": 8,
-         "passing": {"completions": 172, "attempts": 278, "yards": 2945, "touchdowns": 18, "interceptions": 16, "rating": 85.4, "completion_pct": 61.9, "average": 10.6, "longest": 52},
-         "rushing": {"attempts": 28, "yards": 134, "touchdowns": 1, "yards_per_carry": 4.8, "fumbles": 3, "twenty_plus": 1, "longest": 20}, "fantasy_points": 238.6},
-        {"id": "p12", "roblox_username": "WolfPack_QB", "position": "QB", "team_id": "gc6", "is_elite": False, "games_played": 8,
-         "passing": {"completions": 156, "attempts": 265, "yards": 2678, "touchdowns": 15, "interceptions": 18, "rating": 78.2, "completion_pct": 58.9, "average": 10.1, "longest": 48},
-         "rushing": {"attempts": 24, "yards": 118, "touchdowns": 1, "yards_per_carry": 4.9, "fumbles": 4, "twenty_plus": 1, "longest": 18}, "fantasy_points": 208.4},
-        # Elite WRs
-        {"id": "p13", "roblox_username": "SpeedDemon_WR", "position": "WR", "team_id": "rd1", "is_elite": True, "games_played": 8,
-         "receiving": {"receptions": 112, "yards": 1654, "touchdowns": 14, "drops": 4, "longest": 82}, "fantasy_points": 298.4},
-        {"id": "p14", "roblox_username": "ColtsCatcher", "position": "WR", "team_id": "gc1", "is_elite": True, "games_played": 8,
-         "receiving": {"receptions": 98, "yards": 1487, "touchdowns": 12, "drops": 3, "longest": 76}, "fantasy_points": 267.2},
-        {"id": "p15", "roblox_username": "NYG_Hands", "position": "WR", "team_id": "rd2", "is_elite": False, "games_played": 8,
-         "receiving": {"receptions": 89, "yards": 1345, "touchdowns": 10, "drops": 5, "longest": 68}, "fantasy_points": 234.5},
-        {"id": "p16", "roblox_username": "StampedeWR", "position": "WR", "team_id": "rd3", "is_elite": False, "games_played": 8,
-         "receiving": {"receptions": 82, "yards": 1234, "touchdowns": 9, "drops": 6, "longest": 64}, "fantasy_points": 212.4},
-        {"id": "p17", "roblox_username": "BlitzReceiver", "position": "WR", "team_id": "rd4", "is_elite": False, "games_played": 8,
-         "receiving": {"receptions": 78, "yards": 1156, "touchdowns": 8, "drops": 4, "longest": 61}, "fantasy_points": 198.6},
-        {"id": "p18", "roblox_username": "SurgeSpeed", "position": "WR", "team_id": "rd5", "is_elite": False, "games_played": 8,
-         "receiving": {"receptions": 72, "yards": 1078, "touchdowns": 7, "drops": 5, "longest": 58}, "fantasy_points": 182.8},
-        {"id": "p19", "roblox_username": "DynamoWR1", "position": "WR", "team_id": "rd6", "is_elite": False, "games_played": 8,
-         "receiving": {"receptions": 65, "yards": 956, "touchdowns": 6, "drops": 7, "longest": 52}, "fantasy_points": 158.6},
-        {"id": "p20", "roblox_username": "StagsReceiver", "position": "WR", "team_id": "gc2", "is_elite": False, "games_played": 8,
-         "receiving": {"receptions": 85, "yards": 1267, "touchdowns": 9, "drops": 4, "longest": 65}, "fantasy_points": 218.7},
-        {"id": "p21", "roblox_username": "NightmareWR1", "position": "WR", "team_id": "gc3", "is_elite": False, "games_played": 8,
-         "receiving": {"receptions": 79, "yards": 1145, "touchdowns": 8, "drops": 5, "longest": 59}, "fantasy_points": 194.5},
-        {"id": "p22", "roblox_username": "SkyClawWR", "position": "WR", "team_id": "gc4", "is_elite": False, "games_played": 8,
-         "receiving": {"receptions": 74, "yards": 1034, "touchdowns": 7, "drops": 6, "longest": 54}, "fantasy_points": 176.4},
-        {"id": "p23", "roblox_username": "FlamesWR", "position": "WR", "team_id": "gc5", "is_elite": False, "games_played": 8,
-         "receiving": {"receptions": 68, "yards": 912, "touchdowns": 5, "drops": 8, "longest": 48}, "fantasy_points": 148.2},
-        {"id": "p24", "roblox_username": "WolfCatcher", "position": "WR", "team_id": "gc6", "is_elite": False, "games_played": 8,
-         "receiving": {"receptions": 58, "yards": 789, "touchdowns": 4, "drops": 9, "longest": 44}, "fantasy_points": 124.9},
-        # Elite RBs
-        {"id": "p25", "roblox_username": "VortexRush", "position": "RB", "team_id": "rd1", "is_elite": True, "games_played": 8,
-         "rushing": {"attempts": 268, "yards": 1389, "touchdowns": 15, "yards_per_carry": 5.2, "fumbles": 1, "twenty_plus": 11, "longest": 64},
-         "receiving": {"receptions": 32, "yards": 267, "touchdowns": 2, "drops": 2, "longest": 32}, "fantasy_points": 298.6},
-        {"id": "p26", "roblox_username": "ColtsPower", "position": "RB", "team_id": "gc1", "is_elite": True, "games_played": 8,
-         "rushing": {"attempts": 256, "yards": 1324, "touchdowns": 14, "yards_per_carry": 5.2, "fumbles": 1, "twenty_plus": 10, "longest": 58},
-         "receiving": {"receptions": 28, "yards": 234, "touchdowns": 1, "drops": 1, "longest": 28}, "fantasy_points": 278.4},
-        {"id": "p27", "roblox_username": "RushKing_RB", "position": "RB", "team_id": "rd2", "is_elite": True, "games_played": 8,
-         "rushing": {"attempts": 280, "yards": 1456, "touchdowns": 16, "yards_per_carry": 5.2, "fumbles": 2, "twenty_plus": 12, "longest": 67},
-         "receiving": {"receptions": 34, "yards": 289, "touchdowns": 2, "drops": 2, "longest": 34}, "fantasy_points": 312.6},
-        {"id": "p28", "roblox_username": "StampedeRush", "position": "RB", "team_id": "rd3", "is_elite": False, "games_played": 8,
-         "rushing": {"attempts": 234, "yards": 1178, "touchdowns": 11, "yards_per_carry": 5.0, "fumbles": 3, "twenty_plus": 8, "longest": 52},
-         "receiving": {"receptions": 21, "yards": 178, "touchdowns": 1, "drops": 3, "longest": 24}, "fantasy_points": 234.8},
-        {"id": "p29", "roblox_username": "BlitzRB", "position": "RB", "team_id": "rd4", "is_elite": False, "games_played": 8,
-         "rushing": {"attempts": 218, "yards": 1089, "touchdowns": 10, "yards_per_carry": 5.0, "fumbles": 2, "twenty_plus": 7, "longest": 48},
-         "receiving": {"receptions": 24, "yards": 198, "touchdowns": 1, "drops": 2, "longest": 26}, "fantasy_points": 218.7},
-        {"id": "p30", "roblox_username": "SurgeRB", "position": "RB", "team_id": "rd5", "is_elite": False, "games_played": 8,
-         "rushing": {"attempts": 198, "yards": 967, "touchdowns": 8, "yards_per_carry": 4.9, "fumbles": 3, "twenty_plus": 5, "longest": 42},
-         "receiving": {"receptions": 19, "yards": 156, "touchdowns": 1, "drops": 3, "longest": 22}, "fantasy_points": 186.3},
-        {"id": "p31", "roblox_username": "DynamoRB", "position": "RB", "team_id": "rd6", "is_elite": False, "games_played": 8,
-         "rushing": {"attempts": 178, "yards": 834, "touchdowns": 6, "yards_per_carry": 4.7, "fumbles": 4, "twenty_plus": 4, "longest": 38},
-         "receiving": {"receptions": 15, "yards": 123, "touchdowns": 0, "drops": 4, "longest": 18}, "fantasy_points": 156.7},
-        {"id": "p32", "roblox_username": "StagsRB", "position": "RB", "team_id": "gc2", "is_elite": False, "games_played": 8,
-         "rushing": {"attempts": 245, "yards": 1234, "touchdowns": 12, "yards_per_carry": 5.0, "fumbles": 2, "twenty_plus": 9, "longest": 54},
-         "receiving": {"receptions": 26, "yards": 218, "touchdowns": 1, "drops": 2, "longest": 28}, "fantasy_points": 254.2},
-        {"id": "p33", "roblox_username": "NightmareRB", "position": "RB", "team_id": "gc3", "is_elite": False, "games_played": 8,
-         "rushing": {"attempts": 224, "yards": 1098, "touchdowns": 10, "yards_per_carry": 4.9, "fumbles": 2, "twenty_plus": 7, "longest": 49},
-         "receiving": {"receptions": 22, "yards": 184, "touchdowns": 1, "drops": 3, "longest": 24}, "fantasy_points": 224.2},
-        {"id": "p34", "roblox_username": "SkyRB44", "position": "RB", "team_id": "gc4", "is_elite": False, "games_played": 8,
-         "rushing": {"attempts": 212, "yards": 1045, "touchdowns": 9, "yards_per_carry": 4.9, "fumbles": 2, "twenty_plus": 6, "longest": 48},
-         "receiving": {"receptions": 18, "yards": 145, "touchdowns": 0, "drops": 2, "longest": 21}, "fantasy_points": 198.2},
-        {"id": "p35", "roblox_username": "FlamesRB", "position": "RB", "team_id": "gc5", "is_elite": False, "games_played": 8,
-         "rushing": {"attempts": 186, "yards": 878, "touchdowns": 7, "yards_per_carry": 4.7, "fumbles": 3, "twenty_plus": 4, "longest": 40},
-         "receiving": {"receptions": 14, "yards": 112, "touchdowns": 0, "drops": 4, "longest": 16}, "fantasy_points": 162.0},
-        {"id": "p36", "roblox_username": "WolfRunner", "position": "RB", "team_id": "gc6", "is_elite": False, "games_played": 8,
-         "rushing": {"attempts": 165, "yards": 756, "touchdowns": 5, "yards_per_carry": 4.6, "fumbles": 4, "twenty_plus": 3, "longest": 34},
-         "receiving": {"receptions": 12, "yards": 98, "touchdowns": 0, "drops": 5, "longest": 14}, "fantasy_points": 138.4},
-        # DEF players
-        {"id": "p37", "roblox_username": "VortexDefender", "position": "DEF", "team_id": "rd1", "is_elite": True, "games_played": 8,
-         "defense": {"tackles": 98, "tackles_for_loss": 18, "sacks": 14.5, "safeties": 1, "swat": 8, "interceptions": 3, "pass_deflections": 12, "td": 2}, "fantasy_points": 178.7},
-        {"id": "p38", "roblox_username": "ColtsD_Elite", "position": "DEF", "team_id": "gc1", "is_elite": False, "games_played": 8,
-         "defense": {"tackles": 87, "tackles_for_loss": 15, "sacks": 12.0, "safeties": 0, "swat": 6, "interceptions": 4, "pass_deflections": 10, "td": 1}, "fantasy_points": 145.2},
-        {"id": "p39", "roblox_username": "NYG_Lockdown", "position": "DEF", "team_id": "rd2", "is_elite": False, "games_played": 8,
-         "defense": {"tackles": 76, "tackles_for_loss": 12, "sacks": 9.5, "safeties": 0, "swat": 5, "interceptions": 5, "pass_deflections": 8, "td": 1}, "fantasy_points": 132.5},
-        {"id": "p40", "roblox_username": "StampedeDEF", "position": "DEF", "team_id": "rd3", "is_elite": False, "games_played": 8,
-         "defense": {"tackles": 72, "tackles_for_loss": 10, "sacks": 8.0, "safeties": 1, "swat": 4, "interceptions": 3, "pass_deflections": 7, "td": 0}, "fantasy_points": 118.4},
-        {"id": "p41", "roblox_username": "BlitzDefense", "position": "DEF", "team_id": "rd4", "is_elite": False, "games_played": 8,
-         "defense": {"tackles": 68, "tackles_for_loss": 9, "sacks": 7.5, "safeties": 0, "swat": 4, "interceptions": 2, "pass_deflections": 6, "td": 0}, "fantasy_points": 105.0},
-        {"id": "p42", "roblox_username": "SurgeDEF", "position": "DEF", "team_id": "rd5", "is_elite": False, "games_played": 8,
-         "defense": {"tackles": 64, "tackles_for_loss": 8, "sacks": 6.5, "safeties": 0, "swat": 3, "interceptions": 2, "pass_deflections": 5, "td": 0}, "fantasy_points": 94.0},
-        {"id": "p43", "roblox_username": "DynamoDEF", "position": "DEF", "team_id": "rd6", "is_elite": False, "games_played": 8,
-         "defense": {"tackles": 58, "tackles_for_loss": 6, "sacks": 5.0, "safeties": 0, "swat": 2, "interceptions": 1, "pass_deflections": 4, "td": 0}, "fantasy_points": 78.0},
-        {"id": "p44", "roblox_username": "StagsDEF", "position": "DEF", "team_id": "gc2", "is_elite": False, "games_played": 8,
-         "defense": {"tackles": 82, "tackles_for_loss": 14, "sacks": 11.0, "safeties": 0, "swat": 5, "interceptions": 4, "pass_deflections": 9, "td": 1}, "fantasy_points": 138.0},
-        {"id": "p45", "roblox_username": "NightmareDEF", "position": "DEF", "team_id": "gc3", "is_elite": False, "games_played": 8,
-         "defense": {"tackles": 74, "tackles_for_loss": 11, "sacks": 9.0, "safeties": 1, "swat": 4, "interceptions": 3, "pass_deflections": 7, "td": 0}, "fantasy_points": 122.0},
-        {"id": "p46", "roblox_username": "SkyClawDEF", "position": "DEF", "team_id": "gc4", "is_elite": False, "games_played": 8,
-         "defense": {"tackles": 66, "tackles_for_loss": 9, "sacks": 7.0, "safeties": 0, "swat": 3, "interceptions": 2, "pass_deflections": 5, "td": 0}, "fantasy_points": 98.0},
-        {"id": "p47", "roblox_username": "FlamesDEF", "position": "DEF", "team_id": "gc5", "is_elite": False, "games_played": 8,
-         "defense": {"tackles": 56, "tackles_for_loss": 7, "sacks": 5.5, "safeties": 0, "swat": 2, "interceptions": 1, "pass_deflections": 4, "td": 0}, "fantasy_points": 82.0},
-        {"id": "p48", "roblox_username": "WolfDEF", "position": "DEF", "team_id": "gc6", "is_elite": False, "games_played": 8,
-         "defense": {"tackles": 48, "tackles_for_loss": 5, "sacks": 4.0, "safeties": 0, "swat": 1, "interceptions": 1, "pass_deflections": 3, "td": 0}, "fantasy_points": 64.0},
-    ]
-    
-    # Build complete player records
-    players = []
-    for i, pt in enumerate(player_templates):
-        team_id = pt["team_id"]
-        player = {
-            "id": pt["id"],
-            "roblox_id": str(100000000 + i),
-            "roblox_username": pt["roblox_username"],
-            "position": pt["position"],
-            "team": team_data[team_id]["name"],
-            "team_id": team_id,
-            "is_elite": pt.get("is_elite", False),
-            "image": None,
-            "games_played": pt.get("games_played", 8),
-            "passing": pt.get("passing", {"completions": 0, "attempts": 0, "yards": 0, "touchdowns": 0, "interceptions": 0, "rating": 0, "completion_pct": 0, "average": 0, "longest": 0}),
-            "rushing": pt.get("rushing", {"attempts": 0, "yards": 0, "touchdowns": 0, "yards_per_carry": 0, "fumbles": 0, "twenty_plus": 0, "longest": 0}),
-            "receiving": pt.get("receiving", {"receptions": 0, "yards": 0, "touchdowns": 0, "drops": 0, "longest": 0}),
-            "defense": pt.get("defense", {"tackles": 0, "tackles_for_loss": 0, "sacks": 0, "safeties": 0, "swat": 0, "interceptions": 0, "pass_deflections": 0, "td": 0}),
-            "fantasy_points": pt.get("fantasy_points", 0)
-        }
-        players.append(player)
-    
-    await db.players.insert_many(players)
-
-    # Generate weekly stats for all players
-    weekly_stats = []
-    for p in players:
-        base_fp = p["fantasy_points"] / p["games_played"] if p["games_played"] > 0 else 0
-        for week in range(1, p["games_played"] + 1):
-            variance = random.uniform(0.7, 1.3)
-            weekly_stats.append({
-                "player_id": p["id"],
-                "week": week,
-                "points": round(base_fp * variance, 1)
-            })
-    await db.weekly_stats.insert_many(weekly_stats)
-
-    # Generate comprehensive games (6 games per week for 8 weeks = 48 games)
-    games = []
-    game_id = 1
-    team_list = [t["id"] for t in teams]
-    
-    for week in range(1, 9):
-        # Create matchups rotating teams
-        shuffled = team_list.copy()
-        random.shuffle(shuffled)
-        pairs = [(shuffled[i], shuffled[i + 1]) for i in range(0, 12, 2)]
-        
-        for home_id, away_id in pairs:
-            home_score = round(random.uniform(18, 48), 1)
-            away_score = round(random.uniform(14, 45), 1)
-            winning_team_id = home_id if home_score > away_score else away_id
-            
-            # Select player of game from winning team
-            winning_players = [p for p in players if p["team_id"] == winning_team_id]
-            pog = random.choice(winning_players) if winning_players else None
-            
-            games.append({
-                "id": f"g{game_id}",
-                "week": week,
-                "home_team_id": home_id,
-                "away_team_id": away_id,
-                "home_score": home_score,
-                "away_score": away_score,
-                "is_completed": True,
-                "player_of_game": pog["roblox_username"] if pog else None,
-                "player_of_game_stats": f"{random.randint(18, 42)} pts, {random.randint(1, 5)} TD" if pog else None,
-                "date": f"2025-{10 + (week // 5):02d}-{(week * 3) % 28 + 1:02d}"
-            })
-            game_id += 1
-    await db.games.insert_many(games)
-
-    # Playoffs - Complete bracket with week assignments
+    # Playoffs - Empty bracket structure (teams assigned when playoffs are set up)
     # Conference Championships: Week 9
     # Main Championship: Week 10
     playoffs = [
-        {"id": "po1", "round": "Playins", "matchup_name": "Play-In Game 1", "week": 8, "team1_id": "rd5", "team2_id": "rd6", "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po2", "round": "Playins", "matchup_name": "Play-In Game 2", "week": 8, "team1_id": "gc5", "team2_id": "gc6", "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po3", "round": "Wildcard", "matchup_name": "Wildcard 1 (Ridge)", "week": 8, "team1_id": "rd3", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po4", "round": "Wildcard", "matchup_name": "Wildcard 2 (Ridge)", "week": 8, "team1_id": "rd4", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po5", "round": "Wildcard", "matchup_name": "Wildcard 3 (GC)", "week": 8, "team1_id": "gc3", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po6", "round": "Wildcard", "matchup_name": "Wildcard 4 (GC)", "week": 8, "team1_id": "gc4", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po7", "round": "Divisional", "matchup_name": "Divisional 1 (Ridge)", "week": 8, "team1_id": "rd1", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po8", "round": "Divisional", "matchup_name": "Divisional 2 (Ridge)", "week": 8, "team1_id": "rd2", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po9", "round": "Divisional", "matchup_name": "Divisional 3 (GC)", "week": 8, "team1_id": "gc1", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
-        {"id": "po10", "round": "Divisional", "matchup_name": "Divisional 4 (GC)", "week": 8, "team1_id": "gc2", "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po1", "round": "Playins", "matchup_name": "Play-In Game 1", "week": 8, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po2", "round": "Playins", "matchup_name": "Play-In Game 2", "week": 8, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po3", "round": "Wildcard", "matchup_name": "Wildcard 1 (Ridge)", "week": 8, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po4", "round": "Wildcard", "matchup_name": "Wildcard 2 (Ridge)", "week": 8, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po5", "round": "Wildcard", "matchup_name": "Wildcard 3 (GC)", "week": 8, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po6", "round": "Wildcard", "matchup_name": "Wildcard 4 (GC)", "week": 8, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po7", "round": "Divisional", "matchup_name": "Divisional 1 (Ridge)", "week": 8, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po8", "round": "Divisional", "matchup_name": "Divisional 2 (Ridge)", "week": 8, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po9", "round": "Divisional", "matchup_name": "Divisional 3 (GC)", "week": 8, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
+        {"id": "po10", "round": "Divisional", "matchup_name": "Divisional 4 (GC)", "week": 8, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
         {"id": "po11", "round": "Conference", "matchup_name": "Ridge Championship", "week": 9, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
         {"id": "po12", "round": "Conference", "matchup_name": "Grand Central Championship", "week": 9, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
         {"id": "po13", "round": "Championship", "matchup_name": "United Flag Bowl", "week": 10, "team1_id": None, "team2_id": None, "team1_score": 0, "team2_score": 0, "winner_id": None, "is_completed": False, "animation_state": "pending"},
     ]
     await db.playoffs.insert_many(playoffs)
 
-    # More trades
-    trades = [
-        {"id": "t1", "team1_id": "rd1", "team1_name": "Vicksburg Vortex", "team2_id": "gc1", "team2_name": "Columbus Colts",
-         "team1_receives": ["Draft Pick #12"], "team2_receives": ["Future 1st Round Pick"], "date": datetime.now(timezone.utc).isoformat(), "status": "completed"},
-        {"id": "t2", "team1_id": "rd2", "team1_name": "New York Guardians", "team2_id": "gc3", "team2_name": "Nashville Nightmares",
-         "team1_receives": ["Backup QB"], "team2_receives": ["Draft Pick #24"], "date": datetime.now(timezone.utc).isoformat(), "status": "completed"},
-        {"id": "t3", "team1_id": "rd3", "team1_name": "Saskatoon Stampede", "team2_id": "gc2", "team2_name": "Evergreen Stags",
-         "team1_receives": ["2nd Round Pick"], "team2_receives": ["3rd Round Pick", "Future 4th"], "date": datetime.now(timezone.utc).isoformat(), "status": "completed"},
-        {"id": "t4", "team1_id": "rd4", "team1_name": "Boston Blitz", "team2_id": "gc4", "team2_name": "Seattle Skyclaws",
-         "team1_receives": ["WR Depth"], "team2_receives": ["RB Prospect"], "date": datetime.now(timezone.utc).isoformat(), "status": "completed"},
-        {"id": "t5", "team1_id": "rd5", "team1_name": "Miami Surge", "team2_id": "gc5", "team2_name": "Phoenix Flames",
-         "team1_receives": ["Draft Pick #36"], "team2_receives": ["Draft Pick #42", "Draft Pick #48"], "date": datetime.now(timezone.utc).isoformat(), "status": "completed"},
-    ]
-    await db.trades.insert_many(trades)
+    # Trades are created manually through admin panel - no preset trades
+    # Awards are calculated automatically when games are played - no preset awards
 
-    # More awards
-    awards = [
-        {"id": "a1", "name": "League MVP", "player_id": "p1", "player_name": "n4w", "team": "Vicksburg Vortex", "season": "2025", "description": "Led league in passing TDs and fantasy points"},
-        {"id": "a2", "name": "Offensive Player of the Year", "player_id": "p27", "player_name": "RushKing_RB", "team": "New York Guardians", "season": "2025", "description": "Rushed for 1456 yards and 16 TDs"},
-        {"id": "a3", "name": "Defensive Player of the Year", "player_id": "p37", "player_name": "VortexDefender", "team": "Vicksburg Vortex", "season": "2025", "description": "98 tackles, 14.5 sacks, 3 INTs"},
-        {"id": "a4", "name": "Rookie of the Year", "player_id": "p21", "player_name": "NightmareWR1", "team": "Nashville Nightmares", "season": "2025", "description": "79 receptions for 1145 yards in debut season"},
-        {"id": "a5", "name": "Comeback Player of the Year", "player_id": "p8", "player_name": "StagsQB1", "team": "Evergreen Stags", "season": "2025", "description": "Returned from injury to lead team to playoffs"},
-        {"id": "a6", "name": "Best Duo", "player_id": "p2", "player_name": "ThunderQB99 & ColtsCatcher", "team": "Columbus Colts", "season": "2025", "description": "QB-WR connection: 98 receptions, 12 TDs"},
-        {"id": "a7", "name": "Most Improved Player", "player_id": "p33", "player_name": "NightmareRB", "team": "Nashville Nightmares", "season": "2025", "description": "Doubled production from previous season"},
-        {"id": "a8", "name": "Iron Man Award", "player_id": "p1", "player_name": "n4w", "team": "Vicksburg Vortex", "season": "2025", "description": "Started all 8 games, never missed a snap"},
-    ]
-    await db.awards.insert_many(awards)
-
-    # Power Rankings
-    power_rankings = [
-        {"rank": 1, "team_id": "rd1", "team_name": "Vicksburg Vortex", "previous_rank": 1, "change": 0, "analysis": "Dominant on both sides. n4w is MVP caliber."},
-        {"rank": 2, "team_id": "gc1", "team_name": "Columbus Colts", "previous_rank": 2, "change": 0, "analysis": "Strong contender with excellent balance."},
-        {"rank": 3, "team_id": "rd2", "team_name": "New York Guardians", "previous_rank": 4, "change": 1, "analysis": "RushKing_RB unstoppable in recent weeks."},
-        {"rank": 4, "team_id": "gc2", "team_name": "Evergreen Stags", "previous_rank": 3, "change": -1, "analysis": "Slight dip but playoff contender."},
-        {"rank": 5, "team_id": "rd3", "team_name": "Saskatoon Stampede", "previous_rank": 5, "change": 0, "analysis": "Consistent performer."},
-        {"rank": 6, "team_id": "gc3", "team_name": "Nashville Nightmares", "previous_rank": 7, "change": 1, "analysis": "Rising team with improving offense."},
-        {"rank": 7, "team_id": "rd4", "team_name": "Boston Blitz", "previous_rank": 6, "change": -1, "analysis": "Struggling with consistency."},
-        {"rank": 8, "team_id": "gc4", "team_name": "Seattle Skyclaws", "previous_rank": 8, "change": 0, "analysis": "Middle of the pack."},
-        {"rank": 9, "team_id": "rd5", "team_name": "Miami Surge", "previous_rank": 9, "change": 0, "analysis": "Fighting for playoff spot."},
-        {"rank": 10, "team_id": "gc5", "team_name": "Phoenix Flames", "previous_rank": 10, "change": 0, "analysis": "Rebuilding season."},
-        {"rank": 11, "team_id": "rd6", "team_name": "Denver Dynamos", "previous_rank": 11, "change": 0, "analysis": "Young team developing."},
-        {"rank": 12, "team_id": "gc6", "team_name": "Chicago Wolves", "previous_rank": 12, "change": 0, "analysis": "Tough season."},
-    ]
-    await db.power_rankings.insert_many(power_rankings)
+    # Power Rankings are calculated automatically when games are played - no preset rankings
 
     # Admins
     await db.admins.insert_one({
