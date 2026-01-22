@@ -16,6 +16,9 @@ import PowerRankings from "./pages/PowerRankings";
 import Watchlist from "./pages/Watchlist";
 import StatLeaders from "./pages/StatLeaders";
 import AdminPanel from "./pages/AdminPanel";
+import PlayerComparison from "./pages/PlayerComparison";
+import ActivityFeed from "./pages/ActivityFeed";
+import PlayerShowcase from "./pages/PlayerShowcase";
 import Navigation from "./components/Navigation";
 import { Toaster } from "./components/ui/sonner";
 
@@ -54,6 +57,9 @@ const AppContent = () => {
           <Route path="/watchlist" element={<Watchlist />} />
           <Route path="/leaders" element={<StatLeaders />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/compare" element={<PlayerComparison />} />
+          <Route path="/feed" element={<ActivityFeed />} />
+          <Route path="/showcase" element={<PlayerShowcase />} />
         </Routes>
       </main>
       <Navigation currentPath={location.pathname} />
