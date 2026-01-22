@@ -153,6 +153,39 @@ const AdminPanel = () => {
     }
   };
 
+  // Fetch Roblox avatar for a player
+  const [fetchingAvatar, setFetchingAvatar] = useState({});
+  
+  const fetchPlayerAvatar = async (playerId) => {
+    setFetchingAvatar(prev => ({ ...prev, [playerId]: true }));
+    try {
+      const res = await axios.post(`${API}/admin/player/${playerId}/fetch-avatar`, {}, { headers });
+      if (res.data.success) {
+        toast.success('Avatar fetched successfully!');
+        fetchAllData();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to fetch avatar');
+    } finally {
+      setFetchingAvatar(prev => ({ ...prev, [playerId]: false }));
+    }
+  };
+
+  // Bulk fetch all avatars
+  const fetchAllAvatars = async () => {
+    const playersWithoutAvatars = players.filter(p => !p.image && (p.roblox_id || p.roblox_username));
+    if (playersWithoutAvatars.length === 0) {
+      toast.info('All players already have avatars');
+      return;
+    }
+    toast.info(`Fetching avatars for ${playersWithoutAvatars.length} players...`);
+    for (const player of playersWithoutAvatars) {
+      await fetchPlayerAvatar(player.id);
+      await new Promise(r => setTimeout(r, 500)); // Rate limiting
+    }
+    toast.success('Avatar fetch complete!');
+  };
+
   const searchRoblox = async () => {
     try {
       const res = await axios.get(`${API}/admin/player/search-roblox?roblox_id=${robloxSearch}&roblox_username=${robloxSearch}`, { headers });
