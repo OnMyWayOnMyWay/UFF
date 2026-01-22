@@ -6,8 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const Standings = () => {
   const [standings, setStandings] = useState({ grand_central: [], ridge: [], league_structure: null });
@@ -26,6 +25,9 @@ const Standings = () => {
         setTeams(teamsRes.data);
       } catch (error) {
         console.error('Error fetching standings:', error);
+        // Set empty data to prevent crashes
+        setStandings({ grand_central: [], ridge: [], league_structure: null });
+        setTeams([]);
       } finally {
         setLoading(false);
       }
@@ -155,15 +157,30 @@ const Standings = () => {
     );
   }
 
-  const structure = standings.league_structure;
+  // Safety checks to prevent crashes
+  if (!standings || (!standings.grand_central && !standings.ridge)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6">
+            <p className="text-white/70 text-center">
+              Unable to load standings data. Please try refreshing the page.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const structure = standings.league_structure || null;
   const allTeamsSorted = getAllTeamsSorted();
   const gcPlayoff = getPlayoffPicture('grand_central');
   const ridgePlayoff = getPlayoffPicture('ridge');
 
   // Calculate quick stats
-  const playoffTeams = allTeamsSorted.filter(t => t.playoff_status).length;
+  const playoffTeams = allTeamsSorted.filter(t => t && t.playoff_status).length;
   const leadingTeam = allTeamsSorted[0];
-  const bestRecord = leadingTeam ? `${leadingTeam.wins}-${leadingTeam.losses}` : '0-0';
+  const bestRecord = leadingTeam ? `${leadingTeam.wins || 0}-${leadingTeam.losses || 0}` : '0-0';
 
   return (
     <div data-testid="standings-page" className="min-h-screen">

@@ -28,9 +28,7 @@ local function postGame()
 					Attempts = 4,
 					Yards = 22,
 					Touchdowns = 1,
-					["Yards Per Carry"] = 5.5,
 					Fumbles = 0,
-					["20+ Yards"] = 1,
 					Longest = 12
 				},
 				Receiving = {
@@ -66,9 +64,7 @@ local function postGame()
 					Attempts = 6,
 					Yards = 30,
 					Touchdowns = 0,
-					["Yards Per Carry"] = 5.0,
 					Fumbles = 0,
-					["20+ Yards"] = 0,
 					Longest = 14
 				},
 				Receiving = {

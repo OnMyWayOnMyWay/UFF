@@ -24,6 +24,7 @@ import TradeMachine from "./pages/TradeMachine";
 import Achievements from "./pages/Achievements";
 import Navigation from "./components/Navigation";
 import { Toaster } from "./components/ui/sonner";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const AppContent = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -41,36 +42,40 @@ const AppContent = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      <div className="grain-overlay" />
-      <main className="pb-24">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/elite" element={<ElitePlayers />} />
-          <Route path="/players" element={<PlayerStats />} />
-          <Route path="/players/:position" element={<PlayerStats />} />
-          <Route path="/player/:playerId" element={<PlayerProfile />} />
-          <Route path="/team/:teamId" element={<TeamAnalysis />} />
-          <Route path="/standings" element={<Standings />} />
-          <Route path="/schedule" element={<Schedule />} />
-          <Route path="/playoffs" element={<Playoffs />} />
-          <Route path="/awards" element={<Awards />} />
-          <Route path="/trades" element={<Trades />} />
-          <Route path="/rankings" element={<PowerRankings />} />
-          <Route path="/watchlist" element={<Watchlist />} />
-          <Route path="/leaders" element={<StatLeaders />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/compare" element={<PlayerComparison />} />
-          <Route path="/feed" element={<ActivityFeed />} />
-          <Route path="/showcase" element={<PlayerShowcase />} />
-          <Route path="/simulator" element={<GameSimulator />} />
-          <Route path="/trade-machine" element={<TradeMachine />} />
-          <Route path="/achievements" element={<Achievements />} />
-        </Routes>
-      </main>
-      <Navigation currentPath={location.pathname} />
-      <Toaster position="top-right" />
-    </div>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-[#050505] text-white">
+        <div className="grain-overlay" />
+        <main className="pb-24">
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/elite" element={<ElitePlayers />} />
+              <Route path="/players" element={<PlayerStats />} />
+              <Route path="/players/:position" element={<PlayerStats />} />
+              <Route path="/player/:playerId" element={<PlayerProfile />} />
+              <Route path="/team/:teamId" element={<TeamAnalysis />} />
+              <Route path="/standings" element={<Standings />} />
+              <Route path="/schedule" element={<Schedule />} />
+              <Route path="/playoffs" element={<Playoffs />} />
+              <Route path="/awards" element={<Awards />} />
+              <Route path="/trades" element={<Trades />} />
+              <Route path="/rankings" element={<PowerRankings />} />
+              <Route path="/watchlist" element={<Watchlist />} />
+              <Route path="/leaders" element={<StatLeaders />} />
+              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/compare" element={<PlayerComparison />} />
+              <Route path="/feed" element={<ActivityFeed />} />
+              <Route path="/showcase" element={<PlayerShowcase />} />
+              <Route path="/simulator" element={<GameSimulator />} />
+              <Route path="/trade-machine" element={<TradeMachine />} />
+              <Route path="/achievements" element={<Achievements />} />
+            </Routes>
+          </ErrorBoundary>
+        </main>
+        <Navigation currentPath={location.pathname} />
+        <Toaster position="top-right" />
+      </div>
+    </ErrorBoundary>
   );
 };
 

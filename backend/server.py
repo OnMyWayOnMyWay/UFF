@@ -1135,7 +1135,11 @@ async def submit_game(payload: RobloxGamePayload, background_tasks: BackgroundTa
         raise HTTPException(status_code=400, detail="Home or away team not found")
 
     players = await db.players.find({}, {"_id": 0, "id": 1, "roblox_username": 1}).to_list(2000)
-    player_lookup = {p["roblox_username"].lower(): p["id"] for p in players if p.get("roblox_username")}
+    player_lookup = {
+        str(p["roblox_username"]).lower(): p["id"] 
+        for p in players 
+        if p.get("roblox_username") and str(p["roblox_username"]).strip()
+    }
     next_player_index = await db.players.count_documents({}) + 1
 
     player_stats: List[PlayerGameStats] = []
