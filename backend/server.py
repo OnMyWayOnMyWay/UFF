@@ -822,6 +822,49 @@ async def resolve_team_id(team_label: str) -> Optional[dict]:
         return team
     return await db.teams.find_one({"abbreviation": {"$regex": f"^{escaped}$", "$options": "i"}}, {"_id": 0})
 
+def generate_team_id(name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "", (name or "").lower())
+    if not slug:
+        slug = f"tm{uuid.uuid4().hex[:6]}"
+    return slug[:8]
+
+async def ensure_team(team_label: str) -> Optional[dict]:
+    """Resolve a team or create it if missing."""
+    team = await resolve_team_id(team_label)
+    if team:
+        return team
+
+    team_name = (team_label or "").strip()
+    if not team_name:
+        return None
+
+    base_id = generate_team_id(team_name)
+    team_id = base_id
+    suffix = 1
+    while await db.teams.find_one({"id": team_id}):
+        team_id = f"{base_id}{suffix}"
+        suffix += 1
+
+    abbr = re.sub(r"[^A-Za-z]", "", team_name).upper()[:3] or "TM"
+    team_doc = {
+        "id": team_id,
+        "name": team_name,
+        "abbreviation": abbr,
+        "conference": "Ridge",
+        "division": "East",
+        "color": "#111827",
+        "logo": None,
+        "wins": 0,
+        "losses": 0,
+        "points_for": 0,
+        "points_against": 0,
+        "seed": None,
+        "playoff_status": ""
+    }
+    await db.teams.insert_one(team_doc)
+    logger.info(f"Created missing team from submission: {team_name} ({team_id})")
+    return team_doc
+
 def default_player_stats() -> Dict[str, Any]:
     """Default stats structure for new players."""
     return {
@@ -1086,8 +1129,8 @@ async def get_dashboard():
 @api_router.post("/game")
 async def submit_game(payload: RobloxGamePayload, background_tasks: BackgroundTasks):
     """Public game submission endpoint for Roblox stats manager."""
-    home_team = await resolve_team_id(payload.home_team)
-    away_team = await resolve_team_id(payload.away_team)
+    home_team = await ensure_team(payload.home_team)
+    away_team = await ensure_team(payload.away_team)
     if not home_team or not away_team:
         raise HTTPException(status_code=400, detail="Home or away team not found")
 
