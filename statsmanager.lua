@@ -20,6 +20,13 @@ local PLAYER_STAT_TEMPLATE = ReplicatedStorage:FindFirstChild("PlayerStatsTempla
 -- Update this URL to match your deployed backend URL
 local API_URL = "https://uffstats-61cef3c41bef.herokuapp.com/api/game/submit"
 
+local function getApiRoot()
+	local root = API_URL
+	root = root:gsub("/api/game/submit$", "/api/")
+	root = root:gsub("/api/game$", "/api/")
+	return root
+end
+
 local STAT_DEFINITIONS = {
 	Passing = {
 		stats = {"Completions", "Attempts", "Yards", "Touchdowns", "Interceptions", "Rating", "Completion %", "Average", "Longest"},
@@ -710,7 +717,7 @@ end
 function StatsManager:TestConnection()
 	local success, response = pcall(function()
 		return HttpService:RequestAsync({
-			Url = API_URL,
+			Url = getApiRoot(),
 			Method = "GET"
 		})
 	end)

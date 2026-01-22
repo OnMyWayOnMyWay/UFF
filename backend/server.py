@@ -128,7 +128,7 @@ class GameWithStats(BaseModel):
     player_of_game_stats: Optional[str] = None
     date: Optional[str] = None
     # Player performances in this game
-    player_stats: List[PlayerGameStats] = []
+    player_stats: List[PlayerGameStats] = Field(default_factory=list)
 
 class RobloxGamePayload(BaseModel):
     """Game payload submitted from Roblox stats manager"""
@@ -139,8 +139,8 @@ class RobloxGamePayload(BaseModel):
     away_score: float = 0
     player_of_game: Optional[str] = None
     game_date: Optional[str] = None
-    home_stats: Dict[str, Dict[str, Dict[str, float]]] = {}
-    away_stats: Dict[str, Dict[str, Dict[str, float]]] = {}
+    home_stats: Dict[str, Dict[str, Dict[str, float]]] = Field(default_factory=dict)
+    away_stats: Dict[str, Dict[str, Dict[str, float]]] = Field(default_factory=dict)
 
 
 # ==================== HELPER FUNCTIONS ====================
