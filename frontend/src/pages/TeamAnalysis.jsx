@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const TeamAnalysis = () => {
   const { teamId } = useParams();

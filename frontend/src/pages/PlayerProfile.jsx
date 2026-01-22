@@ -12,7 +12,7 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar 
 } from 'recharts';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const PlayerProfile = () => {
   const { playerId } = useParams();

@@ -5,7 +5,7 @@ import { Activity, TrendingUp, ArrowRightLeft, Trophy, Star, Flame, Clock, Chevr
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const ActivityFeed = () => {
   const [activities, setActivities] = useState([]);

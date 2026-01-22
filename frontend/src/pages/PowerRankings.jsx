@@ -3,7 +3,7 @@ import axios from 'axios';
 import { BarChart3, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const PowerRankings = () => {
   const [rankings, setRankings] = useState([]);

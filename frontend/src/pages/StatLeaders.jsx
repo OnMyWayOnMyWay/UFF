@@ -5,7 +5,7 @@ import { TrendingUp, Trophy, Zap, Target, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const StatLeaders = () => {
   const [leaders, setLeaders] = useState({});

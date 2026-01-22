@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 
-const API = `${process.env.REACT_APP_BACKEND_URL || ''}/api`;
+import API from '../lib/api';
 
 const AdminPanel = () => {
   const [adminKey, setAdminKey] = useState('');

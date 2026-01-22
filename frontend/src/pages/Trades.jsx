@@ -4,7 +4,7 @@ import { ArrowRightLeft, ArrowRight } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const Trades = () => {
   const [trades, setTrades] = useState([]);

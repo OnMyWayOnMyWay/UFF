@@ -7,7 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const Watchlist = () => {
   const [watchlist, setWatchlist] = useState([]);

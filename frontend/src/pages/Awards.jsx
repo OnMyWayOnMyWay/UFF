@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Award, Trophy, Star, Medal, Target, Crown } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const Awards = () => {
   const [awards, setAwards] = useState([]);

@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { Star, Award, TrendingUp, User } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const ElitePlayers = () => {
   const [players, setPlayers] = useState([]);

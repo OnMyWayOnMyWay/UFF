@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Star, Trophy, Flame, Zap, Eye, Crown, Sparkles } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const PlayerShowcase = () => {
   const [players, setPlayers] = useState([]);

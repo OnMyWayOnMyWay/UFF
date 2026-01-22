@@ -5,8 +5,7 @@ import { Users, User } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const POSITIONS = ['QB', 'WR', 'RB', 'DEF'];
 

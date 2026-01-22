@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import UFFLogo from '../assets/uff-logo.svg';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const Playoffs = () => {
   const [playoffData, setPlayoffData] = useState({ matchups: [], rounds: [] });

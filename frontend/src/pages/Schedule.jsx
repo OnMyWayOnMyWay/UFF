@@ -5,7 +5,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { ScrollArea, ScrollBar } from '../components/ui/scroll-area';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const Schedule = () => {
   const [scheduleData, setScheduleData] = useState({ games: [], weekly_stats: {} });

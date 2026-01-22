@@ -7,8 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
 import UFFLogo from '../assets/uff-logo.svg';
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import API from '../lib/api';
 
 const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
