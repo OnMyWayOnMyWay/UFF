@@ -1,0 +1,7 @@
+{
+  "name": "uff-root",
+  "private": true,
+  "scripts": {
+    "heroku-postbuild": "sh ./scripts/heroku-postbuild.sh"
+  }
+}
