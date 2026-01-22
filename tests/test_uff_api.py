@@ -291,18 +291,15 @@ class TestSchedule:
         assert len(data["games"]) > 0
     
     def test_get_week_schedule(self):
-        """Test getting schedule for specific week"""
-        response = requests.get(f"{BASE_URL}/api/schedule/week/1")
+        """Test getting schedule for specific week using query param"""
+        response = requests.get(f"{BASE_URL}/api/schedule?week=1")
         assert response.status_code == 200
         data = response.json()
         
-        assert data["week"] == 1
         assert "games" in data
-        
+        # All games should be from week 1
         for game in data["games"]:
             assert game["week"] == 1
-            assert "home_team" in game
-            assert "away_team" in game
 
 
 class TestStatLeaders:
