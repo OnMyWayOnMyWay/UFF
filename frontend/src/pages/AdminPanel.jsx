@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Shield, Users, Calendar, ArrowRightLeft, Trash2, Edit, Save, Plus, Search, Download, RefreshCw, AlertCircle, Check, X, Trophy, BarChart3, History, Zap, UserPlus, Merge, Copy, Image } from 'lucide-react';
+import { Shield, Users, Calendar, ArrowRightLeft, Trash2, Edit, Save, Plus, Search, Download, RefreshCw, AlertCircle, Check, X, Trophy, BarChart3, History, Zap, UserPlus, Merge, Copy, Image, Camera, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
