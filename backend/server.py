@@ -1831,36 +1831,59 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# IMPORTANT: API router must be included BEFORE static file mount
+# so API routes take precedence
 app.include_router(api_router)
 
 # Serve static files and handle React Router
-index_path = STATIC_DIR / "index.html" if STATIC_DIR.exists() else None
-static_assets_dir = STATIC_DIR / "static" if STATIC_DIR.exists() else None
+if STATIC_DIR.exists():
+    index_path = STATIC_DIR / "index.html"
+    static_assets_dir = STATIC_DIR / "static"
+    
+    # Mount static assets (JS, CSS, images) - these must be served first
+    if static_assets_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_assets_dir)), name="static_assets")
+    
+    # Serve index.html for root
+    @app.get("/")
+    async def serve_index():
+        if index_path.exists():
+            return FileResponse(str(index_path), media_type="text/html")
+        raise HTTPException(status_code=404, detail="index.html not found")
+    
+    # Catch-all for React Router - serve index.html for all non-API, non-static routes
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # Skip API routes (handled by api_router)
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        
+        # Skip static assets (handled by mount)
+        if full_path.startswith("static/"):
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        # Skip known root files that should be handled explicitly
+        if full_path in ["manifest.json", "favicon.ico", "robots.txt", "asset-manifest.json"]:
+            file_path = STATIC_DIR / full_path
+            if file_path.exists():
+                return FileResponse(str(file_path))
+            raise HTTPException(status_code=404)
+        
+        # Serve index.html for all other routes (React Router handles routing)
+        if index_path.exists():
+            return FileResponse(str(index_path), media_type="text/html")
+        raise HTTPException(status_code=404, detail="Frontend not built")
+    
+    logger.info(f"Serving static files from {STATIC_DIR}")
+else:
+    logger.warning(f"Static directory not found at {STATIC_DIR}")
 
-if STATIC_DIR.exists() and static_assets_dir and static_assets_dir.exists():
-    app.mount("/static", StaticFiles(directory=str(static_assets_dir)), name="static_assets")
-
-# Catch-all route for React Router - serve index.html for all non-API routes
-@app.get("/{full_path:path}")
-async def serve_spa(full_path: str):
-    # Don't interfere with API routes (these are handled by api_router)
-    if full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="Not Found")
-    
-    # Static assets should be handled by mount above
-    if full_path.startswith("static/"):
-        raise HTTPException(status_code=404, detail="Asset not found")
-    
-    # Serve index.html for all other routes (React Router handles client-side routing)
-    if index_path and index_path.exists():
-        return FileResponse(str(index_path))
-    
-    # Fallback if static files not built
-    return {
-        "message": "Frontend build not found.",
-        "hint": "Deploy frontend build or visit /api/ for API root.",
-        "path": full_path
-    }
+    @app.get("/")
+    async def root_fallback():
+        return {
+            "message": "Frontend build not found.",
+            "hint": "Deploy frontend build or visit /api/ for API root."
+        }
 
 if __name__ == "__main__":
     import uvicorn
