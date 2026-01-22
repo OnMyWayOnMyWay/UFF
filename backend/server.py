@@ -9,6 +9,7 @@ import logging
 import io
 import csv
 import httpx
+import re
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
@@ -92,6 +93,7 @@ class PlayerGameStats(BaseModel):
     pass_yards: int = 0
     pass_tds: int = 0
     interceptions: int = 0
+    longest_pass: int = 0
     # Rushing
     rush_attempts: int = 0
     rush_yards: int = 0
@@ -108,6 +110,7 @@ class PlayerGameStats(BaseModel):
     tackles: int = 0
     tackles_for_loss: int = 0
     sacks: float = 0
+    swat: int = 0
     def_interceptions: int = 0
     pass_deflections: int = 0
     def_tds: int = 0
@@ -126,6 +129,18 @@ class GameWithStats(BaseModel):
     date: Optional[str] = None
     # Player performances in this game
     player_stats: List[PlayerGameStats] = []
+
+class RobloxGamePayload(BaseModel):
+    """Game payload submitted from Roblox stats manager"""
+    week: int
+    home_team: str
+    away_team: str
+    home_score: float = 0
+    away_score: float = 0
+    player_of_game: Optional[str] = None
+    game_date: Optional[str] = None
+    home_stats: Dict[str, Dict[str, Dict[str, float]]] = {}
+    away_stats: Dict[str, Dict[str, Dict[str, float]]] = {}
 
 
 # ==================== HELPER FUNCTIONS ====================
@@ -255,6 +270,55 @@ def calculate_game_fantasy_points(stats: dict) -> float:
     fp += stats.get("safeties", 0) * 2
     return round(fp, 1)
 
+def map_roblox_stats(category: str, stats: Dict[str, Any]) -> Dict[str, Any]:
+    """Map Roblox stats manager fields to API game stat fields."""
+    if not isinstance(stats, dict):
+        return {}
+
+    normalized = {str(k).strip().lower(): v for k, v in stats.items()}
+    mapping = {
+        "passing": {
+            "completions": "pass_completions",
+            "attempts": "pass_attempts",
+            "yards": "pass_yards",
+            "touchdowns": "pass_tds",
+            "interceptions": "interceptions",
+            "longest": "longest_pass",
+        },
+        "rushing": {
+            "attempts": "rush_attempts",
+            "yards": "rush_yards",
+            "touchdowns": "rush_tds",
+            "fumbles": "fumbles",
+            "longest": "longest_rush",
+        },
+        "receiving": {
+            "receptions": "receptions",
+            "yards": "rec_yards",
+            "touchdowns": "rec_tds",
+            "drops": "drops",
+            "longest": "longest_rec",
+        },
+        "defense": {
+            "tackles": "tackles",
+            "tackles for loss": "tackles_for_loss",
+            "sacks": "sacks",
+            "safeties": "safeties",
+            "swat": "swat",
+            "interceptions": "def_interceptions",
+            "pass deflections": "pass_deflections",
+            "td": "def_tds",
+        },
+    }
+
+    category_key = str(category).strip().lower()
+    key_map = mapping.get(category_key, {})
+    mapped: Dict[str, Any] = {}
+    for roblox_key, api_key in key_map.items():
+        if roblox_key in normalized:
+            mapped[api_key] = normalized[roblox_key]
+    return mapped
+
 async def recalculate_player_stats(player_id: str):
     """Recalculate a player's season stats from all their game performances"""
     # Get all game stats for this player
@@ -268,7 +332,7 @@ async def recalculate_player_stats(player_id: str):
         "passing": {"completions": 0, "attempts": 0, "yards": 0, "touchdowns": 0, "interceptions": 0, "longest": 0},
         "rushing": {"attempts": 0, "yards": 0, "touchdowns": 0, "fumbles": 0, "longest": 0, "twenty_plus": 0},
         "receiving": {"receptions": 0, "yards": 0, "touchdowns": 0, "drops": 0, "longest": 0},
-        "defense": {"tackles": 0, "tackles_for_loss": 0, "sacks": 0, "interceptions": 0, "pass_deflections": 0, "td": 0, "safeties": 0}
+        "defense": {"tackles": 0, "tackles_for_loss": 0, "sacks": 0, "swat": 0, "interceptions": 0, "pass_deflections": 0, "td": 0, "safeties": 0}
     }
     
     weekly_scores = []
@@ -307,6 +371,7 @@ async def recalculate_player_stats(player_id: str):
         totals["defense"]["tackles"] += gs.get("tackles", 0)
         totals["defense"]["tackles_for_loss"] += gs.get("tackles_for_loss", 0)
         totals["defense"]["sacks"] += gs.get("sacks", 0)
+        totals["defense"]["swat"] += gs.get("swat", 0)
         totals["defense"]["interceptions"] += gs.get("def_interceptions", 0)
         totals["defense"]["pass_deflections"] += gs.get("pass_deflections", 0)
         totals["defense"]["td"] += gs.get("def_tds", 0)
@@ -747,6 +812,90 @@ async def seed_database():
         "created": datetime.now(timezone.utc).isoformat()
     })
 
+async def resolve_team_id(team_label: str) -> Optional[dict]:
+    """Resolve a team by name or abbreviation (case-insensitive)."""
+    if not team_label:
+        return None
+    escaped = re.escape(team_label.strip())
+    team = await db.teams.find_one({"name": {"$regex": f"^{escaped}$", "$options": "i"}}, {"_id": 0})
+    if team:
+        return team
+    return await db.teams.find_one({"abbreviation": {"$regex": f"^{escaped}$", "$options": "i"}}, {"_id": 0})
+
+def default_player_stats() -> Dict[str, Any]:
+    """Default stats structure for new players."""
+    return {
+        "passing": {"completions": 0, "attempts": 0, "yards": 0, "touchdowns": 0, "interceptions": 0, "rating": 0, "completion_pct": 0, "average": 0, "longest": 0},
+        "rushing": {"attempts": 0, "yards": 0, "touchdowns": 0, "yards_per_carry": 0, "fumbles": 0, "twenty_plus": 0, "longest": 0},
+        "receiving": {"receptions": 0, "yards": 0, "touchdowns": 0, "drops": 0, "longest": 0},
+        "defense": {"tackles": 0, "tackles_for_loss": 0, "sacks": 0, "swat": 0, "interceptions": 0, "pass_deflections": 0, "td": 0, "safeties": 0}
+    }
+
+async def create_game_with_stats_internal(game: GameWithStats, background_tasks: BackgroundTasks, admin_label: str):
+    """Create a game with player stats and update standings."""
+    count = await db.games.count_documents({})
+    game_id = f"g{count + 1}"
+
+    new_game = {
+        "id": game_id,
+        "week": game.week,
+        "home_team_id": game.home_team_id,
+        "away_team_id": game.away_team_id,
+        "home_score": game.home_score,
+        "away_score": game.away_score,
+        "is_completed": game.is_completed,
+        "player_of_game": game.player_of_game,
+        "player_of_game_stats": game.player_of_game_stats,
+        "date": game.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    }
+    await db.games.insert_one(new_game)
+
+    affected_players = set()
+    for ps in game.player_stats:
+        game_stat = {
+            "game_id": game_id,
+            "week": game.week,
+            "player_id": ps.player_id,
+            "pass_completions": ps.pass_completions,
+            "pass_attempts": ps.pass_attempts,
+            "pass_yards": ps.pass_yards,
+            "pass_tds": ps.pass_tds,
+            "interceptions": ps.interceptions,
+            "longest_pass": ps.longest_pass,
+            "rush_attempts": ps.rush_attempts,
+            "rush_yards": ps.rush_yards,
+            "rush_tds": ps.rush_tds,
+            "fumbles": ps.fumbles,
+            "longest_rush": ps.longest_rush,
+            "receptions": ps.receptions,
+            "rec_yards": ps.rec_yards,
+            "rec_tds": ps.rec_tds,
+            "drops": ps.drops,
+            "longest_rec": ps.longest_rec,
+            "tackles": ps.tackles,
+            "tackles_for_loss": ps.tackles_for_loss,
+            "sacks": ps.sacks,
+            "swat": ps.swat,
+            "def_interceptions": ps.def_interceptions,
+            "pass_deflections": ps.pass_deflections,
+            "def_tds": ps.def_tds,
+            "safeties": ps.safeties
+        }
+        await db.game_player_stats.insert_one(game_stat)
+        affected_players.add(ps.player_id)
+
+    for player_id in affected_players:
+        await recalculate_player_stats(player_id)
+
+    if game.is_completed:
+        await recalculate_team_record(game.home_team_id)
+        await recalculate_team_record(game.away_team_id)
+        background_tasks.add_task(recalculate_all_standings)
+
+    await log_admin_activity(admin_label, "CREATE_GAME", f"Created game: Week {game.week} ({len(game.player_stats)} player stats)")
+    new_game.pop("_id", None)
+    return new_game
+
 # ==================== API ROUTES ====================
 @api_router.get("/")
 async def root():
@@ -933,6 +1082,97 @@ async def get_dashboard():
         "recent_trades": trades,
         "league_stats": {"total_teams": 12, "total_players": len(players), "total_games": len(games), "current_week": latest_week}
     }
+
+@api_router.post("/game")
+async def submit_game(payload: RobloxGamePayload, background_tasks: BackgroundTasks):
+    """Public game submission endpoint for Roblox stats manager."""
+    home_team = await resolve_team_id(payload.home_team)
+    away_team = await resolve_team_id(payload.away_team)
+    if not home_team or not away_team:
+        raise HTTPException(status_code=400, detail="Home or away team not found")
+
+    players = await db.players.find({}, {"_id": 0, "id": 1, "roblox_username": 1}).to_list(2000)
+    player_lookup = {p["roblox_username"].lower(): p["id"] for p in players if p.get("roblox_username")}
+    next_player_index = await db.players.count_documents({}) + 1
+
+    player_stats: List[PlayerGameStats] = []
+    missing_players: List[str] = []
+
+    async def create_player_for_team(player_name: str, team: dict) -> Optional[str]:
+        nonlocal next_player_index
+        if not player_name or not team:
+            return None
+
+        player_id = f"p{next_player_index}"
+        next_player_index += 1
+
+        player_doc = {
+            "id": player_id,
+            "roblox_id": "",
+            "roblox_username": player_name,
+            "position": "QB",
+            "team": team.get("name", ""),
+            "team_id": team.get("id", ""),
+            "is_elite": False,
+            "image": None,
+            "games_played": 0,
+            "fantasy_points": 0,
+            **default_player_stats()
+        }
+
+        try:
+            roblox_user = await fetch_roblox_user_by_username(player_name)
+            if roblox_user:
+                player_doc["roblox_id"] = roblox_user.get("id", "")
+                if roblox_user.get("avatar_url"):
+                    player_doc["image"] = roblox_user["avatar_url"]
+        except Exception as exc:
+            logger.warning(f"Failed to fetch Roblox info for {player_name}: {exc}")
+
+        await db.players.insert_one(player_doc)
+        return player_id
+
+    async def process_team_stats(team_stats: Dict[str, Any], team: dict):
+        if not isinstance(team_stats, dict):
+            return
+        for player_name, categories in team_stats.items():
+            player_key = str(player_name).strip()
+            player_id = player_lookup.get(player_key.lower())
+            if not player_id:
+                player_id = await create_player_for_team(player_key, team)
+                if not player_id:
+                    missing_players.append(player_key)
+                    continue
+                player_lookup[player_key.lower()] = player_id
+
+            stat_payload: Dict[str, Any] = {"player_id": player_id}
+            if isinstance(categories, dict):
+                for category, stats in categories.items():
+                    stat_payload.update(map_roblox_stats(category, stats))
+
+            player_stats.append(PlayerGameStats(**stat_payload))
+
+    await process_team_stats(payload.home_stats or {}, home_team)
+    await process_team_stats(payload.away_stats or {}, away_team)
+
+    game = GameWithStats(
+        week=payload.week,
+        home_team_id=home_team["id"],
+        away_team_id=away_team["id"],
+        home_score=payload.home_score,
+        away_score=payload.away_score,
+        is_completed=True,
+        player_of_game=payload.player_of_game,
+        player_of_game_stats=None,
+        date=payload.game_date,
+        player_stats=player_stats
+    )
+
+    new_game = await create_game_with_stats_internal(game, background_tasks, "roblox")
+    response = {"success": True, "game": new_game, "player_stats_count": len(player_stats)}
+    if missing_players:
+        response["missing_players"] = sorted(set(missing_players))
+    return response
 
 # Watchlist
 @api_router.get("/watchlist")
@@ -1263,67 +1503,7 @@ async def create_game(game: GameWithStats, background_tasks: BackgroundTasks, ad
     """Create a game with optional player stats in one request."""
     if not verify_admin(admin_key):
         raise HTTPException(status_code=401, detail="Invalid admin key")
-    
-    count = await db.games.count_documents({})
-    game_id = f"g{count + 1}"
-    
-    new_game = {
-        "id": game_id,
-        "week": game.week,
-        "home_team_id": game.home_team_id,
-        "away_team_id": game.away_team_id,
-        "home_score": game.home_score,
-        "away_score": game.away_score,
-        "is_completed": game.is_completed,
-        "player_of_game": game.player_of_game,
-        "player_of_game_stats": game.player_of_game_stats,
-        "date": game.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    }
-    await db.games.insert_one(new_game)
-    
-    affected_players = set()
-    for ps in game.player_stats:
-        game_stat = {
-            "game_id": game_id,
-            "week": game.week,
-            "player_id": ps.player_id,
-            "pass_completions": ps.pass_completions,
-            "pass_attempts": ps.pass_attempts,
-            "pass_yards": ps.pass_yards,
-            "pass_tds": ps.pass_tds,
-            "interceptions": ps.interceptions,
-            "rush_attempts": ps.rush_attempts,
-            "rush_yards": ps.rush_yards,
-            "rush_tds": ps.rush_tds,
-            "fumbles": ps.fumbles,
-            "longest_rush": ps.longest_rush,
-            "receptions": ps.receptions,
-            "rec_yards": ps.rec_yards,
-            "rec_tds": ps.rec_tds,
-            "drops": ps.drops,
-            "longest_rec": ps.longest_rec,
-            "tackles": ps.tackles,
-            "tackles_for_loss": ps.tackles_for_loss,
-            "sacks": ps.sacks,
-            "def_interceptions": ps.def_interceptions,
-            "pass_deflections": ps.pass_deflections,
-            "def_tds": ps.def_tds,
-            "safeties": ps.safeties
-        }
-        await db.game_player_stats.insert_one(game_stat)
-        affected_players.add(ps.player_id)
-    
-    for player_id in affected_players:
-        await recalculate_player_stats(player_id)
-    
-    if game.is_completed:
-        await recalculate_team_record(game.home_team_id)
-        await recalculate_team_record(game.away_team_id)
-        background_tasks.add_task(recalculate_all_standings)
-    
-    await log_admin_activity("admin", "CREATE_GAME", f"Created game: Week {game.week} ({len(game.player_stats)} player stats)")
-    new_game.pop("_id", None)
-    return new_game
+    return await create_game_with_stats_internal(game, background_tasks, "admin")
 
 @api_router.put("/admin/game/{game_id}")
 async def update_game(game_id: str, updates: dict, admin_key: str = Header(None, alias="X-Admin-Key")):
@@ -1460,6 +1640,7 @@ async def add_player_game_stats(game_id: str, stats: PlayerGameStats, admin_key:
         "pass_yards": stats.pass_yards,
         "pass_tds": stats.pass_tds,
         "interceptions": stats.interceptions,
+        "longest_pass": stats.longest_pass,
         "rush_attempts": stats.rush_attempts,
         "rush_yards": stats.rush_yards,
         "rush_tds": stats.rush_tds,
@@ -1473,6 +1654,7 @@ async def add_player_game_stats(game_id: str, stats: PlayerGameStats, admin_key:
         "tackles": stats.tackles,
         "tackles_for_loss": stats.tackles_for_loss,
         "sacks": stats.sacks,
+        "swat": stats.swat,
         "def_interceptions": stats.def_interceptions,
         "pass_deflections": stats.pass_deflections,
         "def_tds": stats.def_tds,
