@@ -318,14 +318,15 @@ class TestStatLeaders:
         assert "fantasy" in data
     
     def test_stat_leaders_have_names(self):
-        """Test that stat leaders have player names"""
+        """Test that stat leaders have player names (via roblox_username)"""
         response = requests.get(f"{BASE_URL}/api/stat-leaders")
         assert response.status_code == 200
         data = response.json()
         
         for category in ["passing", "rushing", "receiving", "defense", "fantasy"]:
             for player in data[category]:
-                assert "name" in player
+                # Players have roblox_username as their name identifier
+                assert "roblox_username" in player
                 assert "team" in player
 
 
