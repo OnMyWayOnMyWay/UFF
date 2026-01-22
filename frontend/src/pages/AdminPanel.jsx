@@ -239,13 +239,93 @@ const AdminPanel = () => {
 
   // Game Management
   const createGame = async () => {
+    if (!gameForm.home_team_id || !gameForm.away_team_id) {
+      toast.error('Select both teams');
+      return;
+    }
     try {
-      await axios.post(`${API}/admin/game`, gameForm, { headers });
-      toast.success('Game created');
+      await axios.post(`${API}/admin/game/quick`, {
+        week: gameForm.week,
+        home_team_id: gameForm.home_team_id,
+        away_team_id: gameForm.away_team_id,
+        home_score: gameForm.home_score || 0,
+        away_score: gameForm.away_score || 0,
+        player_of_game: gameForm.player_of_game || null
+      }, { headers });
+      toast.success('Game created - standings updated!');
       fetchAllData();
-      setGameForm({ week: 1, home_team_id: '', away_team_id: '', mode: 'simple' });
+      setGameForm({ week: gameForm.week, home_team_id: '', away_team_id: '', home_score: 0, away_score: 0, player_of_game: '' });
     } catch (error) {
       toast.error('Failed to create game');
+    }
+  };
+
+  const recalculateAll = async () => {
+    try {
+      const res = await axios.post(`${API}/admin/recalculate/all`, {}, { headers });
+      toast.success(`Recalculated ${res.data.players_updated} players`);
+      fetchAllData();
+    } catch (error) {
+      toast.error('Failed to recalculate');
+    }
+  };
+
+  const recalculateStandings = async () => {
+    try {
+      await axios.post(`${API}/admin/recalculate/standings`, {}, { headers });
+      toast.success('Standings recalculated from games');
+      fetchAllData();
+    } catch (error) {
+      toast.error('Failed to recalculate standings');
+    }
+  };
+
+  const openGameStats = async (game) => {
+    try {
+      const res = await axios.get(`${API}/admin/game/${game.id}/stats`, { headers });
+      setGameStatsModal({ 
+        open: true, 
+        game: res.data.game, 
+        playerStats: res.data.player_stats,
+        newStat: { player_id: '', pass_yards: 0, pass_tds: 0, rush_yards: 0, rush_tds: 0, receptions: 0, rec_yards: 0, rec_tds: 0, tackles: 0, sacks: 0 }
+      });
+    } catch (error) {
+      toast.error('Failed to load game stats');
+    }
+  };
+
+  const addPlayerGameStat = async () => {
+    if (!gameStatsModal.newStat?.player_id) {
+      toast.error('Select a player');
+      return;
+    }
+    try {
+      const stat = gameStatsModal.newStat;
+      await axios.post(`${API}/admin/game/${gameStatsModal.game.id}/player-stats`, {
+        player_id: stat.player_id,
+        pass_yards: stat.pass_yards || 0,
+        pass_tds: stat.pass_tds || 0,
+        interceptions: stat.interceptions || 0,
+        rush_yards: stat.rush_yards || 0,
+        rush_tds: stat.rush_tds || 0,
+        receptions: stat.receptions || 0,
+        rec_yards: stat.rec_yards || 0,
+        rec_tds: stat.rec_tds || 0,
+        tackles: stat.tackles || 0,
+        sacks: stat.sacks || 0,
+        def_interceptions: stat.def_interceptions || 0
+      }, { headers });
+      toast.success('Player stats added - season totals updated!');
+      // Refresh game stats
+      const res = await axios.get(`${API}/admin/game/${gameStatsModal.game.id}/stats`, { headers });
+      setGameStatsModal(prev => ({ 
+        ...prev, 
+        playerStats: res.data.player_stats,
+        newStat: { player_id: '', pass_yards: 0, pass_tds: 0, rush_yards: 0, rush_tds: 0, receptions: 0, rec_yards: 0, rec_tds: 0, tackles: 0, sacks: 0 }
+      }));
+      fetchAllData();
+    } catch (error) {
+      toast.error('Failed to add player stats');
     }
   };
 
