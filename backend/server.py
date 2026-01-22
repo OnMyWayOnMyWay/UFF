@@ -190,12 +190,14 @@ def calculate_fantasy_points(player: dict) -> float:
 
 # ==================== DATABASE INITIALIZATION ====================
 async def init_database():
-    """Initialize database with seed data if empty"""
+    """Initialize database - seeding disabled for production"""
     teams_count = await db.teams.count_documents({})
-    if teams_count == 0:
-        logger.info("Initializing database with seed data...")
-        await seed_database()
-        logger.info("Database initialized!")
+    logger.info(f"Database connected. Teams: {teams_count}")
+    # Auto-seeding disabled - use Admin Panel to add data
+    # if teams_count == 0:
+    #     logger.info("Initializing database with seed data...")
+    #     await seed_database()
+    #     logger.info("Database initialized!")
 
 async def seed_database():
     """Seed the database with comprehensive initial data"""
