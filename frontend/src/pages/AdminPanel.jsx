@@ -16,6 +16,8 @@ import API from '../lib/api';
 
 const AdminPanel = () => {
   const [adminKey, setAdminKey] = useState('');
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [usePasswordLogin, setUsePasswordLogin] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentAdmin, setCurrentAdmin] = useState(null);
   const [stats, setStats] = useState(null);
@@ -52,14 +54,31 @@ const AdminPanel = () => {
   const authenticate = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API}/admin/stats`, { headers: { 'X-Admin-Key': normalizedAdminKey } });
+      let keyToUse = normalizedAdminKey;
+      
+      // If using password login, authenticate first
+      if (usePasswordLogin && loginForm.username && loginForm.password) {
+        const loginResponse = await axios.post(`${API}/admin/login`, {
+          username: loginForm.username,
+          password: loginForm.password
+        });
+        if (loginResponse.data.success && loginResponse.data.admin_key) {
+          keyToUse = loginResponse.data.admin_key;
+          setAdminKey(keyToUse);
+          setCurrentAdmin({ username: loginResponse.data.username, role: loginResponse.data.role });
+        }
+      }
+      
+      const response = await axios.get(`${API}/admin/stats`, { headers: { 'X-Admin-Key': keyToUse } });
       setStats(response.data);
       setIsAuthenticated(true);
-      setCurrentAdmin({ username: 'admin' });
+      if (!currentAdmin) {
+        setCurrentAdmin({ username: usePasswordLogin ? loginForm.username : 'admin' });
+      }
       toast.success('Authentication successful');
       fetchAllData();
     } catch (error) {
-      toast.error('Invalid admin key');
+      toast.error(error.response?.data?.detail || (usePasswordLogin ? 'Invalid username or password' : 'Invalid admin key'));
     } finally {
       setLoading(false);
     }
@@ -256,12 +275,7 @@ const AdminPanel = () => {
       );
       
       if (response.data.logo_url) {
-        // Update the team with the new logo URL
-        await axios.put(
-          `${API}/admin/team/${teamId}/branding?logo=${encodeURIComponent(response.data.logo_url)}`,
-          {},
-          { headers }
-        );
+        // Logo is already saved to database by the upload endpoint, just refresh
         toast.success('Logo uploaded successfully');
         fetchAllData();
       }
@@ -492,14 +506,27 @@ const AdminPanel = () => {
     if (!editTeamModal.team) return;
     const { id, name, conference, division, color, logo, wins, losses } = editTeamModal.team;
     try {
+      // Update team basic info
       await axios.put(`${API}/admin/team/${id}`, { name, conference, division, wins: parseInt(wins), losses: parseInt(losses) }, { headers });
-      if (color || logo) {
-        await axios.put(`${API}/admin/team/${id}/branding?color=${encodeURIComponent(color || '')}&logo=${encodeURIComponent(logo || '')}`, {}, { headers });
+      
+      // Always update branding (color and/or logo) to ensure logo persists
+      const brandingUpdates = {};
+      if (color) brandingUpdates.color = color;
+      if (logo) brandingUpdates.logo = logo;
+      
+      if (Object.keys(brandingUpdates).length > 0) {
+        await axios.put(
+          `${API}/admin/team/${id}/branding?color=${encodeURIComponent(color || '')}&logo=${encodeURIComponent(logo || '')}`, 
+          {}, 
+          { headers }
+        );
       }
+      
       toast.success('Team updated');
       setEditTeamModal({ open: false, team: null });
       fetchAllData();
     } catch (error) {
+      console.error('Team update error:', error);
       toast.error('Failed to update team');
     }
   };
@@ -559,16 +586,60 @@ const AdminPanel = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Input
-              type="password"
-              placeholder="Enter admin key..."
-              value={adminKey}
-              onChange={(e) => setAdminKey(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && authenticate()}
-              className="bg-white/5 border-white/10"
-              data-testid="admin-key-input"
-            />
-            <Button onClick={authenticate} disabled={loading || !normalizedAdminKey} className="w-full bg-neon-blue hover:bg-neon-blue/80" data-testid="admin-login-btn">
+            <div className="flex gap-2 mb-4">
+              <Button
+                variant={!usePasswordLogin ? "default" : "outline"}
+                onClick={() => setUsePasswordLogin(false)}
+                className="flex-1"
+              >
+                Admin Key
+              </Button>
+              <Button
+                variant={usePasswordLogin ? "default" : "outline"}
+                onClick={() => setUsePasswordLogin(true)}
+                className="flex-1"
+              >
+                Username/Password
+              </Button>
+            </div>
+            
+            {usePasswordLogin ? (
+              <>
+                <Input
+                  type="text"
+                  placeholder="Username"
+                  value={loginForm.username}
+                  onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                  onKeyDown={(e) => e.key === 'Enter' && authenticate()}
+                  className="bg-white/5 border-white/10"
+                />
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                  onKeyDown={(e) => e.key === 'Enter' && authenticate()}
+                  className="bg-white/5 border-white/10"
+                />
+              </>
+            ) : (
+              <Input
+                type="password"
+                placeholder="Enter admin key..."
+                value={adminKey}
+                onChange={(e) => setAdminKey(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && authenticate()}
+                className="bg-white/5 border-white/10"
+                data-testid="admin-key-input"
+              />
+            )}
+            
+            <Button 
+              onClick={authenticate} 
+              disabled={loading || (usePasswordLogin ? (!loginForm.username || !loginForm.password) : !normalizedAdminKey)} 
+              className="w-full bg-neon-blue hover:bg-neon-blue/80" 
+              data-testid="admin-login-btn"
+            >
               {loading ? 'Authenticating...' : 'Access Admin Panel'}
             </Button>
           </CardContent>
@@ -694,7 +765,7 @@ const AdminPanel = () => {
                   {editTeamModal.team.logo && (
                     <div className="mt-2 p-2 bg-white/5 rounded-lg">
                       <img 
-                        src={editTeamModal.team.logo.startsWith('http') ? editTeamModal.team.logo : editTeamModal.team.logo} 
+                        src={editTeamModal.team.logo.startsWith('http') ? editTeamModal.team.logo : (editTeamModal.team.logo.startsWith('/') ? editTeamModal.team.logo : `${API}${editTeamModal.team.logo}`)} 
                         alt="Logo preview" 
                         className="w-16 h-16 object-contain mx-auto"
                         onError={(e) => {

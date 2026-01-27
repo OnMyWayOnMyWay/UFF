@@ -49,6 +49,10 @@ class NewAdmin(BaseModel):
     password: str
     role: str = "admin"
 
+class AdminLogin(BaseModel):
+    username: str
+    password: str
+
 class PlayerMerge(BaseModel):
     source_player_id: str
     target_player_id: str
@@ -1368,6 +1372,25 @@ async def get_admins(admin_key: str = Header(None, alias="X-Admin-Key")):
     admins = await db.admins.find({}, {"_id": 0, "password_hash": 0}).to_list(50)
     return admins
 
+@api_router.post("/admin/login")
+async def admin_login(login: AdminLogin):
+    """Login with username and password"""
+    admin = await db.admins.find_one({"username": login.username})
+    if not admin:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    
+    password_hash = hashlib.sha256(login.password.encode()).hexdigest()
+    if admin.get("password_hash") != password_hash:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    
+    # Return admin info (without password hash) and the admin key for subsequent requests
+    return {
+        "success": True,
+        "username": admin.get("username"),
+        "role": admin.get("role"),
+        "admin_key": ADMIN_KEY  # Return the admin key for API requests
+    }
+
 @api_router.post("/admin/admins")
 async def create_admin(new_admin: NewAdmin, admin_key: str = Header(None, alias="X-Admin-Key")):
     if not verify_admin(admin_key):
@@ -1637,7 +1660,7 @@ async def upload_team_logo(
         raise HTTPException(status_code=500, detail="Failed to upload logo")
 
 @api_router.put("/admin/team/{team_id}/branding")
-async def update_team_branding(team_id: str, color: str = "", logo: str = "", admin_key: str = Header(None, alias="X-Admin-Key")):
+async def update_team_branding(team_id: str, color: str = Query(""), logo: str = Query(""), admin_key: str = Header(None, alias="X-Admin-Key")):
     if not verify_admin(admin_key):
         raise HTTPException(status_code=401, detail="Invalid admin key")
     updates = {}
@@ -1645,8 +1668,9 @@ async def update_team_branding(team_id: str, color: str = "", logo: str = "", ad
         updates["color"] = color
     if logo:
         updates["logo"] = logo
-    await db.teams.update_one({"id": team_id}, {"$set": updates})
-    await log_admin_activity("admin", "UPDATE_TEAM_BRANDING", f"Updated branding: {team_id}")
+    if updates:
+        await db.teams.update_one({"id": team_id}, {"$set": updates})
+        await log_admin_activity("admin", "UPDATE_TEAM_BRANDING", f"Updated branding: {team_id}")
     return await db.teams.find_one({"id": team_id}, {"_id": 0})
 
 # Game Admin
@@ -1971,6 +1995,10 @@ if STATIC_DIR.exists():
         # Skip static assets (handled by mount)
         if full_path.startswith("static/"):
             raise HTTPException(status_code=404, detail="Asset not found")
+        
+        # Skip uploads (handled by mount)
+        if full_path.startswith("uploads/"):
+            raise HTTPException(status_code=404, detail="Upload not found")
         
         # Skip known root files that should be handled explicitly
         if full_path in ["manifest.json", "favicon.ico", "robots.txt", "asset-manifest.json"]:
